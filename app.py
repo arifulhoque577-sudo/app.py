@@ -43,14 +43,14 @@ if 'bot_active' not in st.session_state:
 if st.session_state.bot_active:
     if st.button("🔴 STOP AUTOMATED TRADING", key="stop_btn"):
         st.session_state.bot_active = False
-        st.experimental_rerun()
+        st._rerun()
 else:
     if st.button("🟢 START AUTOMATED TRADING", key="start_btn"):
         if not api_key:
             st.error("❌ আগে সাইডবার থেকে API Key সেট করুন!")
         else:
             st.session_state.bot_active = True
-            st.experimental_rerun()
+            st._rerun()
 
 # ৫. লাইভ গ্রাফ ও ট্রেড হিস্ট্রি
 if st.session_state.bot_active:
