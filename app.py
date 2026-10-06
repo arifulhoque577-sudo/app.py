@@ -4,60 +4,70 @@ import time
 import plotly.graph_objects as go
 from pybit.unified_trading import HTTP
 
-# 1. UI Optimization & Professional Dark Exchange Theme
-st.set_page_config(page_title="Bybit AI Frontline Scalper", page_icon="⚡", layout="centered")
+# 1. Premium Interface Theme & Smooth Sliding Text Styles
+st.set_page_config(page_title="Bybit AI Elite Scalper", page_icon="📈", layout="centered")
 
 st.markdown("""
     <style>
-    .main { background-color: #0b0e14; }
-    div.stButton > button:first-child { width: 100%; border-radius: 8px; font-weight: bold; font-size: 16px; height: 46px; }
+    .main { background-color: #080b10; }
+    div[data-testid="stSidebar"] { background-color: #0d121d !important; border-right: 1px solid #1e293b; }
+    div.stButton > button:first-child { width: 100%; border-radius: 8px; font-weight: 800; font-size: 15px; height: 48px; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.3s ease; }
     iframe { border: none !important; }
+    
+    /* Sliding Stock Ticker Styles */
+    .ticker-wrap { width: 100%; background: rgba(30, 41, 59, 0.4); border: 1px solid #1e293b; border-radius: 8px; overflow: hidden; padding: 6px 0; margin-bottom: 15px; }
+    .ticker { display: inline-block; white-space: nowrap; animation: marquee 15s linear infinite; padding-left: 100%; }
+    .ticker__item { display: inline-block; color: #38bdf8; font-size: 13px; font-family: monospace; font-weight: bold; }
+    @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
     </style>
     """, unsafe_allow_html=True)
 
-# Bybit Branding Logo Header Custom Web Widget Design
+# Bybit High-Tech Header Brand Module
 st.markdown("""
-    <div style="background: linear-gradient(90deg, #f5a623 0%, #ffcc00 100%); padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: center; box-shadow: 0px 4px 15px rgba(245, 166, 35, 0.2);">
-        <h1 style="margin: 0; color: #0b0e14; font-family: 'Arial Black', sans-serif; font-size: 28px; letter-spacing: 1px;">BYBIT AI PRO SCALPER</h1>
-        <p style="margin: 5px 0 0 0; color: #1c2434; font-weight: bold; font-size: 13px;">FRONTLINE VERSION 15.0 • HIGH-LEVERAGE PERPETUAL ENGINE</p>
+    <div style="background: linear-gradient(135deg, #242f42 0%, #0f172a 100%); padding: 18px; border-radius: 12px; margin-bottom: 20px; text-align: center; border: 1px solid #e2a826; box-shadow: 0px 4px 20px rgba(226, 168, 38, 0.15);">
+        <span style="font-size: 24px; vertical-align: middle;">🔶</span>
+        <h1 style="display: inline; margin-left: 8px; color: #ffffff; font-family: 'Arial Black', sans-serif; font-size: 26px; letter-spacing: 1px; vertical-align: middle;">BYBIT NEXT-GEN AI</h1>
+        <p style="margin: 6px 0 0 0; color: #94a3b8; font-family: monospace; font-size: 11px; letter-spacing: 2px;">ULTRA-LEVERAGE HIGH-SPEED TRADING DESK</p>
     </div>
     """, unsafe_allow_html=True)
-# 2. Dynamic High-Leverage Multi-Coin Configuration Specifications
+# 2. Expanded Multi-Coin Database with Authentic Currency Asset Profiles
 COIN_DATABASE = {
-    "🪙 BTCUSDT (Bitcoin)": {"symbol": "BTCUSDT", "max_leverage": 100, "default_tp": 100.0, "default_sl": 150.0, "step": 10.0},
-    "🔷 ETHUSDT (Ethereum)": {"symbol": "ETHUSDT", "max_leverage": 100, "default_tp": 8.0, "default_sl": 15.0, "step": 1.0},
-    "☀️ SOLUSDT (Solana)": {"symbol": "SOLUSDT", "max_leverage": 50, "default_tp": 1.5, "default_sl": 3.0, "step": 0.1},
-    "💥 XRPUSDT (Ripple)": {"symbol": "XRPUSDT", "max_leverage": 100, "default_tp": 0.015, "default_sl": 0.03, "step": 0.001},
-    "🐶 DOGEUSDT (Dogecoin)": {"symbol": "DOGEUSDT", "max_leverage": 50, "default_tp": 0.004, "default_sl": 0.01, "step": 0.0005},
-    "🔥 SHIBUSDT (Shiba Inu)": {"symbol": "SHIBUSDT", "max_leverage": 50, "default_tp": 0.0000005, "default_sl": 0.000001, "step": 0.0000001},
-    "🔮 LINKUSDT (Chainlink)": {"symbol": "LINKUSDT", "max_leverage": 50, "default_tp": 0.25, "default_sl": 0.50, "step": 0.01},
-    "🧬 ADAUSDT (Cardano)": {"symbol": "ADAUSDT", "max_leverage": 50, "default_tp": 0.01, "default_sl": 0.02, "step": 0.001},
+    "🪙 BTCUSDT (Bitcoin)": {"symbol": "BTCUSDT", "max_leverage": 100, "default_tp": 120.0, "default_sl": 180.0, "step": 10.0},
+    "🔷 ETHUSDT (Ethereum)": {"symbol": "ETHUSDT", "max_leverage": 100, "default_tp": 10.0, "default_sl": 18.0, "step": 1.0},
+    "☀️ SOLUSDT (Solana)": {"symbol": "SOLUSDT", "max_leverage": 50, "default_tp": 1.2, "default_sl": 2.5, "step": 0.1},
+    "💥 XRPUSDT (Ripple)": {"symbol": "XRPUSDT", "max_leverage": 100, "default_tp": 0.012, "default_sl": 0.025, "step": 0.001},
+    "🐶 DOGEUSDT (Dogecoin)": {"symbol": "DOGEUSDT", "max_leverage": 50, "default_tp": 0.003, "default_sl": 0.008, "step": 0.0005},
     "💎 PEPEUSDT (Pepe)": {"symbol": "PEPEUSDT", "max_leverage": 50, "default_tp": 0.0000001, "default_sl": 0.0000003, "step": 0.00000001},
-    "🌀 WIFUSDT (dogwifhat)": {"symbol": "WIFUSDT", "max_leverage": 50, "default_tp": 0.05, "default_sl": 0.12, "step": 0.01}
+    "🔥 SHIBUSDT (Shiba Inu)": {"symbol": "SHIBUSDT", "max_leverage": 50, "default_tp": 0.0000004, "default_sl": 0.0000009, "step": 0.0000001},
+    "🌀 WIFUSDT (dogwifhat)": {"symbol": "WIFUSDT", "max_leverage": 50, "default_tp": 0.06, "default_sl": 0.14, "step": 0.01},
+    "💧 SUIUSDT (Sui)": {"symbol": "SUIUSDT", "max_leverage": 50, "default_tp": 0.04, "default_sl": 0.09, "step": 0.005},
+    "💎 TONUSDT (Toncoin)": {"symbol": "TONUSDT", "max_leverage": 50, "default_tp": 0.05, "default_sl": 0.12, "step": 0.01},
+    "😺 POPCATUSDT (Popcat)": {"symbol": "POPCATUSDT", "max_leverage": 50, "default_tp": 0.015, "default_sl": 0.035, "step": 0.002},
+    "🌐 WUSDT (Wormhole)": {"symbol": "WUSDT", "max_leverage": 50, "default_tp": 0.008, "default_sl": 0.018, "step": 0.001}
 }
 
 with st.sidebar:
-    st.markdown("<h2 style='color:#f5a623;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
-    bot_mode = st.radio("Trading Account Mode:", ["Demo Simulation (Virtual Funds)", "Live Exchange (Bybit Mainnet API)"])
+    st.markdown("<h3 style='color:#ffcc00; font-family:sans-serif;'>🎛️ CORE TERMINAL</h3>", unsafe_allow_html=True)
+    bot_mode = st.radio("Execution Environment:", ["Demo Account (Sandbox)", "Live Production (Bybit API)"])
     is_real_live = True if "Live" in bot_mode else False
     
-    selected_display_name = st.selectbox("Select Perpetual Contract:", list(COIN_DATABASE.keys()), index=0)
+    selected_display_name = st.selectbox("Select Core Derivative Asset:", list(COIN_DATABASE.keys()), index=0)
     coin_config = COIN_DATABASE[selected_display_name]
     target_symbol = coin_config["symbol"]
     
-    ai_decision = st.toggle("AI Smart Crossover Filter (RSI Mean Reversion)", value=True)
+    ai_decision = st.toggle("Activate AI Core RSI Strategy Engine", value=True)
     
-    leverage = st.slider(f"Adjust Leverage (Max {coin_config['max_leverage']}x):", min_value=1, max_value=coin_config["max_leverage"], value=20, step=1)
-    trade_amount = st.number_input("Margin Requirement ($):", min_value=1, max_value=1000, value=20, step=1)
+    leverage = st.slider(f"Engine Leverage Bound (Max {coin_config['max_leverage']}x):", min_value=1, max_value=coin_config["max_leverage"], value=20, step=1)
+    trade_amount = st.number_input("Order Cost Allocation ($):", min_value=1, max_value=2000, value=20, step=1)
     
-    price_jump_target = st.number_input("Take Profit Target ($ Price Delta):", min_value=0.00000001, max_value=5000.0, value=coin_config["default_tp"], step=coin_config["step"], format="%.8f")
-    stop_loss_gap = st.number_input("Stop Loss Threshold ($ Price Delta):", min_value=0.00000001, max_value=5000.0, value=coin_config["default_sl"], step=coin_config["step"], format="%.8f")
+    price_jump_target = st.number_input("Profit Capture Target ($ Delta):", min_value=0.00000001, max_value=5000.0, value=coin_config["default_tp"], step=coin_config["step"], format="%.8f")
+    stop_loss_gap = st.number_input("Risk Stop Threshold ($ Delta):", min_value=0.00000001, max_value=5000.0, value=coin_config["default_sl"], step=coin_config["step"], format="%.8f")
     
     api_key, secret_key = "", ""
     if is_real_live:
-        api_key = st.text_input("Bybit Authenticated API Key:", type="password")
-        secret_key = st.text_input("Bybit Authenticated Secret Key:", type="password")
-# 3. Session State Initialization
+        api_key = st.text_input("Mainnet API Access Key:", type="password")
+        secret_key = st.text_input("Mainnet API Secret Secret:", type="password")
+# 3. Cache Locks & Clean Performance Grid Metrics
 if 'demo_balance' not in st.session_state: st.session_state.demo_balance = 5000.0
 if 'bot_active' not in st.session_state: st.session_state.bot_active = False
 if 'in_position' not in st.session_state: st.session_state.in_position = False
@@ -80,14 +90,24 @@ estimated_fee = effective_vol * 0.0011
 total_trades = st.session_state.win_count + st.session_state.loss_count
 win_rate = (st.session_state.win_count / total_trades * 100) if total_trades > 0 else 0.0
 
+# Highly aligned clean metrics layout box
 st.markdown(f"""
-    <div style="background-color:#141a24; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; display: flex; justify-content: space-between;">
-        <span style="color:#ffffff; font-size:14px; font-weight:bold;">🏆 PERFORMANCES WON: <b style="color:#00e676;">{st.session_state.win_count}</b></span>
-        <span style="color:#ffffff; font-size:14px; font-weight:bold;">❌ EXITS LOST: <b style="color:#ff1744;">{st.session_state.loss_count}</b></span>
-        <span style="color:#ffffff; font-size:14px; font-weight:bold;">🎯 NET WIN RATE: <b style="color:#29b6f6;">{win_rate:.1f}%</b></span>
+    <div style="background-color:#0d121d; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1e293b; display: flex; text-align: center;">
+        <div style="flex: 1; border-right: 1px solid #1e293b;">
+            <p style="margin:0; font-size:11px; color:#64748b; font-weight:bold; text-transform:uppercase;">TAKEOUTS WON</p>
+            <span style="font-size:18px; font-weight:800; color:#00e676; font-family:monospace;">{st.session_state.win_count}</span>
+        </div>
+        <div style="flex: 1; border-right: 1px solid #1e293b;">
+            <p style="margin:0; font-size:11px; color:#64748b; font-weight:bold; text-transform:uppercase;">EXITS LOST</p>
+            <span style="font-size:18px; font-weight:800; color:#ff1744; font-family:monospace;">{st.session_state.loss_count}</span>
+        </div>
+        <div style="flex: 1;">
+            <p style="margin:0; font-size:11px; color:#64748b; font-weight:bold; text-transform:uppercase;">WINNING RATIO</p>
+            <span style="font-size:18px; font-weight:800; color:#38bdf8; font-family:monospace;">{win_rate:.1f}%</span>
+        </div>
     </div>
 """, unsafe_allow_html=True)
-# 🔍 Real-Time Market Data Engine (5-Second High-Resolution Feed)
+# 🔍 Real-Time Ingestion Streams (High-Resolution 5s Candle Interval)
 live_price = 0.0
 current_rsi = 50.0
 df_kline = None
@@ -112,6 +132,7 @@ if st.session_state.bot_active:
     except:
         pass
 
+# Dynamic Position Value Logic Math
 floating_pnl = 0.0
 expected_net_profit = 0.0
 
@@ -140,22 +161,32 @@ if is_real_live and api_key and secret_key:
     except:
         balance_usd_text = "API Key Error"
 
-position_status = "NO ACTIVE POSITION 💤" if not st.session_state.in_position else f"FUTURE {target_symbol} {st.session_state.current_side} CONTRACT RUNNING"
+position_status = "IDLE TERMINAL STATUS 💤" if not st.session_state.in_position else f"FUTURE {target_symbol} {st.session_state.current_side} SPECULATION ACTIVE"
 
+# 📡 Rebuilt Clean Glassmorphic Account Cards
 rsi_color = "#ff1744" if current_rsi > 50 else "#00e676"
 st.markdown(f"""
-    <div style="background-color:#141a24; padding:10px; border-radius:10px; margin-bottom:12px; border-left: 5px solid {rsi_color}; text-align:center; border: 1px solid #1f2c3f;">
-        <span style="color:#94a3b8; font-size:12px; font-weight:bold;">📡 LIVE AI RSI OSCILLATOR (5s FEED):</span>
-        <h3 style="margin:2px 0; color:{rsi_color}; font-size:24px; font-family: monospace;">{current_rsi:.2f}</h3>
+    <div style="background-color:#0d121d; padding:12px; border-radius:10px; margin-bottom:12px; border-left: 5px solid {rsi_color}; text-align:center; border: 1px solid #1e293b;">
+        <span style="color:#64748b; font-size:12px; font-weight:bold;">📡 REAL-TIME RSI INDEX COUNTER (5s GRID):</span>
+        <h3 style="margin:2px 0; color:{rsi_color}; font-size:24px; font-family: monospace; font-weight:bold;">{current_rsi:.2f}</h3>
     </div>
-    <div style="background-color:#141a24; padding:15px; border-radius:12px; margin-bottom:12px; border: 1px solid #1f2c3f;">
-        <p style="margin:0; font-size:12px; color:#94a3b8; font-weight:bold;">💰 AVAILABLE BALANCE ACCOUNT ({bot_mode})</p>
-        <h2 style="margin:5px 0; color:#ffffff; font-size:28px; font-family: monospace;">{balance_usd_text}</h2>
-        <p style="margin:0; font-size:14px; color:{'#00e676' if floating_pnl >= 0 else '#ff1744'}; font-weight:bold;">Live Floating P&L: {floating_pnl:+.2f} USDT</p>
+    <div style="background-color:#0d121d; padding:15px; border-radius:12px; margin-bottom:12px; border: 1px solid #1e293b;">
+        <p style="margin:0; font-size:12px; color:#64748b; font-weight:bold;">💰 AVAILABLE PORTFOLIO MARGIN CAPITAL ({bot_mode})</p>
+        <h2 style="margin:5px 0; color:#ffffff; font-size:26px; font-family: monospace; font-weight:800;">{balance_usd_text}</h2>
+        <p style="margin:0; font-size:14px; color:{'#00e676' if floating_pnl >= 0 else '#ff1744'}; font-weight:bold; font-family: monospace;">Floating P&L: {floating_pnl:+.2f} USDT</p>
     </div>
-    <div style="background-color:#141a24; padding:15px; border-radius:12px; margin-bottom:15px; border: 1px solid #1f2c3f;">
-        <p style="margin:0; font-size:12px; color:#94a3b8; font-weight:bold;">📦 MARGIN STATUS EXECUTION</p>
-        <h3 style="margin:5px 0; color:{'#ffffff' if st.session_state.current_side == 'NONE' else ('#00e676' if st.session_state.current_side == 'LONG' else '#ff1744')}; font-size:16px;">{position_status}</h3>
+    <div style="background-color:#0d121d; padding:15px; border-radius:12px; margin-bottom:15px; border: 1px solid #1e293b;">
+        <p style="margin:0; font-size:12px; color:#64748b; font-weight:bold;">📦 INSTRUMENT MARGIN TRACKER</p>
+        <h3 style="margin:5px 0; color:{'#ffffff' if st.session_state.current_side == 'NONE' else ('#00e676' if st.session_state.current_side == 'LONG' else '#ff1744')}; font-size:15px; font-weight:bold;">{position_status}</h3>
+    </div>
+""", unsafe_allow_html=True)
+
+# 🎞️ Animated Stock Ticker Display Component
+st.markdown(f"""
+    <div class="ticker-wrap">
+        <div class="ticker">
+            <div class="ticker__item">🚨 ESTIMATED EXECUTION SYSTEM FEE METRIC: {estimated_fee:.4f} USDT &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; • &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; POSITION LOT SIZING MODE: HIGH FREQUENCY SCALPER CONTRACT 🚨</div>
+        </div>
     </div>
 """, unsafe_allow_html=True)
 if st.session_state.in_position and live_price > 0:
@@ -163,28 +194,27 @@ if st.session_state.in_position and live_price > 0:
     live_target = (st.session_state.buy_price + price_jump_target) if is_long_pos else (st.session_state.buy_price - price_jump_target)
     live_sl = (st.session_state.buy_price - stop_loss_gap) if is_long_pos else (st.session_state.buy_price + stop_loss_gap)
     st.markdown(f"""
-    <div style="background-color:#0b0e14; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; border-left: 5px solid #29b6f6;">
-        <span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Entry Price: {st.session_state.buy_price} | Live Index: {live_price}</span><br>
-        <span style="font-size:14px; color:#00e676; font-weight:bold; font-family: monospace;">Take Profit Target: {live_target} (Expected Net: +${expected_net_profit:.2f})</span><br>
-        <span style="font-size:14px; color:#ff1744; font-weight:bold; font-family: monospace;">Stop Loss Boundary: {live_sl}</span>
+    <div style="background-color:#080b10; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1e293b; border-left: 5px solid #38bdf8;">
+        <span style="font-size:13px; color:#ffffff; font-weight:bold; font-family: monospace;">Entry Index: {st.session_state.buy_price} | Live Index: {live_price}</span><br>
+        <span style="font-size:13px; color:#00e676; font-weight:bold; font-family: monospace;">Take Profit Barrier: {live_target} (Net: +${expected_net_profit:.2f})</span><br>
+        <span style="font-size:13px; color:#ff1744; font-weight:bold; font-family: monospace;">Risk Stop Boundary: {live_sl}</span>
     </div>
     """, unsafe_allow_html=True)
 
-st.info(f"💡 Estimated Execution Trading Fee: **${estimated_fee:.3f} USDT**")
-
-st.markdown("<h3 style='color:#ffffff; font-size:16px;'>🎮 Engine Controls</h3>", unsafe_allow_html=True)
+# Tactical Action Control Room Setup
+st.markdown("<h3 style='color:#ffffff; font-size:15px; font-family:sans-serif;'>⚡ TACTICAL ACCESS ENGINE</h3>", unsafe_allow_html=True)
 c1, c2 = st.columns(2)
 with c1:
     if st.session_state.bot_active:
-        st.markdown("<style>div.stButton > button[key='stop_btn'] {background-color:#d50000 !important; color:white;}</style>", unsafe_allow_html=True)
-        if st.button("🔴 STOP ENGINE", key="stop_btn"): st.session_state.bot_active = False; st.rerun()
+        st.markdown("<style>div.stButton > button[key='stop_btn'] {background-color:#b91c1c !important; color:white; border:1px solid #ef4444;}</style>", unsafe_allow_html=True)
+        if st.button("⏹️ ABORT HARVEST", key="stop_btn"): st.session_state.bot_active = False; st.rerun()
     else:
-        st.markdown("<style>div.stButton > button[key='start_btn'] {background-color:#00c853 !important; color:white;}</style>", unsafe_allow_html=True)
-        if st.button("🟢 START SCALPER", key="start_btn"): st.session_state.bot_active = True; st.rerun()
+        st.markdown("<style>div.stButton > button[key='start_btn'] {background-color:#15803d !important; color:white; border:1px solid #22c55e;}</style>", unsafe_allow_html=True)
+        if st.button("🚀 INITIALIZE ENGINE", key="start_btn"): st.session_state.bot_active = True; st.rerun()
 with c2:
     if st.session_state.in_position:
-        st.markdown("<style>div.stButton > button[key='force_sell_btn'] {background-color:#ff3d00 !important; color:white;}</style>", unsafe_allow_html=True)
-        if st.button("🚨 EMERGENCY LIQUIDATE", key="force_sell_btn"):
+        st.markdown("<style>div.stButton > button[key='force_sell_btn'] {background-color:#ea580c !important; color:white; border:1px solid #f97316;}</style>", unsafe_allow_html=True)
+        if st.button("💥 LIQUIDATE MANUALLY", key="force_sell_btn"):
             net_pnl = floating_pnl - estimated_fee
             if not is_real_live: st.session_state.demo_balance += net_pnl
             if net_pnl >= 0: st.session_state.win_count += 1
@@ -194,7 +224,7 @@ with c2:
 if st.session_state.bot_active and df_kline is not None:
     try:
         fig = go.Figure(data=[go.Candlestick(x=df_kline.index, open=df_kline['open'], high=df_kline['high'], low=df_kline['low'], close=df_kline['close'], increasing_line_color='#00e676', decreasing_line_color='#ff1744')])
-        fig.update_layout(margin=dict(l=5, r=5, t=5, b=5), xaxis_rangeslider_visible=False, template="plotly_dark", height=150)
+        fig.update_layout(margin=dict(l=5, r=5, t=5, b=5), xaxis_rangeslider_visible=False, template="plotly_dark", height=150, paper_bgcolor='#080b10', plot_bgcolor='#080b10')
         st.plotly_chart(fig, use_container_width=True)
 
         raw_qty = effective_vol / live_price
@@ -249,12 +279,12 @@ if st.session_state.bot_active and df_kline is not None:
                 st.session_state.in_position = False; st.session_state.buy_price = 0.0; st.session_state.current_side = "NONE"
                 st.rerun()
 
-        st.subheader("📋 Permanent Trading Action History")
+        st.subheader("📋 Operational Database History")
         if st.session_state.all_trades_history:
             history_df = pd.DataFrame(st.session_state.all_trades_history)
             st.dataframe(history_df.iloc[::-1], height=180, use_container_width=True)
             csv_data = history_df.to_csv(index=False).encode('utf-8')
-            st.download_button(label="📥 Download Complete CSV Logs", data=csv_data, file_name=f"scalper_fee_logs_{time.strftime('%Y%m%d')}.csv", mime='text/csv')
+            st.download_button(label="📥 Export Database Logs", data=csv_data, file_name=f"scalper_fee_logs_{time.strftime('%Y%m%d')}.csv", mime='text/csv')
         time.sleep(1)
         st.rerun()
     except:
@@ -263,5 +293,5 @@ if st.session_state.bot_active and df_kline is not None:
 else:
     st.info("The trading core engine is currently inactive. Press the green button to boot the scalper loops.")
     if st.session_state.all_trades_history:
-        st.subheader("📋 Past Session Trading History")
+        st.subheader("📋 Operational Database History")
         st.dataframe(pd.DataFrame(st.session_state.all_trades_history).iloc[::-1], use_container_width=True)
