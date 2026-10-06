@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 from pybit.unified_trading import HTTP
 
 # ১. মোবাইল ও থিম অপ্টিমাইজেশন
-st.set_page_config(page_title="Bybit AI Counter-Trend Scalper", page_icon="⚡", layout="centered")
+st.set_page_config(page_title="Bybit AI Multi-Coin Scalper", page_icon="⚡", layout="centered")
 
 st.markdown("""
     <style>
@@ -15,21 +15,26 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.title("⚡ Bybit AI Pro Future Scalper")
-st.caption("ভার্সন ১৩.০ | পিওর কাউন্টার-ট্রেন্ড এআই এবং ৫-সেকেন্ড ক্যান্ডেল ইঞ্জিন")
+st.title("⚡ Bybit AI Pro Multi-Coin Scalper")
+st.caption("ভার্সন ১৪.০ | অল্টকয়েন ড্রপডাউন ও ডাইনামিক ক্যান্ডেল চার্ট সিস্টেম")
 
-# ২. ডাইনামিক ফিউচার সেটিংস (সাইডবার)
+# ২. ডাইনামিক ফিউচার সেটিংস ও কয়েন ড্রপডাউন (সাইডবার)
 with st.sidebar:
     st.header("⚙️ Configurations")
     bot_mode = st.radio("ট্রেডিং মোড:", ["Demo Mode (ফ্রি ফেইক ফান্ড)", "Live Mode (আসল Bybit API)"])
     is_real_live = True if "Live" in bot_mode else False
     
+    # 🪙 অল্টকয়েন সিলেক্ট করার ডাইনামিক ড্রপডাউন মেনু
+    target_coin = st.selectbox("স্ক্যাল্পিং করার জন্য কয়েন বাছুন:", ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT", "BNBUSDT"], index=0)
+    
     ai_decision = st.toggle("এআই অটো-ডিসিশন (Counter-Trend RSI)", value=True)
     
     leverage = st.slider("ফিউচার লেভারেজ", min_value=1, max_value=50, value=20, step=1)
     trade_amount = st.number_input("মার্জিন কস্ট ($)", min_value=1, max_value=500, value=20, step=1)
-    price_jump_target = st.slider("প্রফিট বুকিং টার্গেট ($ গ্যাপ)", min_value=10, max_value=1000, value=300, step=10)
-    stop_loss_gap = st.slider("স্টপ লস প্রোটেকশন ($ গ্যাপ)", min_value=10, max_value=500, value=100, step=5)
+    
+    # অল্টকয়েনের জন্য প্রফিট টার্গেটের ডাইনামিক টেক্সট গ্যাপ গাইড
+    price_jump_target = st.number_input(f"প্রফিট বুকিং টার্গেট ($ গ্যাপ) [BTC এর জন্য ৩০০, ETH এর জন্য ২০, SOL এর জন্য ৩ দিন]", min_value=0.0001, max_value=2000.0, value=100.0 if "BTC" in target_coin else (5.0 if "ETH" in target_coin else 1.0))
+    stop_loss_gap = st.number_input("স্টপ লস প্রোটেকশন ($ গ্যাপ)", min_value=0.001, max_value=1000.0, value=50.0 if "BTC" in target_coin else (10.0 if "ETH" in target_coin else 2.0))
     
     api_key = ""
     secret_key = ""
@@ -43,24 +48,24 @@ if 'bot_active' not in st.session_state: st.session_state.bot_active = False
 if 'in_position' not in st.session_state: st.session_state.in_position = False
 if 'buy_price' not in st.session_state: st.session_state.buy_price = 0.0
 if 'current_side' not in st.session_state: st.session_state.current_side = "NONE"
+if 'active_coin' not in st.session_state: st.session_state.active_coin = target_coin
 if 'all_trades_history' not in st.session_state: st.session_state.all_trades_history = []
 if 'win_count' not in st.session_state: st.session_state.win_count = 0
 if 'loss_count' not in st.session_state: st.session_state.loss_count = 0
+
+# কয়েন চেঞ্জ হলে আগের পজিশন অটো-রিলিজ করার মেকানিজম
+if st.session_state.active_coin != target_coin:
+    st.session_state.in_position = False
+    st.session_state.buy_price = 0.0
+    st.session_state.current_side = "NONE"
+    st.session_state.active_coin = target_coin
 
 effective_vol = trade_amount * leverage
 estimated_fee = effective_vol * 0.0011 
 
 total_trades = st.session_state.win_count + st.session_state.loss_count
 win_rate = (st.session_state.win_count / total_trades * 100) if total_trades > 0 else 0.0
-
-st.markdown(f"""
-    <div style="background-color:#1e293b; padding:10px; border-radius:10px; margin-bottom:12px; border-left: 5px solid #f59e0b; display: flex; justify-content: space-between;">
-        <span style="color:#ffffff; font-size:13px; font-weight:bold;">🏆 WIN: <b style="color:#00cc66;">{st.session_state.win_count}</b></span>
-        <span style="color:#ffffff; font-size:13px; font-weight:bold;">❌ LOSS: <b style="color:#ff3333;">{st.session_state.loss_count}</b></span>
-        <span style="color:#ffffff; font-size:13px; font-weight:bold;">🎯 WIN RATE: <b style="color:#3b82f6;">{win_rate:.1f}%</b></span>
-    </div>
-""", unsafe_allow_html=True)
-# 🔍 লাইভ মার্কেট ডাটা ইঞ্জিন (রিয়েল-টাইম ৫ সেকেন্ডের ফিড)
+# 🔍 ডাইনামিক লাইভ মার্কেট ডাটা ইঞ্জিন (সিলেক্টেড অল্টকয়েনের ৫ সেকেন্ডের ফিড)
 live_price = 0.0
 current_rsi = 50.0
 df_kline = None
@@ -68,7 +73,8 @@ df_kline = None
 if st.session_state.bot_active:
     try:
         public_session = HTTP(testnet=False)
-        response = public_session.get_kline(category="linear", symbol="BTCUSDT", interval="5", limit=15)
+        # ড্রপডাউনের target_coin ডাইনামিক্যালি পাস করা হচ্ছে
+        response = public_session.get_kline(category="linear", symbol=target_coin, interval="5", limit=15)
         klines = response.get('result', {}).get('list', [])
         if klines:
             df_kline = pd.DataFrame(klines, columns=['time', 'open', 'high', 'low', 'close', 'volume', 'turnover'])
@@ -76,7 +82,7 @@ if st.session_state.bot_active:
             for col in ['open', 'high', 'low', 'close']: df_kline[col] = pd.to_numeric(df_kline[col])
             live_price = df_kline['close'].iloc[-1]
             
-            # ৫-সেকেন্ড ক্যান্ডেলের আরএসআই (RSI) গণনা
+            # ডাইনামিক আরএসআই (RSI) গণনা
             delta = df_kline['close'].diff()
             gain = (delta.where(delta > 0, 0)).rolling(window=7).mean()
             loss = (-delta.where(delta < 0, 0)).rolling(window=7).mean()
@@ -116,13 +122,18 @@ if is_real_live and api_key and secret_key:
     except:
         balance_usd_text = "API কী এরর"
 
-position_status = "কোনো পজিশন নেই 💤" if not st.session_state.in_position else f"Future {st.session_state.current_side} রানিং"
+position_status = "কোনো পজিশন নেই 💤" if not st.session_state.in_position else f"Future {target_coin} {st.session_state.current_side} রানিং"
 
-# 📡 লাইভ আরএসআই সিগন্যাল মনিটর বক্স
+# 📡 স্কোরবোর্ড ও লাইভ আরএসআই উইজেট
 rsi_color = "#ff3333" if current_rsi > 50 else "#00cc66"
 st.markdown(f"""
+    <div style="background-color:#1e293b; padding:10px; border-radius:10px; margin-bottom:12px; border-left: 5px solid #f59e0b; display: flex; justify-content: space-between;">
+        <span style="color:#ffffff; font-size:13px; font-weight:bold;">🏆 WIN: <b style="color:#00cc66;">{st.session_state.win_count}</b></span>
+        <span style="color:#ffffff; font-size:13px; font-weight:bold;">❌ LOSS: <b style="color:#ff3333;">{st.session_state.loss_count}</b></span>
+        <span style="color:#ffffff; font-size:13px; font-weight:bold;">🎯 WIN RATE: <b style="color:#3b82f6;">{win_rate:.1f}%</b></span>
+    </div>
     <div style="background-color:#1e293b; padding:10px; border-radius:10px; margin-bottom:12px; border-left: 5px solid {rsi_color}; text-align:center;">
-        <span style="color:#94a3b8; font-size:12px; font-weight:bold; text-transform:uppercase;">📡 Live AI RSI (5s Counter-Trend Feed):</span>
+        <span style="color:#94a3b8; font-size:12px; font-weight:bold;">📡 Live AI RSI ({target_coin} 5s Feed):</span>
         <h3 style="margin:2px 0; color:{rsi_color}; font-size:22px;">{current_rsi:.2f}</h3>
     </div>
 """, unsafe_allow_html=True)
@@ -136,10 +147,10 @@ st.markdown(f"""
     </div>
     <div style="background-color:#1e293b; padding:15px; border-radius:12px; margin-bottom:15px; border-top: 4px solid #10b981;">
         <p style="margin:0; font-size:12px; color:#94a3b8; text-transform:uppercase; font-weight:bold;">📦 Active Future Position Status</p>
-        <h3 style="margin:5px 0; color:{'#ffffff' if st.session_state.current_side == 'NONE' else ('#00cc66' if st.session_state.current_side == 'LONG' else '#ff3333')}; font-size:20px;">Future {st.session_state.current_side if st.session_state.current_side != 'NONE' else 'খালি (IDLE 💤)'}</h3>
+        <h3 style="margin:5px 0; color:{'#ffffff' if st.session_state.current_side == 'NONE' else ('#00cc66' if st.session_state.current_side == 'LONG' else '#ff3333')}; font-size:20px;">{position_status}</h3>
     </div>
 """, unsafe_allow_html=True)
-# 🎯 লাইভ ফিউচার ট্র্যাকার উইজেট
+# 🎯 লাইভ ফিউচার ট্র্যাকার উইজেট (অল্টকয়েন স্পেসিফিক ডেসিমাল ফিক্স)
 if st.session_state.in_position and live_price > 0:
     is_long_pos = True if st.session_state.current_side == "LONG" else False
     live_target = (st.session_state.buy_price + price_jump_target) if is_long_pos else (st.session_state.buy_price - price_jump_target)
@@ -147,13 +158,13 @@ if st.session_state.in_position and live_price > 0:
     
     st.markdown(f"""
     <div style="background-color:#0f172a; padding:12px; border-radius:10px; margin-bottom:15px; border-left: 5px solid #3b82f6;">
-        <span style="font-size:14px; color:#ffffff; font-weight:bold;">Entry: ${st.session_state.buy_price:,.2f} | Live Price: ${live_price:,.2f}</span><br>
-        <span style="font-size:14px; color:#00cc66; font-weight:bold;">Take Profit Target: ${live_target:,.2f} (নিট লাভ হবে: +${expected_net_profit:.2f})</span><br>
-        <span style="font-size:14px; color:#ff3333; font-weight:bold;">Stop Loss Price: ${live_sl:,.2f}</span>
+        <span style="font-size:14px; color:#ffffff; font-weight:bold;">Entry: ${st.session_state.buy_price} | Live Price: ${live_price}</span><br>
+        <span style="font-size:14px; color:#00cc66; font-weight:bold;">Take Profit Target: ${live_target} (নিট লাভ হবে: +${expected_net_profit:.2f})</span><br>
+        <span style="font-size:14px; color:#ff3333; font-weight:bold;">Stop Loss Price: ${live_sl}</span>
     </div>
     """, unsafe_allow_html=True)
 
-st.info(f"💡 আনুমানিক কমপ্লিট ট্রেড ফি কাটবে: **${estimated_fee:.3f} USDT**")
+st.info(f"💡 এই কনফিগারেশনে প্রতি কমপ্লিট ট্রেডে আনুমানিক ফি কাটবে: **${estimated_fee:.3f} USDT**")
 
 # ৬. বট কন্ট্রোল বোতামসমূহ
 st.subheader("🎮 Bot Controls")
@@ -172,23 +183,26 @@ with c2:
             else: st.session_state.loss_count += 1
             st.session_state.in_position = False; st.session_state.buy_price = 0.0; st.session_state.current_side = "NONE"; st.rerun()
 
-# ⚡ ৭. কাউন্টার-ট্রেন্ড এআই এক্সিকিউশন মেকানিজম
+# ⚡ ৭. কাউন্টার-тренল্ড মাল্টি-কয়েন এক্সিকিউশন লুপ
 if st.session_state.bot_active and df_kline is not None:
     try:
         fig = go.Figure(data=[go.Candlestick(x=df_kline.index, open=df_kline['open'], high=df_kline['high'], low=df_kline['low'], close=df_kline['close'], increasing_line_color='#00cc66', decreasing_line_color='#ff3333')])
         fig.update_layout(margin=dict(l=5, r=5, t=5, b=5), xaxis_rangeslider_visible=False, template="plotly_dark", height=150)
         st.plotly_chart(fig, use_container_width=True)
 
-        # পজিশন ওপেনিং (আপনার কাঙ্ক্ষিত কাউন্টার-ট্রেন্ড লজিক ফিক্সড)
+        # অল্টকয়েন অনুযায়ী লট সাইজ কোয়ান্টিটি প্রটেকশন (ডাইনামিক ডেসিমাল রাউন্ডিং)
+        raw_qty = effective_vol / live_price
+        if live_price < 1.0: calculated_qty = round(raw_qty, 1)      # DOGE, XRP এর মতো কয়েনের জন্য
+        elif live_price < 500.0: calculated_qty = round(raw_qty, 2)  # SOL, BNB এর জন্য
+        else: calculated_qty = round(raw_qty, 4)                     # BTC, ETH এর জন্য
+        if calculated_qty <= 0: calculated_qty = 0.1
+
+        # পজিশন ওপেনিং
         if not st.session_state.in_position:
             decision_side = "NONE"
-            
             if ai_decision:
-                # 🧠 আপনার সেই আসল এআই মোড: মার্কেট ওপরে গেলে (Overbought) করবে SHORT, নিচে নামলে (Oversold) করবে LONG
-                if current_rsi < 45.0: 
-                    decision_side = "BUY"   # Candle Down / RSI Low -> ওপরে ওঠার আশায় LONG 🟢
-                elif current_rsi > 55.0: 
-                    decision_side = "SELL"  # Candle Up / RSI High -> নিচে নামার আশায় SHORT 🔴
+                if current_rsi < 45.0: decision_side = "BUY"    # Candle Down -> LONG 🟢
+                elif current_rsi > 55.0: decision_side = "SELL"  # Candle Up -> SHORT 🔴
             else:
                 decision_side = "BUY"
 
@@ -200,15 +214,15 @@ if st.session_state.bot_active and df_kline is not None:
                 if is_real_live:
                     try:
                         session = HTTP(testnet=False, api_key=api_key, api_secret=secret_key)
-                        session.place_order(category="linear", symbol="BTCUSDT", side=decision_side, orderType="Market", qty=str(calculated_qty))
+                        session.place_order(category="linear", symbol=target_coin, side=decision_side, orderType="Market", qty=str(calculated_qty))
                     except: 
                         st.session_state.in_position = False; st.session_state.buy_price = 0.0; st.session_state.current_side = "NONE"
                 
                 if st.session_state.in_position:
                     target_calc = (live_price + price_jump_target) if decision_side == "BUY" else (live_price - price_jump_target)
                     st.session_state.all_trades_history.append({
-                        "Time": time.strftime("%H:%M:%S"), "Action": f"OPEN {st.session_state.current_side}",
-                        "Price": live_price, "Target": f"${target_calc:,.2f}", "Trading Fee ($)": f"-{estimated_fee/2:.3f}", "Net P&L ($)": "0.00", "Status": "RUNNING"
+                        "Time": time.strftime("%H:%M:%S"), "Coin": target_coin, "Action": f"OPEN {st.session_state.current_side}",
+                        "Price": live_price, "Target": f"${target_calc}", "Trading Fee ($)": f"-{estimated_fee/2:.3f}", "Net P&L ($)": "0.00", "Status": "RUNNING"
                     })
             st.rerun()
         
@@ -233,15 +247,15 @@ if st.session_state.bot_active and df_kline is not None:
                 if is_real_live:
                     try:
                         session = HTTP(testnet=False, api_key=api_key, api_secret=secret_key)
-                        session.place_order(category="linear", symbol="BTCUSDT", side=close_action, orderType="Market", qty=str(calculated_qty))
+                        session.place_order(category="linear", symbol=target_coin, side=close_action, orderType="Market", qty=str(calculated_qty))
                     except: pass
                 else:
                     st.session_state.demo_balance += net_pnl
                 
                 target_display = (st.session_state.buy_price + price_jump_target) if is_long_pos else (st.session_state.buy_price - price_jump_target)
                 st.session_state.all_trades_history.append({
-                    "Time": time.strftime("%H:%M:%S"), "Action": f"CLOSE {st.session_state.current_side}",
-                    "Price": live_price, "Target": f"${target_display:,.2f}", "Trading Fee ($)": f"-{estimated_fee:.3f}", "Net P&L ($)": f"{net_pnl:.2f}", "Status": status_tag
+                    "Time": time.strftime("%H:%M:%S"), "Coin": target_coin, "Action": f"CLOSE {st.session_state.current_side}",
+                    "Price": live_price, "Target": f"${target_display}", "Trading Fee ($)": f"-{estimated_fee:.3f}", "Net P&L ($)": f"{net_pnl:.2f}", "Status": status_tag
                 })
                 st.session_state.in_position = False; st.session_state.buy_price = 0.0; st.session_state.current_side = "NONE"
                 st.rerun()
