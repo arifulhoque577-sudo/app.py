@@ -3,27 +3,26 @@ import pandas as pd
 import time
 from pybit.unified_trading import HTTP
 
-# ১. মোবাইল ও চার্ট অপ্টিমাইজেশন
-st.set_page_config(page_title="Bybit Pro Scalper", page_icon="⚡", layout="centered")
+# ১. মোবাইল ও চার্ট স্ক্রিন অপ্টিমাইজেশন
+st.set_page_config(page_title="Bybit Premium Scalper", page_icon="⚡", layout="centered")
 
 st.markdown("""
     <style>
     .main { background-color: #0e1117; }
     div.stButton > button:first-child { width: 100%; border-radius: 10px; font-weight: bold; }
+    iframe { border: none !important; border-radius: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
 st.title("⚡ Bybit AI Pro Scalper")
-st.caption("ভার্সন ৩.৬ | রিয়েল অ্যাকাউন্ট ও ক্যান্ডেলস্টিক চার্ট ফিক্সড")
+st.caption("ভার্সন ৩.৭ | লাইভ ১-১০০$ অর্ডার ও ক্যান্ডেল চার্ট")
 
 # ২. Bybit API সেটিংস (সাইডবার)
 with st.sidebar:
     st.header("⚙️ Configuration")
-    api_key = st.text_input("Bybit API Key", type="password", placeholder="এখানে API Key দিন")
-    secret_key = st.text_input("Secret Key", type="password", placeholder="এখানে Secret Key দিন")
-    trade_amount = st.number_input("ট্রেড অ্যামাউন্ট ($)", min_value=5, max_value=1000, value=10)
-    
-    # 🔴 রিয়েল নাকি ডেমো অ্যাকাউন্ট তা মোবাইল থেকেই সিলেক্ট করার অপশন
+    api_key = st.text_input("Bybit API Key", type="password", placeholder="API Key দিন")
+    secret_key = st.text_input("Secret Key", type="password", placeholder="Secret Key দিন")
+    trade_amount = st.number_input("ট্রেড কস্ট/অ্যামাউন্ট ($)", min_value=1, max_value=500, value=10, step=1)
     account_type = st.radio("অ্যাকাউন্টের ধরন", ["আসল অ্যাকাউন্ট (Mainnet)", "নকল অ্যাকাউন্ট (Demo Testnet)"])
     is_testnet = True if account_type == "নকল অ্যাকাউন্ট (Demo Testnet)" else False
 
@@ -37,32 +36,27 @@ if 'trade_logs' not in st.session_state:
 
 # Bybit HTTP সেশন তৈরি করা
 session = None
-balance_usd = "অপেক্ষা করুন..."
+balance_usd = "$0.00"
 position_status = "চেক করা হচ্ছে..."
 
 if api_key and secret_key:
     try:
-        # ব্যবহারকারীর সিলেকশন অনুযায়ী testnet সেট হবে
         session = HTTP(testnet=is_testnet, api_key=api_key, api_secret=secret_key)
         
-        # 💰 লাইভ ওয়ালেট ব্যালেন্স নিয়ে আসা (আসল ও নকল অ্যাকাউন্টের জন্য আলাদা এপিআই কল)
-        account_mode = "UNIFIED" if not is_testnet else "UNIFIED"
-        wallet_info = session.get_wallet_balance(accountType=account_mode, coin="USDT")
-        
-        # Bybit V5 থেকে ব্যালেন্স এক্সট্র্যাক্ট করা
-        member_list = wallet_info.get('result', {}).get('list', [])
-        if member_list:
-            coin_list = member_list[0].get('coin', [])
-            usd_bal = 0.0
-            for c in coin_list:
-                if c.get('coin') == 'USDT':
-                    usd_bal = float(c.get('walletBalance', 0))
-                    break
-            balance_usd = f"${usd_bal:,.2f}"
-        else:
-            balance_usd = "$0.00"
+        # 💰 লাইভ ওয়ালেট ব্যালেন্স চেক (Unified & Spot উভয়ই ট্রাই করবে)
+        try:
+            wallet_info = session.get_wallet_balance(accountType="UNIFIED", coin="USDT")
+            member_list = wallet_info.get('result', {}).get('list', [])
+            if member_list and 'coin' in member_list[0]:
+                coin_list = member_list[0]['coin']
+                for c in coin_list:
+                    if c.get('coin') == 'USDT':
+                        balance_usd = f"${float(c.get('walletBalance', 0)):,.2f}"
+                        break
+        except:
+            balance_usd = "চেক করুন (ডলার স্পট/ইউটিএ-তে রাখুন)"
             
-        # 📦 বর্তমান পজিশন চেক করা
+        # 📦 বর্তমান পজিশন চেক
         pos_info = session.get_positions(category="linear", symbol="BTCUSDT")
         positions = pos_info.get('result', {}).get('list', [])
         if positions and float(positions[0].get('size', 0)) > 0:
@@ -73,7 +67,7 @@ if api_key and secret_key:
             st.session_state.in_position = False
             
     except Exception as e:
-        balance_usd = "API কী এরর (চেক করুন)"
+        balance_usd = "API কী এরর"
         position_status = "কানেকশন ভুল"
 
 # ৩. লাইভ ব্যালেন্স ও স্ট্যাটাস ডিসপ্লে
@@ -97,13 +91,12 @@ else:
             st.error("❌ আগে সাইডবার থেকে আপনার Bybit API Key ও Secret Key সেট করুন!")
         else:
             st.session_state.bot_active = True
-            st.session_state.trade_logs.append("[SYSTEM] Continuous Scalper Activated.")
+            st.session_state.trade_logs.append(f"[SYSTEM] Scalper Activated. Target per trade: ${trade_amount}")
             st.rerun()
 
-# ৫. লাইভ মার্কেট ডাটা ও ক্যান্ডেলস্টিক চার্ট
+# ৫. লাইভ মার্কেট ডাটা ও মোবাইল-ফ্রেন্ডলি TradingView ক্যান্ডেলস্টিক চার্ট
 if st.session_state.bot_active and session:
     try:
-        # লাইভ ক্যান্ডেল ডাটা ফেচ করা
         response = session.get_kline(category="linear", symbol="BTCUSDT", interval="1", limit=30)
         klines = response.get('result', {}).get('list', [])
         
@@ -115,30 +108,14 @@ if st.session_state.bot_active and session:
             
             st.subheader(f"📈 Live BTC/USDT: ${live_price:,.2f}")
             
-            # 📊 অত্যন্ত লাইটওয়েট ও ফাস্ট ক্যান্ডেলস্টিক চার্ট উইজেট (১০০% মোবাইল লোড হবে)
-            st.components.v1.html(f"""
-                <div class="tradingview-widget-container" style="height:350px;width:100%;">
-                  <div id="tradingview_1m"></div>
-                  <script type="text/javascript" src="https://tradingview.com"></script>
-                  <script type="text/javascript">
-                  new TradingView.widget({{
-                    "width": "100%",
-                    "height": 350,
-                    "symbol": "BYBIT:BTCUSDT",
-                    "interval": "1",
-                    "timezone": "exchange",
-                    "theme": "dark",
-                    "style": "1",
-                    "locale": "en",
-                    "enable_publishing": false,
-                    "hide_side_toolbar": true,
-                    "container_id": "tradingview_1m"
-                  }});
-                  </script>
-                </div>
-            """, height=360)
+            # 📊 ১০০% মোবাইল ফ্রেন্ডলি ও লাইটওয়েট ক্যান্ডেলস্টিক চার্ট আইফ্রেম (ফিক্সড)
+            chart_html = f"""
+            <iframe src="https://tradingview.com" 
+                    width="100%" height="320" style="border:none;"></iframe>
+            """
+            st.components.v1.html(chart_html, height=330)
 
-            # ⚡ কন্টিনিউয়াস স্ক্যাল্পিং অ্যালগরিদম লজিক
+            # ⚡ স্ক্যাল্পিং RSI অ্যালগরিদম লজিক
             delta = df['close'].diff()
             gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
             loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
@@ -146,29 +123,39 @@ if st.session_state.bot_active and session:
             df['RSI'] = 100 - (100 / (1 + rs))
             current_rsi = df['RSI'].iloc[-1] if not df['RSI'].isnull().iloc[-1] else 50
             
-            # মার্কেট অর্ডার এক্সিকিউশন
+            # ডলার কস্ট থেকে বিটিসি কোয়ান্টিটি কনভার্ট (যেমন: ১০ ডলার = কত বিটিসি)
+            calculated_qty = round((trade_amount / live_price), 4)
+            if calculated_qty < 0.0001:
+                calculated_qty = 0.0001  # Bybit-এর সর্বনিম্ন অর্ডার সাইজ লিমিট
+
+            # কুইক স্ক্যাল্প বাই/সেল এক্সিকিউশন
             if current_rsi < 35 and not st.session_state.in_position:
                 try:
-                    session.place_order(category="linear", symbol="BTCUSDT", side="Buy", orderType="Market", qty="0.001")
-                    st.session_state.trade_logs.append(f"[🟢 BUY ORDER EXEC] Price: ${live_price} | RSI: {current_rsi:.2f}")
+                    order = session.place_order(
+                        category="linear", symbol="BTCUSDT", side="Buy", 
+                        orderType="Market", qty=str(calculated_qty)
+                    )
+                    st.session_state.trade_logs.append(f"[🟢 BUY PLACED] Cost: ${trade_amount} | Qty: {calculated_qty} BTC")
                     st.session_state.in_position = True
                 except Exception as e:
-                    st.session_state.trade_logs.append(f"[⚠️ Order Scan] Condition matched, adjusting margin status...")
+                    st.session_state.trade_logs.append(f"[❌ Order Fail] চেক করুন ব্যালেন্স স্পট/ইউটিএ অ্যাকাউন্টে আছে কি না।")
             
             elif current_rsi > 65 and st.session_state.in_position:
                 try:
-                    session.place_order(category="linear", symbol="BTCUSDT", side="Sell", orderType="Market", qty="0.001")
-                    st.session_state.trade_logs.append(f"[🔴 SELL ORDER EXEC] Price: ${live_price} | RSI: {current_rsi:.2f} -> Closed Position!")
+                    order = session.place_order(
+                        category="linear", symbol="BTCUSDT", side="Sell", 
+                        orderType="Market", qty=str(calculated_qty)
+                    )
+                    st.session_state.trade_logs.append(f"[🔴 SELL PLACED] Position closed for ${trade_amount} worth BTC")
                     st.session_state.in_position = False
                 except Exception as e:
-                    st.session_state.trade_logs.append(f"[⚠️ Order Scan] Scanning for exit targets...")
+                    st.session_state.trade_logs.append(f"[⚠️ Scan Exit] Closing targets scanning...")
 
-        # ৬. লাইভ অ্যাকশন লগ প্রদর্শন
+        # ৬. লগ প্রদর্শন
         st.subheader("📜 Live Action Logs")
         logs_display = "\n".join(st.session_state.trade_logs[-5:])
         st.text_area("Logs (Auto-refreshing)", value=logs_display, height=130)
         
-        # প্রতি ৫ সেকেন্ডে অটো-রিফ্রেশ
         time.sleep(5)
         st.rerun()
 
