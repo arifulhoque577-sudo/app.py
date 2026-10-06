@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 from pybit.unified_trading import HTTP
 
 # ১. মোবাইল ও থিম অপ্টিমাইজেশন
-st.set_page_config(page_title="Bybit AI Pro Scalper", page_icon="⚡", layout="centered")
+st.set_page_config(page_title="Bybit AI Counter-Trend Scalper", page_icon="⚡", layout="centered")
 
 st.markdown("""
     <style>
@@ -16,7 +16,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 st.title("⚡ Bybit AI Pro Future Scalper")
-st.caption("ভার্সন ১১.০ | আল্ট্রা-স্পিড এআই সিগন্যাল ও ডুয়াল লং/শর্ট ইঞ্জিন")
+st.caption("ভার্সন ১৩.০ | পিওর কাউন্টার-ট্রেন্ড এআই এবং ৫-সেকেন্ড ক্যান্ডেল ইঞ্জিন")
 
 # ২. ডাইনামিক ফিউচার সেটিংস (সাইডবার)
 with st.sidebar:
@@ -24,11 +24,11 @@ with st.sidebar:
     bot_mode = st.radio("ট্রেডিং মোড:", ["Demo Mode (ফ্রি ফেইক ফান্ড)", "Live Mode (আসল Bybit API)"])
     is_real_live = True if "Live" in bot_mode else False
     
-    ai_decision = st.toggle("এআই অটো-ডিসিশন (RSI + MACD)", value=True)
+    ai_decision = st.toggle("এআই অটো-ডিসিশন (Counter-Trend RSI)", value=True)
     
     leverage = st.slider("ফিউচার লেভারেজ", min_value=1, max_value=50, value=20, step=1)
     trade_amount = st.number_input("মার্জিন কস্ট ($)", min_value=1, max_value=500, value=20, step=1)
-    price_jump_target = st.slider("প্রফিট বুকিং টার্গেট ($ গ্যাপ)", min_value=2, max_value=1000, value=80, step=2)
+    price_jump_target = st.slider("প্রফিট বুকিং টার্গেট ($ গ্যাপ)", min_value=10, max_value=1000, value=300, step=10)
     stop_loss_gap = st.slider("স্টপ লস প্রোটেকশন ($ গ্যাপ)", min_value=10, max_value=500, value=100, step=5)
     
     api_key = ""
@@ -37,7 +37,7 @@ with st.sidebar:
         api_key = st.text_input("Bybit API Key", type="password")
         secret_key = st.text_input("Secret Key", type="password")
 
-# ৩. পার্মানেন্ট সেশন মেমোরি ও উইন/লস স্কোরবোর্ড ট্র্যাকার
+# ৩. পার্মানেন্ট সেশন মেমোরি ও স্কোরবোর্ড ট্র্যাকার
 if 'demo_balance' not in st.session_state: st.session_state.demo_balance = 5000.0
 if 'bot_active' not in st.session_state: st.session_state.bot_active = False
 if 'in_position' not in st.session_state: st.session_state.in_position = False
@@ -50,7 +50,6 @@ if 'loss_count' not in st.session_state: st.session_state.loss_count = 0
 effective_vol = trade_amount * leverage
 estimated_fee = effective_vol * 0.0011 
 
-# 🏆 রিয়েল-টাইম লাইভ উইন রেট স্কোরবোর্ড কার্ড প্রদর্শন
 total_trades = st.session_state.win_count + st.session_state.loss_count
 win_rate = (st.session_state.win_count / total_trades * 100) if total_trades > 0 else 0.0
 
@@ -61,24 +60,33 @@ st.markdown(f"""
         <span style="color:#ffffff; font-size:13px; font-weight:bold;">🎯 WIN RATE: <b style="color:#3b82f6;">{win_rate:.1f}%</b></span>
     </div>
 """, unsafe_allow_html=True)
-# 🔍 লাইভ মার্কেট ডাটা ইঞ্জিন
+# 🔍 লাইভ মার্কেট ডাটা ইঞ্জিন (রিয়েল-টাইম ৫ সেকেন্ডের ফিড)
 live_price = 0.0
+current_rsi = 50.0
 df_kline = None
 
 if st.session_state.bot_active:
     try:
         public_session = HTTP(testnet=False)
-        response = public_session.get_kline(category="linear", symbol="BTCUSDT", interval="1", limit=12)
+        response = public_session.get_kline(category="linear", symbol="BTCUSDT", interval="5", limit=15)
         klines = response.get('result', {}).get('list', [])
         if klines:
             df_kline = pd.DataFrame(klines, columns=['time', 'open', 'high', 'low', 'close', 'volume', 'turnover'])
             df_kline = df_kline.iloc[::-1].reset_index(drop=True)
             for col in ['open', 'high', 'low', 'close']: df_kline[col] = pd.to_numeric(df_kline[col])
             live_price = df_kline['close'].iloc[-1]
+            
+            # ৫-সেকেন্ড ক্যান্ডেলের আরএসআই (RSI) গণনা
+            delta = df_kline['close'].diff()
+            gain = (delta.where(delta > 0, 0)).rolling(window=7).mean()
+            loss = (-delta.where(delta < 0, 0)).rolling(window=7).mean()
+            rs = gain / (loss + 1e-10)
+            df_kline['RSI'] = 100 - (100 / (1 + rs))
+            current_rsi = df_kline['RSI'].iloc[-1] if not df_kline['RSI'].isnull().iloc[-1] else 50.0
     except:
         pass
 
-# 💰 লাইভ P&L ও ফ্লোটিং মেমোরি ক্যালকুলেটর (লং এবং শর্ট উভয়ের জন্য আলাদা ম্যাথ)
+# 💰 লাইভ P&L ও ফ্লোটিং ব্যালেন্স হিসাব
 floating_pnl = 0.0
 expected_net_profit = 0.0
 
@@ -110,21 +118,25 @@ if is_real_live and api_key and secret_key:
 
 position_status = "কোনো পজিশন নেই 💤" if not st.session_state.in_position else f"Future {st.session_state.current_side} রানিং"
 
-# কাস্টম নিচে-নিচে (Vertical) UI ডিসপ্লে
+# 📡 লাইভ আরএসআই সিগন্যাল মনিটর বক্স
+rsi_color = "#ff3333" if current_rsi > 50 else "#00cc66"
+st.markdown(f"""
+    <div style="background-color:#1e293b; padding:10px; border-radius:10px; margin-bottom:12px; border-left: 5px solid {rsi_color}; text-align:center;">
+        <span style="color:#94a3b8; font-size:12px; font-weight:bold; text-transform:uppercase;">📡 Live AI RSI (5s Counter-Trend Feed):</span>
+        <h3 style="margin:2px 0; color:{rsi_color}; font-size:22px;">{current_rsi:.2f}</h3>
+    </div>
+""", unsafe_allow_html=True)
+
+# নিচে-নিচে রেসপন্সিভ লেআউট
 st.markdown(f"""
     <div style="background-color:#1e293b; padding:15px; border-radius:12px; margin-bottom:12px; border-top: 4px solid #f59e0b;">
         <p style="margin:0; font-size:12px; color:#94a3b8; text-transform:uppercase; font-weight:bold;">💰 Account Balance ({bot_mode})</p>
         <h2 style="margin:5px 0; color:#ffffff; font-size:26px;">{balance_usd_text}</h2>
-        <p style="margin:0; font-size:14px; color:{'#00cc66' if floating_pnl >= 0 else '#ff3333'}; font-weight:bold;">
-            Live Floating P&L: {floating_pnl:+.2f} USDT
-        </p>
+        <p style="margin:0; font-size:14px; color:{'#00cc66' if floating_pnl >= 0 else '#ff3333'}; font-weight:bold;">Live Floating P&L: {floating_pnl:+.2f} USDT</p>
     </div>
-    
     <div style="background-color:#1e293b; padding:15px; border-radius:12px; margin-bottom:15px; border-top: 4px solid #10b981;">
         <p style="margin:0; font-size:12px; color:#94a3b8; text-transform:uppercase; font-weight:bold;">📦 Active Future Position Status</p>
-        <h3 style="margin:5px 0; color:{'#ffffff' if st.session_state.current_side == 'NONE' else ('#00cc66' if st.session_state.current_side == 'LONG' else '#ff3333')}; font-size:20px;">
-            Future {st.session_state.current_side if st.session_state.current_side != 'NONE' else 'খালি (IDLE 💤)'}
-        </h3>
+        <h3 style="margin:5px 0; color:{'#ffffff' if st.session_state.current_side == 'NONE' else ('#00cc66' if st.session_state.current_side == 'LONG' else '#ff3333')}; font-size:20px;">Future {st.session_state.current_side if st.session_state.current_side != 'NONE' else 'খালি (IDLE 💤)'}</h3>
     </div>
 """, unsafe_allow_html=True)
 # 🎯 লাইভ ফিউচার ট্র্যাকার উইজেট
@@ -160,31 +172,23 @@ with c2:
             else: st.session_state.loss_count += 1
             st.session_state.in_position = False; st.session_state.buy_price = 0.0; st.session_state.current_side = "NONE"; st.rerun()
 
-# ⚡ ৭. হাই-স্পিড ডুয়াল এক্সিকিউশন অ্যালগরিদম লুপ
+# ⚡ ৭. কাউন্টার-ট্রেন্ড এআই এক্সিকিউশন মেকানিজম
 if st.session_state.bot_active and df_kline is not None:
     try:
         fig = go.Figure(data=[go.Candlestick(x=df_kline.index, open=df_kline['open'], high=df_kline['high'], low=df_kline['low'], close=df_kline['close'], increasing_line_color='#00cc66', decreasing_line_color='#ff3333')])
         fig.update_layout(margin=dict(l=5, r=5, t=5, b=5), xaxis_rangeslider_visible=False, template="plotly_dark", height=150)
         st.plotly_chart(fig, use_container_width=True)
 
-        # ⚡ হাইপার-ফাস্ট এআই আরএসআই রেঞ্জ ক্যালকুলেশন (৪৫ এবং ৫৫ ফিক্সড)
-        delta = df_kline['close'].diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-        rs = gain / (loss + 1e-10)
-        df_kline['RSI'] = 100 - (100 / (1 + rs))
-        current_rsi = df_kline['RSI'].iloc[-1] if not df_kline['RSI'].isnull().iloc[-1] else 50
-
-        calculated_qty = round((effective_vol / live_price), 4)
-        if calculated_qty < 0.0001: calculated_qty = 0.0001
-
-        # 🟢 🔴 ডুয়াল ডিরেকশন অর্ডার ওপেনিং মেকানিজম
+        # পজিশন ওপেনিং (আপনার কাঙ্ক্ষিত কাউন্টার-ট্রেন্ড লজিক ফিক্সড)
         if not st.session_state.in_position:
             decision_side = "NONE"
+            
             if ai_decision:
-                # সিগন্যাল স্পিড ফাস্ট করা হয়েছে (RSI ফিল্টার রেঞ্জ শিথিল)
-                if current_rsi < 46: decision_side = "BUY"    # মার্কেট সামান্য নামলেই LONG
-                elif current_rsi > 54: decision_side = "SELL"  # মার্কেট সামান্য উঠলেই SHORT
+                # 🧠 আপনার সেই আসল এআই মোড: মার্কেট ওপরে গেলে (Overbought) করবে SHORT, নিচে নামলে (Oversold) করবে LONG
+                if current_rsi < 45.0: 
+                    decision_side = "BUY"   # Candle Down / RSI Low -> ওপরে ওঠার আশায় LONG 🟢
+                elif current_rsi > 55.0: 
+                    decision_side = "SELL"  # Candle Up / RSI High -> নিচে নামার আশায় SHORT 🔴
             else:
                 decision_side = "BUY"
 
@@ -208,7 +212,7 @@ if st.session_state.bot_active and df_kline is not None:
                     })
             st.rerun()
         
-        # পজিশন ক্লোজিং ও লাইভ স্কোরবোর্ড আপডেট লজিক
+        # পজিশন ক্লোজিং
         elif st.session_state.in_position:
             is_long_pos = True if st.session_state.current_side == "LONG" else False
             if is_long_pos:
@@ -223,7 +227,6 @@ if st.session_state.bot_active and df_kline is not None:
                 status_tag = "PROFIT 🟢" if is_profit_hit else "STOPLOSS 🔴"
                 net_pnl = floating_pnl - estimated_fee
                 
-                # স্কোরবোর্ড কাউন্টার আপডেট
                 if is_profit_hit: st.session_state.win_count += 1
                 else: st.session_state.loss_count += 1
                 
