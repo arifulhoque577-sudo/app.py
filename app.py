@@ -4,68 +4,90 @@ import time
 import plotly.graph_objects as go
 from pybit.unified_trading import HTTP
 
-# ১. মোবাইল ও থিম অপ্টিমাইজেশন
-st.set_page_config(page_title="Bybit AI Multi-Coin Scalper", page_icon="⚡", layout="centered")
+# 1. UI Optimization & Professional Dark Exchange Theme
+st.set_page_config(page_title="Bybit AI Frontline Scalper", page_icon="⚡", layout="centered")
 
 st.markdown("""
     <style>
-    .main { background-color: #0e1117; }
-    div.stButton > button:first-child { width: 100%; border-radius: 10px; font-weight: bold; }
-    .stButton>button[key="force_sell_btn"] { background-color: #ff3333 !important; color: white !important; }
+    .main { background-color: #0b0e14; }
+    div.stButton > button:first-child { width: 100%; border-radius: 8px; font-weight: bold; font-size: 16px; height: 46px; }
+    iframe { border: none !important; }
     </style>
     """, unsafe_allow_html=True)
 
-st.title("⚡ Bybit AI Pro Multi-Coin Scalper")
-st.caption("ভার্সন ১৪.০ | অল্টকয়েন ড্রপডাউন ও ডাইনামিক ক্যান্ডেল চার্ট সিস্টেম")
+# Bybit Branding Logo Header Custom Web Widget Design
+st.markdown("""
+    <div style="background: linear-gradient(90deg, #f5a623 0%, #ffcc00 100%); padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: center; box-shadow: 0px 4px 15px rgba(245, 166, 35, 0.2);">
+        <h1 style="margin: 0; color: #0b0e14; font-family: 'Arial Black', sans-serif; font-size: 28px; letter-spacing: 1px;">BYBIT AI PRO SCALPER</h1>
+        <p style="margin: 5px 0 0 0; color: #1c2434; font-weight: bold; font-size: 13px;">FRONTLINE VERSION 15.0 • HIGH-LEVERAGE PERPETUAL ENGINE</p>
+    </div>
+    """, unsafe_allow_html=True)
+# 2. Dynamic High-Leverage Multi-Coin Configuration Specifications
+COIN_DATABASE = {
+    "🪙 BTCUSDT (Bitcoin)": {"symbol": "BTCUSDT", "max_leverage": 100, "default_tp": 100.0, "default_sl": 150.0, "step": 10.0},
+    "🔷 ETHUSDT (Ethereum)": {"symbol": "ETHUSDT", "max_leverage": 100, "default_tp": 8.0, "default_sl": 15.0, "step": 1.0},
+    "☀️ SOLUSDT (Solana)": {"symbol": "SOLUSDT", "max_leverage": 50, "default_tp": 1.5, "default_sl": 3.0, "step": 0.1},
+    "💥 XRPUSDT (Ripple)": {"symbol": "XRPUSDT", "max_leverage": 100, "default_tp": 0.015, "default_sl": 0.03, "step": 0.001},
+    "🐶 DOGEUSDT (Dogecoin)": {"symbol": "DOGEUSDT", "max_leverage": 50, "default_tp": 0.004, "default_sl": 0.01, "step": 0.0005},
+    "🔥 SHIBUSDT (Shiba Inu)": {"symbol": "SHIBUSDT", "max_leverage": 50, "default_tp": 0.0000005, "default_sl": 0.000001, "step": 0.0000001},
+    "🔮 LINKUSDT (Chainlink)": {"symbol": "LINKUSDT", "max_leverage": 50, "default_tp": 0.25, "default_sl": 0.50, "step": 0.01},
+    "🧬 ADAUSDT (Cardano)": {"symbol": "ADAUSDT", "max_leverage": 50, "default_tp": 0.01, "default_sl": 0.02, "step": 0.001},
+    "💎 PEPEUSDT (Pepe)": {"symbol": "PEPEUSDT", "max_leverage": 50, "default_tp": 0.0000001, "default_sl": 0.0000003, "step": 0.00000001},
+    "🌀 WIFUSDT (dogwifhat)": {"symbol": "WIFUSDT", "max_leverage": 50, "default_tp": 0.05, "default_sl": 0.12, "step": 0.01}
+}
 
-# ২. ডাইনামিক ফিউচার সেটিংস ও কয়েন ড্রপডাউন (সাইডবার)
 with st.sidebar:
-    st.header("⚙️ Configurations")
-    bot_mode = st.radio("ট্রেডিং মোড:", ["Demo Mode (ফ্রি ফেইক ফান্ড)", "Live Mode (আসল Bybit API)"])
+    st.markdown("<h2 style='color:#f5a623;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
+    bot_mode = st.radio("Trading Account Mode:", ["Demo Simulation (Virtual Funds)", "Live Exchange (Bybit Mainnet API)"])
     is_real_live = True if "Live" in bot_mode else False
     
-    # 🪙 অল্টকয়েন সিলেক্ট করার ডাইনামিক ড্রপডাউন মেনু
-    target_coin = st.selectbox("স্ক্যাল্পিং করার জন্য কয়েন বাছুন:", ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT", "BNBUSDT"], index=0)
+    selected_display_name = st.selectbox("Select Perpetual Contract:", list(COIN_DATABASE.keys()), index=0)
+    coin_config = COIN_DATABASE[selected_display_name]
+    target_symbol = coin_config["symbol"]
     
-    ai_decision = st.toggle("এআই অটো-ডিসিশন (Counter-Trend RSI)", value=True)
+    ai_decision = st.toggle("AI Smart Crossover Filter (RSI Mean Reversion)", value=True)
     
-    leverage = st.slider("ফিউচার লেভারেজ", min_value=1, max_value=50, value=20, step=1)
-    trade_amount = st.number_input("মার্জিন কস্ট ($)", min_value=1, max_value=500, value=20, step=1)
+    leverage = st.slider(f"Adjust Leverage (Max {coin_config['max_leverage']}x):", min_value=1, max_value=coin_config["max_leverage"], value=20, step=1)
+    trade_amount = st.number_input("Margin Requirement ($):", min_value=1, max_value=1000, value=20, step=1)
     
-    # অল্টকয়েনের জন্য প্রফিট টার্গেটের ডাইনামিক টেক্সট গ্যাপ গাইড
-    price_jump_target = st.number_input(f"প্রফিট বুকিং টার্গেট ($ গ্যাপ) [BTC এর জন্য ৩০০, ETH এর জন্য ২০, SOL এর জন্য ৩ দিন]", min_value=0.0001, max_value=2000.0, value=100.0 if "BTC" in target_coin else (5.0 if "ETH" in target_coin else 1.0))
-    stop_loss_gap = st.number_input("স্টপ লস প্রোটেকশন ($ গ্যাপ)", min_value=0.001, max_value=1000.0, value=50.0 if "BTC" in target_coin else (10.0 if "ETH" in target_coin else 2.0))
+    price_jump_target = st.number_input("Take Profit Target ($ Price Delta):", min_value=0.00000001, max_value=5000.0, value=coin_config["default_tp"], step=coin_config["step"], format="%.8f")
+    stop_loss_gap = st.number_input("Stop Loss Threshold ($ Price Delta):", min_value=0.00000001, max_value=5000.0, value=coin_config["default_sl"], step=coin_config["step"], format="%.8f")
     
-    api_key = ""
-    secret_key = ""
+    api_key, secret_key = "", ""
     if is_real_live:
-        api_key = st.text_input("Bybit API Key", type="password")
-        secret_key = st.text_input("Secret Key", type="password")
-
-# ৩. পার্মানেন্ট সেশন মেমোরি ও স্কোরবোর্ড ট্র্যাকার
+        api_key = st.text_input("Bybit Authenticated API Key:", type="password")
+        secret_key = st.text_input("Bybit Authenticated Secret Key:", type="password")
+# 3. Session State Initialization
 if 'demo_balance' not in st.session_state: st.session_state.demo_balance = 5000.0
 if 'bot_active' not in st.session_state: st.session_state.bot_active = False
 if 'in_position' not in st.session_state: st.session_state.in_position = False
 if 'buy_price' not in st.session_state: st.session_state.buy_price = 0.0
 if 'current_side' not in st.session_state: st.session_state.current_side = "NONE"
-if 'active_coin' not in st.session_state: st.session_state.active_coin = target_coin
+if 'active_coin' not in st.session_state: st.session_state.active_coin = target_symbol
 if 'all_trades_history' not in st.session_state: st.session_state.all_trades_history = []
 if 'win_count' not in st.session_state: st.session_state.win_count = 0
 if 'loss_count' not in st.session_state: st.session_state.loss_count = 0
 
-# কয়েন চেঞ্জ হলে আগের পজিশন অটো-রিলিজ করার মেকানিজম
-if st.session_state.active_coin != target_coin:
+if st.session_state.active_coin != target_symbol:
     st.session_state.in_position = False
     st.session_state.buy_price = 0.0
     st.session_state.current_side = "NONE"
-    st.session_state.active_coin = target_coin
+    st.session_state.active_coin = target_symbol
 
 effective_vol = trade_amount * leverage
 estimated_fee = effective_vol * 0.0011 
 
 total_trades = st.session_state.win_count + st.session_state.loss_count
 win_rate = (st.session_state.win_count / total_trades * 100) if total_trades > 0 else 0.0
-# 🔍 ডাইনামিক লাইভ মার্কেট ডাটা ইঞ্জিন (সিলেক্টেড অল্টকয়েনের ৫ সেকেন্ডের ফিড)
+
+st.markdown(f"""
+    <div style="background-color:#141a24; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; display: flex; justify-content: space-between;">
+        <span style="color:#ffffff; font-size:14px; font-weight:bold;">🏆 PERFORMANCES WON: <b style="color:#00e676;">{st.session_state.win_count}</b></span>
+        <span style="color:#ffffff; font-size:14px; font-weight:bold;">❌ EXITS LOST: <b style="color:#ff1744;">{st.session_state.loss_count}</b></span>
+        <span style="color:#ffffff; font-size:14px; font-weight:bold;">🎯 NET WIN RATE: <b style="color:#29b6f6;">{win_rate:.1f}%</b></span>
+    </div>
+""", unsafe_allow_html=True)
+# 🔍 Real-Time Market Data Engine (5-Second High-Resolution Feed)
 live_price = 0.0
 current_rsi = 50.0
 df_kline = None
@@ -73,8 +95,7 @@ df_kline = None
 if st.session_state.bot_active:
     try:
         public_session = HTTP(testnet=False)
-        # ড্রপডাউনের target_coin ডাইনামিক্যালি পাস করা হচ্ছে
-        response = public_session.get_kline(category="linear", symbol=target_coin, interval="5", limit=15)
+        response = public_session.get_kline(category="linear", symbol=target_symbol, interval="5", limit=15)
         klines = response.get('result', {}).get('list', [])
         if klines:
             df_kline = pd.DataFrame(klines, columns=['time', 'open', 'high', 'low', 'close', 'volume', 'turnover'])
@@ -82,7 +103,6 @@ if st.session_state.bot_active:
             for col in ['open', 'high', 'low', 'close']: df_kline[col] = pd.to_numeric(df_kline[col])
             live_price = df_kline['close'].iloc[-1]
             
-            # ডাইনামিক আরএসআই (RSI) গণনা
             delta = df_kline['close'].diff()
             gain = (delta.where(delta > 0, 0)).rolling(window=7).mean()
             loss = (-delta.where(delta < 0, 0)).rolling(window=7).mean()
@@ -92,7 +112,6 @@ if st.session_state.bot_active:
     except:
         pass
 
-# 💰 লাইভ P&L ও ফ্লোটিং ব্যালেন্স হিসাব
 floating_pnl = 0.0
 expected_net_profit = 0.0
 
@@ -102,7 +121,6 @@ if st.session_state.in_position and live_price > 0:
         floating_pnl = (live_price - st.session_state.buy_price) * (effective_vol / st.session_state.buy_price)
     else:
         floating_pnl = (st.session_state.buy_price - live_price) * (effective_vol / st.session_state.buy_price)
-    
     gross_target_profit = price_jump_target * (effective_vol / st.session_state.buy_price)
     expected_net_profit = gross_target_profit - estimated_fee
 
@@ -120,113 +138,91 @@ if is_real_live and api_key and secret_key:
                     balance_usd_text = f"${(float(c.get('walletBalance', 0)) + floating_pnl):,.2f}"
                     break
     except:
-        balance_usd_text = "API কী এরর"
+        balance_usd_text = "API Key Error"
 
-position_status = "কোনো পজিশন নেই 💤" if not st.session_state.in_position else f"Future {target_coin} {st.session_state.current_side} রানিং"
+position_status = "NO ACTIVE POSITION 💤" if not st.session_state.in_position else f"FUTURE {target_symbol} {st.session_state.current_side} CONTRACT RUNNING"
 
-# 📡 স্কোরবোর্ড ও লাইভ আরএসআই উইজেট
-rsi_color = "#ff3333" if current_rsi > 50 else "#00cc66"
+rsi_color = "#ff1744" if current_rsi > 50 else "#00e676"
 st.markdown(f"""
-    <div style="background-color:#1e293b; padding:10px; border-radius:10px; margin-bottom:12px; border-left: 5px solid #f59e0b; display: flex; justify-content: space-between;">
-        <span style="color:#ffffff; font-size:13px; font-weight:bold;">🏆 WIN: <b style="color:#00cc66;">{st.session_state.win_count}</b></span>
-        <span style="color:#ffffff; font-size:13px; font-weight:bold;">❌ LOSS: <b style="color:#ff3333;">{st.session_state.loss_count}</b></span>
-        <span style="color:#ffffff; font-size:13px; font-weight:bold;">🎯 WIN RATE: <b style="color:#3b82f6;">{win_rate:.1f}%</b></span>
+    <div style="background-color:#141a24; padding:10px; border-radius:10px; margin-bottom:12px; border-left: 5px solid {rsi_color}; text-align:center; border: 1px solid #1f2c3f;">
+        <span style="color:#94a3b8; font-size:12px; font-weight:bold;">📡 LIVE AI RSI OSCILLATOR (5s FEED):</span>
+        <h3 style="margin:2px 0; color:{rsi_color}; font-size:24px; font-family: monospace;">{current_rsi:.2f}</h3>
     </div>
-    <div style="background-color:#1e293b; padding:10px; border-radius:10px; margin-bottom:12px; border-left: 5px solid {rsi_color}; text-align:center;">
-        <span style="color:#94a3b8; font-size:12px; font-weight:bold;">📡 Live AI RSI ({target_coin} 5s Feed):</span>
-        <h3 style="margin:2px 0; color:{rsi_color}; font-size:22px;">{current_rsi:.2f}</h3>
+    <div style="background-color:#141a24; padding:15px; border-radius:12px; margin-bottom:12px; border: 1px solid #1f2c3f;">
+        <p style="margin:0; font-size:12px; color:#94a3b8; font-weight:bold;">💰 AVAILABLE BALANCE ACCOUNT ({bot_mode})</p>
+        <h2 style="margin:5px 0; color:#ffffff; font-size:28px; font-family: monospace;">{balance_usd_text}</h2>
+        <p style="margin:0; font-size:14px; color:{'#00e676' if floating_pnl >= 0 else '#ff1744'}; font-weight:bold;">Live Floating P&L: {floating_pnl:+.2f} USDT</p>
+    </div>
+    <div style="background-color:#141a24; padding:15px; border-radius:12px; margin-bottom:15px; border: 1px solid #1f2c3f;">
+        <p style="margin:0; font-size:12px; color:#94a3b8; font-weight:bold;">📦 MARGIN STATUS EXECUTION</p>
+        <h3 style="margin:5px 0; color:{'#ffffff' if st.session_state.current_side == 'NONE' else ('#00e676' if st.session_state.current_side == 'LONG' else '#ff1744')}; font-size:16px;">{position_status}</h3>
     </div>
 """, unsafe_allow_html=True)
-
-# নিচে-নিচে রেসপন্সিভ লেআউট
-st.markdown(f"""
-    <div style="background-color:#1e293b; padding:15px; border-radius:12px; margin-bottom:12px; border-top: 4px solid #f59e0b;">
-        <p style="margin:0; font-size:12px; color:#94a3b8; text-transform:uppercase; font-weight:bold;">💰 Account Balance ({bot_mode})</p>
-        <h2 style="margin:5px 0; color:#ffffff; font-size:26px;">{balance_usd_text}</h2>
-        <p style="margin:0; font-size:14px; color:{'#00cc66' if floating_pnl >= 0 else '#ff3333'}; font-weight:bold;">Live Floating P&L: {floating_pnl:+.2f} USDT</p>
-    </div>
-    <div style="background-color:#1e293b; padding:15px; border-radius:12px; margin-bottom:15px; border-top: 4px solid #10b981;">
-        <p style="margin:0; font-size:12px; color:#94a3b8; text-transform:uppercase; font-weight:bold;">📦 Active Future Position Status</p>
-        <h3 style="margin:5px 0; color:{'#ffffff' if st.session_state.current_side == 'NONE' else ('#00cc66' if st.session_state.current_side == 'LONG' else '#ff3333')}; font-size:20px;">{position_status}</h3>
-    </div>
-""", unsafe_allow_html=True)
-# 🎯 লাইভ ফিউচার ট্র্যাকার উইজেট (অল্টকয়েন স্পেসিফিক ডেসিমাল ফিক্স)
 if st.session_state.in_position and live_price > 0:
     is_long_pos = True if st.session_state.current_side == "LONG" else False
     live_target = (st.session_state.buy_price + price_jump_target) if is_long_pos else (st.session_state.buy_price - price_jump_target)
     live_sl = (st.session_state.buy_price - stop_loss_gap) if is_long_pos else (st.session_state.buy_price + stop_loss_gap)
-    
     st.markdown(f"""
-    <div style="background-color:#0f172a; padding:12px; border-radius:10px; margin-bottom:15px; border-left: 5px solid #3b82f6;">
-        <span style="font-size:14px; color:#ffffff; font-weight:bold;">Entry: ${st.session_state.buy_price} | Live Price: ${live_price}</span><br>
-        <span style="font-size:14px; color:#00cc66; font-weight:bold;">Take Profit Target: ${live_target} (নিট লাভ হবে: +${expected_net_profit:.2f})</span><br>
-        <span style="font-size:14px; color:#ff3333; font-weight:bold;">Stop Loss Price: ${live_sl}</span>
+    <div style="background-color:#0b0e14; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; border-left: 5px solid #29b6f6;">
+        <span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Entry Price: {st.session_state.buy_price} | Live Index: {live_price}</span><br>
+        <span style="font-size:14px; color:#00e676; font-weight:bold; font-family: monospace;">Take Profit Target: {live_target} (Expected Net: +${expected_net_profit:.2f})</span><br>
+        <span style="font-size:14px; color:#ff1744; font-weight:bold; font-family: monospace;">Stop Loss Boundary: {live_sl}</span>
     </div>
     """, unsafe_allow_html=True)
 
-st.info(f"💡 এই কনফিগারেশনে প্রতি কমপ্লিট ট্রেডে আনুমানিক ফি কাটবে: **${estimated_fee:.3f} USDT**")
+st.info(f"💡 Estimated Execution Trading Fee: **${estimated_fee:.3f} USDT**")
 
-# ৬. বট কন্ট্রোল বোতামসমূহ
-st.subheader("🎮 Bot Controls")
+st.markdown("<h3 style='color:#ffffff; font-size:16px;'>🎮 Engine Controls</h3>", unsafe_allow_html=True)
 c1, c2 = st.columns(2)
 with c1:
     if st.session_state.bot_active:
-        if st.button("🔴 STOP BOT", key="stop_btn"): st.session_state.bot_active = False; st.rerun()
+        st.markdown("<style>div.stButton > button[key='stop_btn'] {background-color:#d50000 !important; color:white;}</style>", unsafe_allow_html=True)
+        if st.button("🔴 STOP ENGINE", key="stop_btn"): st.session_state.bot_active = False; st.rerun()
     else:
-        if st.button("🟢 START FUTURE SCALPING", key="start_btn"): st.session_state.bot_active = True; st.rerun()
+        st.markdown("<style>div.stButton > button[key='start_btn'] {background-color:#00c853 !important; color:white;}</style>", unsafe_allow_html=True)
+        if st.button("🟢 START SCALPER", key="start_btn"): st.session_state.bot_active = True; st.rerun()
 with c2:
     if st.session_state.in_position:
-        if st.button("🚨 FORCE CLOSE FUTURE", key="force_sell_btn"):
+        st.markdown("<style>div.stButton > button[key='force_sell_btn'] {background-color:#ff3d00 !important; color:white;}</style>", unsafe_allow_html=True)
+        if st.button("🚨 EMERGENCY LIQUIDATE", key="force_sell_btn"):
             net_pnl = floating_pnl - estimated_fee
             if not is_real_live: st.session_state.demo_balance += net_pnl
             if net_pnl >= 0: st.session_state.win_count += 1
             else: st.session_state.loss_count += 1
             st.session_state.in_position = False; st.session_state.buy_price = 0.0; st.session_state.current_side = "NONE"; st.rerun()
 
-# ⚡ ৭. কাউন্টার-тренল্ড মাল্টি-কয়েন এক্সিকিউশন লুপ
 if st.session_state.bot_active and df_kline is not None:
     try:
-        fig = go.Figure(data=[go.Candlestick(x=df_kline.index, open=df_kline['open'], high=df_kline['high'], low=df_kline['low'], close=df_kline['close'], increasing_line_color='#00cc66', decreasing_line_color='#ff3333')])
+        fig = go.Figure(data=[go.Candlestick(x=df_kline.index, open=df_kline['open'], high=df_kline['high'], low=df_kline['low'], close=df_kline['close'], increasing_line_color='#00e676', decreasing_line_color='#ff1744')])
         fig.update_layout(margin=dict(l=5, r=5, t=5, b=5), xaxis_rangeslider_visible=False, template="plotly_dark", height=150)
         st.plotly_chart(fig, use_container_width=True)
 
-        # অল্টকয়েন অনুযায়ী লট সাইজ কোয়ান্টিটি প্রটেকশন (ডাইনামিক ডেসিমাল রাউন্ডিং)
         raw_qty = effective_vol / live_price
-        if live_price < 1.0: calculated_qty = round(raw_qty, 1)      # DOGE, XRP এর মতো কয়েনের জন্য
-        elif live_price < 500.0: calculated_qty = round(raw_qty, 2)  # SOL, BNB এর জন্য
-        else: calculated_qty = round(raw_qty, 4)                     # BTC, ETH এর জন্য
+        if live_price < 1.0: calculated_qty = round(raw_qty, 1)
+        elif live_price < 500.0: calculated_qty = round(raw_qty, 2)
+        else: calculated_qty = round(raw_qty, 4)
         if calculated_qty <= 0: calculated_qty = 0.1
 
-        # পজিশন ওপেনিং
         if not st.session_state.in_position:
             decision_side = "NONE"
             if ai_decision:
-                if current_rsi < 45.0: decision_side = "BUY"    # Candle Down -> LONG 🟢
-                elif current_rsi > 55.0: decision_side = "SELL"  # Candle Up -> SHORT 🔴
-            else:
-                decision_side = "BUY"
+                if current_rsi < 45.0: decision_side = "BUY"
+                elif current_rsi > 55.0: decision_side = "SELL"
+            else: decision_side = "BUY"
 
             if decision_side != "NONE":
                 st.session_state.buy_price = live_price
                 st.session_state.in_position = True
                 st.session_state.current_side = "LONG" if decision_side == "BUY" else "SHORT"
-                
                 if is_real_live:
                     try:
                         session = HTTP(testnet=False, api_key=api_key, api_secret=secret_key)
-                        session.place_order(category="linear", symbol=target_coin, side=decision_side, orderType="Market", qty=str(calculated_qty))
-                    except: 
-                        st.session_state.in_position = False; st.session_state.buy_price = 0.0; st.session_state.current_side = "NONE"
-                
+                        session.place_order(category="linear", symbol=target_symbol, side=decision_side, orderType="Market", qty=str(calculated_qty))
+                    except: st.session_state.in_position = False; st.session_state.buy_price = 0.0; st.session_state.current_side = "NONE"
                 if st.session_state.in_position:
                     target_calc = (live_price + price_jump_target) if decision_side == "BUY" else (live_price - price_jump_target)
-                    st.session_state.all_trades_history.append({
-                        "Time": time.strftime("%H:%M:%S"), "Coin": target_coin, "Action": f"OPEN {st.session_state.current_side}",
-                        "Price": live_price, "Target": f"${target_calc}", "Trading Fee ($)": f"-{estimated_fee/2:.3f}", "Net P&L ($)": "0.00", "Status": "RUNNING"
-                    })
+                    st.session_state.all_trades_history.append({"Time": time.strftime("%H:%M:%S"), "Coin": target_symbol, "Action": f"OPEN {st.session_state.current_side}", "Price": live_price, "Target": f"${target_calc}", "Trading Fee ($)": f"-{estimated_fee/2:.3f}", "Net P&L ($)": "0.00", "Status": "RUNNING"})
             st.rerun()
-        
-        # পজিশন ক্লোজিং
         elif st.session_state.in_position:
             is_long_pos = True if st.session_state.current_side == "LONG" else False
             if is_long_pos:
@@ -240,41 +236,32 @@ if st.session_state.bot_active and df_kline is not None:
                 close_action = "Sell" if is_long_pos else "Buy"
                 status_tag = "PROFIT 🟢" if is_profit_hit else "STOPLOSS 🔴"
                 net_pnl = floating_pnl - estimated_fee
-                
                 if is_profit_hit: st.session_state.win_count += 1
                 else: st.session_state.loss_count += 1
-                
                 if is_real_live:
                     try:
                         session = HTTP(testnet=False, api_key=api_key, api_secret=secret_key)
-                        session.place_order(category="linear", symbol=target_coin, side=close_action, orderType="Market", qty=str(calculated_qty))
+                        session.place_order(category="linear", symbol=target_symbol, side=close_action, orderType="Market", qty=str(calculated_qty))
                     except: pass
-                else:
-                    st.session_state.demo_balance += net_pnl
-                
+                else: st.session_state.demo_balance += net_pnl
                 target_display = (st.session_state.buy_price + price_jump_target) if is_long_pos else (st.session_state.buy_price - price_jump_target)
-                st.session_state.all_trades_history.append({
-                    "Time": time.strftime("%H:%M:%S"), "Coin": target_coin, "Action": f"CLOSE {st.session_state.current_side}",
-                    "Price": live_price, "Target": f"${target_display}", "Trading Fee ($)": f"-{estimated_fee:.3f}", "Net P&L ($)": f"{net_pnl:.2f}", "Status": status_tag
-                })
+                st.session_state.all_trades_history.append({"Time": time.strftime("%H:%M:%S"), "Coin": target_symbol, "Action": f"CLOSE {st.session_state.current_side}", "Price": live_price, "Target": f"${target_display}", "Trading Fee ($)": f"-{estimated_fee:.3f}", "Net P&L ($)": f"{net_pnl:.2f}", "Status": status_tag})
                 st.session_state.in_position = False; st.session_state.buy_price = 0.0; st.session_state.current_side = "NONE"
                 st.rerun()
 
-        # হিস্ট্রি টেবিল ও সিএসভি ডাউনলোড
         st.subheader("📋 Permanent Trading Action History")
         if st.session_state.all_trades_history:
             history_df = pd.DataFrame(st.session_state.all_trades_history)
             st.dataframe(history_df.iloc[::-1], height=180, use_container_width=True)
             csv_data = history_df.to_csv(index=False).encode('utf-8')
             st.download_button(label="📥 Download Complete CSV Logs", data=csv_data, file_name=f"scalper_fee_logs_{time.strftime('%Y%m%d')}.csv", mime='text/csv')
-        
         time.sleep(1)
         st.rerun()
     except:
         time.sleep(1)
         st.rerun()
 else:
-    st.info("বটটি বর্তমানে বন্ধ আছে। ফিউচার স্ক্যাল্পিং চালু করতে ওপরের সবুজ বাটনে ক্লিক করুন।")
+    st.info("The trading core engine is currently inactive. Press the green button to boot the scalper loops.")
     if st.session_state.all_trades_history:
         st.subheader("📋 Past Session Trading History")
         st.dataframe(pd.DataFrame(st.session_state.all_trades_history).iloc[::-1], use_container_width=True)
