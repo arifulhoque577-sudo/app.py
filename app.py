@@ -12,12 +12,11 @@ st.markdown("""
     .main { background-color: #0e1117; }
     div.stButton > button:first-child { width: 100%; border-radius: 10px; font-weight: bold; }
     .stButton>button[key="force_sell_btn"] { background-color: #ff3333 !important; color: white !important; }
-    .css-1r6slb0 { padding: 0.5rem 1rem; }
     </style>
     """, unsafe_allow_html=True)
 
 st.title("⚡ Bybit AI Pro Future Scalper")
-st.caption("ভার্সন ১০.০ | নিচে-নিচে স্ক্রোলিং ও অ্যান্টি-হাইড মেমোরি সিস্টেম")
+st.caption("ভার্সন ১০.৫ | নেগেটিভ প্রফিট ফিক্সড ও পার্মানেন্ট ডেমো ওয়ালেট")
 
 # ২. ডাইনামিক ফিউচার সেটিংস (সাইডবার)
 with st.sidebar:
@@ -29,8 +28,8 @@ with st.sidebar:
     
     leverage = st.slider("ফিউচার লেভারেজ", min_value=1, max_value=50, value=20, step=1)
     trade_amount = st.number_input("মার্জিন কস্ট ($)", min_value=1, max_value=500, value=20, step=1)
-    price_jump_target = st.slider("প্রফিট বুকিং টার্গেট ($ গ্যাপ)", min_value=2, max_value=500, value=100, step=5)
-    stop_loss_gap = st.slider("স্টপ লস প্রোটেকশন ($ গ্যাপ)", min_value=10, max_value=500, value=50, step=5)
+    price_jump_target = st.slider("প্রফিট বুকিং টার্গেট ($ গ্যাপ)", min_value=5, max_value=1000, value=150, step=5)
+    stop_loss_gap = st.slider("স্টপ লস প্রোটেকশন ($ গ্যাপ)", min_value=10, max_value=500, value=100, step=5)
     
     api_key = ""
     secret_key = ""
@@ -38,7 +37,7 @@ with st.sidebar:
         api_key = st.text_input("Bybit API Key", type="password")
         secret_key = st.text_input("Secret Key", type="password")
 
-# ৩. অ্যান্টি-ফ্লিকার সেসন স্টেট মেমোরি লক
+# ৩. পার্মানেন্ট ডেমো ওয়ালেট মেমোরি লক (যাতে ক্লোজ করলেও ৫০০০ রিসেট না হয়)
 if 'demo_balance' not in st.session_state: st.session_state.demo_balance = 5000.0
 if 'bot_active' not in st.session_state: st.session_state.bot_active = False
 if 'in_position' not in st.session_state: st.session_state.in_position = False
@@ -67,7 +66,7 @@ if st.session_state.bot_active:
 
 # 💰 লাইভ P&L ও ফ্লোটিং মেমোরি ক্যালকুলেটর
 floating_pnl = 0.0
-expected_target_profit = 0.0
+expected_net_profit = 0.0
 
 if st.session_state.in_position and live_price > 0:
     is_long_pos = True if st.session_state.current_side == "LONG" else False
@@ -76,13 +75,13 @@ if st.session_state.in_position and live_price > 0:
     else:
         floating_pnl = (st.session_state.buy_price - live_price) * (effective_vol / st.session_state.buy_price)
     
+    # 🎯 গাণিতিক সেফটি লক: টার্গেট প্রফিট ক্যালকুলেশন ফিক্স
     gross_target_profit = price_jump_target * (effective_vol / st.session_state.buy_price)
-    expected_target_profit = gross_target_profit - estimated_fee
+    expected_net_profit = gross_target_profit - estimated_fee
 
 display_balance = st.session_state.demo_balance + floating_pnl if not is_real_live else 0.0
 balance_usd_text = f"${display_balance:,.2f}"
 
-# Real API ডাটা প্রটেকশন রিলোড লুপ
 if is_real_live and api_key and secret_key:
     try:
         session = HTTP(testnet=False, api_key=api_key, api_secret=secret_key)
@@ -96,7 +95,9 @@ if is_real_live and api_key and secret_key:
     except:
         balance_usd_text = "API কী এরর"
 
-# 📊 কাস্টম নিচে-নিচে (Vertical) স্ক্রোলিং UI ডিসপ্লে কার্ডস
+position_status = "কোনো পজিশন নেই 💤" if not st.session_state.in_position else f"Future {st.session_state.current_side} রানিং"
+
+# কাস্টম নিচে-নিচে (Vertical) UI ডিসপ্লে
 st.markdown(f"""
     <div style="background-color:#1e293b; padding:15px; border-radius:12px; margin-bottom:12px; border-top: 4px solid #f59e0b;">
         <p style="margin:0; font-size:12px; color:#94a3b8; text-transform:uppercase; font-weight:bold;">💰 Account Balance ({bot_mode})</p>
@@ -113,16 +114,20 @@ st.markdown(f"""
         </h3>
     </div>
 """, unsafe_allow_html=True)
-# 🎯 লাইভ রানিং ট্র্যাকার কার্ড
+# 🎯 লাইভ ফিউচার ট্র্যাকার উইজেট
 if st.session_state.in_position and live_price > 0:
     is_long_pos = True if st.session_state.current_side == "LONG" else False
     live_target = (st.session_state.buy_price + price_jump_target) if is_long_pos else (st.session_state.buy_price - price_jump_target)
     live_sl = (st.session_state.buy_price - stop_loss_gap) if is_long_pos else (st.session_state.buy_price + stop_loss_gap)
     
+    # নেগেটিভ লাভ প্রটেকশন মেসেজ ডিসপ্লে
+    profit_color = "#00cc66" if expected_net_profit > 0 else "#ff9900"
+    profit_text = f"${expected_net_profit:.2f}" if expected_net_profit > 0 else f"${expected_net_profit:.2f} ⚠️ (টার্গেট ও লেভারেজ বাড়ান, ফি কভার হচ্ছে না)"
+
     st.markdown(f"""
     <div style="background-color:#0f172a; padding:12px; border-radius:10px; margin-bottom:15px; border-left: 5px solid #3b82f6;">
         <span style="font-size:14px; color:#ffffff; font-weight:bold;">Entry: ${st.session_state.buy_price:,.2f} | Live Price: ${live_price:,.2f}</span><br>
-        <span style="font-size:14px; color:#00cc66; font-weight:bold;">Target Price: ${live_target:,.2f} (নিট প্রফিট হবে: +${expected_target_profit:.2f})</span><br>
+        <span style="font-size:14px; color:#00cc66; font-weight:bold;">Take Profit Target: ${live_target:,.2f} (নিট লাভ হবে: <b style="color:{profit_color};">{profit_text}</b>)</span><br>
         <span style="font-size:14px; color:#ff3333; font-weight:bold;">Stop Loss Price: ${live_sl:,.2f}</span>
     </div>
     """, unsafe_allow_html=True)
@@ -140,6 +145,9 @@ with c1:
 with c2:
     if st.session_state.in_position:
         if st.button("🚨 FORCE CLOSE FUTURE", key="force_sell_btn"):
+            # ফোর্স ক্লোজ করলেও ডেটা ডেমো ব্যালেন্সে সেভ থাকবে
+            net_pnl = floating_pnl - estimated_fee
+            if not is_real_live: st.session_state.demo_balance += net_pnl
             st.session_state.in_position = False; st.session_state.buy_price = 0.0; st.session_state.current_side = "NONE"; st.rerun()
 
 # ⚡ হাই-স্পিড অপ্টিমাইজড চার্ট লুপ
@@ -149,11 +157,19 @@ if st.session_state.bot_active and df_kline is not None:
         fig.update_layout(margin=dict(l=5, r=5, t=5, b=5), xaxis_rangeslider_visible=False, template="plotly_dark", height=160)
         st.plotly_chart(fig, use_container_width=True)
 
+        # RSI ইন্ডিকেটর গণনা
+        delta = df_kline['close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rs = gain / (loss + 1e-10)
+        df_kline['RSI'] = 100 - (100 / (1 + rs))
+        current_rsi = df_kline['RSI'].iloc[-1] if not df_kline['RSI'].isnull().iloc[-1] else 50
+
         calculated_qty = round((effective_vol / live_price), 4)
         if calculated_qty < 0.0001: calculated_qty = 0.0001
 
-        # পজিশন ওপেনিং
-        if not st.session_state.in_position:
+        # পজিশন ওপেনিং (শুধুমাত্র লাভ পজিটিভ হলেই এন্ট্রি নিবে)
+        if not st.session_state.in_position and expected_net_profit >= 0:
             decision_side = "NONE"
             if ai_decision:
                 if current_rsi < 36: decision_side = "BUY"
