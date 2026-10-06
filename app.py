@@ -16,7 +16,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 st.title("⚡ Bybit AI Pro Future Scalper")
-st.caption("ভার্সন ৮.০ | লাইভ ফি ট্র্যাকিং ও আনলিমিটেড লগ সিস্টেম")
+st.caption("ভার্সন ৮.৫ | এন্ট্রি ও লাইভ টার্গেট ডিসপ্লে ফিক্সড")
 
 # ২. ডাইনামিক ফিউচার সেটিংস (সাইডবার)
 with st.sidebar:
@@ -37,7 +37,7 @@ with st.sidebar:
         api_key = st.text_input("Bybit API Key", type="password")
         secret_key = st.text_input("Secret Key", type="password")
 
-# ৩. সেসন স্টেট ও পার্মানেন্ট লগ মেমোরি ইনিশিয়ালাইজেশন
+# ৩. সেসন স্টেট ও পার্মানেন্ট লগ মেমোরি
 if 'demo_balance' not in st.session_state: st.session_state.demo_balance = 5000.0
 if 'bot_active' not in st.session_state: st.session_state.bot_active = False
 if 'in_position' not in st.session_state: st.session_state.in_position = False
@@ -72,15 +72,30 @@ if is_real_live and api_key and secret_key:
     except:
         balance_usd = "API কী চেক করুন"
 
-position_status = "কোনো পজিশন নেই 💤" if not st.session_state.in_position else f"Future {st.session_state.current_side} রানিং (Entry: ${st.session_state.buy_price:,.2f})"
+position_status = "কোনো পজিশন নেই 💤" if not st.session_state.in_position else f"Future {st.session_state.current_side} রানিং"
 
 st.subheader(f"📊 Future {bot_mode} (Leverage: {leverage}x)")
-col1, col2 = st.columns(2)
-with col1: st.metric(label="Available Margin", value=balance_usd)
-with col2: st.metric(label="Active Future Position", value=position_status)
+col_b1, col_b2 = st.columns(2)
+with col_b1: st.metric(label="Available Margin", value=balance_usd)
+with col_b2: st.metric(label="Active Future Position", value=position_status)
+# 🎯 লাইভ এন্ট্রি প্রাইস ও টার্গেট প্রাইস কার্ড (মোবাইল স্ক্রিনের জন্য ফিক্সড)
+if st.session_state.in_position and st.session_state.buy_price > 0:
+    is_long_pos = True if st.session_state.current_side == "LONG" else False
+    live_target = (st.session_state.buy_price + price_jump_target) if is_long_pos else (st.session_state.buy_price - price_jump_target)
+    live_sl = (st.session_state.buy_price - stop_loss_gap) if is_long_pos else (st.session_state.buy_price + stop_loss_gap)
+    
+    st.markdown(f"""
+    <div style="background-color:#1e293b; padding:12px; border-radius:10px; margin-bottom:15px; border-left: 5px solid #00cc66;">
+        <p style="margin:0; font-size:13px; color:#94a3b8;">🎯 পজিশন ট্র্যাকার:</p>
+        <span style="font-size:15px; font-weight:bold; color:#ffffff;">ওপেন দাম (Entry): ${st.session_state.buy_price:,.2f}</span><br>
+        <span style="font-size:15px; font-weight:bold; color:#00cc66;">লক্ষ্যমাত্রা (Target): ${live_target:,.2f}</span><br>
+        <span style="font-size:15px; font-weight:bold; color:#ff3333;">স্টপ লস (Stop Loss): ${live_sl:,.2f}</span>
+    </div>
+    """, unsafe_allow_html=True)
+
 # ৪. প্রফিট/লস ও ফি মনিটর উইজেট
 effective_vol = trade_amount * leverage
-estimated_fee = effective_vol * 0.0011 # Bybit মার্কেট মেকার/টেকার মোট এভারেজ ফি (০.১১%)
+estimated_fee = effective_vol * 0.0011 
 
 st.info(f"💡 আপনার সেট করা কনফিগারেশন অনুযায়ী প্রতি কমপ্লিট ট্রেডে আনুমানিক ফি কাটবে: **${estimated_fee:.3f} USDT**")
 
@@ -152,9 +167,10 @@ if st.session_state.bot_active:
                         try: session.place_order(category="linear", symbol="BTCUSDT", side=decision_side, orderType="Market", qty=str(calculated_qty))
                         except: st.session_state.in_position = False; st.session_state.buy_price = 0.0
                     
+                    target_calc = (live_price + price_jump_target) if decision_side == "BUY" else (live_price - price_jump_target)
                     st.session_state.all_trades_history.append({
                         "Time": time.strftime("%H:%M:%S"), "Action": f"OPEN {st.session_state.current_side}",
-                        "Price": live_price, "Trading Fee ($)": f"-{estimated_fee/2:.3f}", "Net P&L ($)": "0.00", "Status": "RUNNING"
+                        "Price": live_price, "Target": target_calc, "Trading Fee ($)": f"-{estimated_fee/2:.3f}", "Net P&L ($)": "0.00", "Status": "RUNNING"
                     })
                 st.rerun()
             
@@ -174,8 +190,6 @@ if st.session_state.bot_active:
                 if is_profit_hit or is_stop_hit:
                     close_action = "Sell" if is_long_pos else "Buy"
                     status_tag = "PROFIT 🟢" if is_profit_hit else "STOPLOSS 🔴"
-                    
-                    # আসল লাভ থেকে মোট ট্রেডিং ফি বিয়োগ করে নিট প্রফিট বের করা
                     net_pnl = gross_pnl - estimated_fee
                     
                     if is_real_live and session:
@@ -184,9 +198,10 @@ if st.session_state.bot_active:
                     else:
                         st.session_state.demo_balance += net_pnl
                     
+                    target_display = (st.session_state.buy_price + price_jump_target) if is_long_pos else (st.session_state.buy_price - price_jump_target)
                     st.session_state.all_trades_history.append({
                         "Time": time.strftime("%H:%M:%S"), "Action": f"CLOSE {st.session_state.current_side}",
-                        "Price": live_price, "Trading Fee ($)": f"-{estimated_fee:.3f}", "Net P&L ($)": f"{net_pnl:.2f}", "Status": status_tag
+                        "Price": live_price, "Target": target_display, "Trading Fee ($)": f"-{estimated_fee:.3f}", "Net P&L ($)": f"{net_pnl:.2f}", "Status": status_tag
                     })
                     
                     st.session_state.in_position = False
@@ -194,7 +209,7 @@ if st.session_state.bot_active:
                     st.session_state.current_side = "NONE"
                     st.rerun()
 
-        # 📋 হিস্ট্রি টেবিল ও সিএসভি ডাউনলোড বাটন (মেমোরি সেফ)
+        # 📋 হিস্ট্রি টেবিল ও সিএসভি ডাউনলোড বাটন
         st.subheader("📋 Permanent Trading Action History")
         if st.session_state.all_trades_history:
             history_df = pd.DataFrame(st.session_state.all_trades_history)
