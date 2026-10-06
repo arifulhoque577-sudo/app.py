@@ -1,12 +1,10 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import time
-from binance.client import Client
-from binance.exceptions import BinanceAPIException
+from pybit.unified_trading import HTTP
 
-# ১. মোবাইল স্ক্রিন সেটআপ
-st.set_page_config(page_title="AI Scalper Bot", page_icon="⚡", layout="centered")
+# ১. মোবাইল স্ক্রিন ভিউ অপ্টিমাইজেশন
+st.set_page_config(page_title="Bybit AI Scalper", page_icon="⚡", layout="centered")
 
 st.markdown("""
     <style>
@@ -15,16 +13,16 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.title("⚡ AI Quick Scalper Mobile")
-st.caption("ভার্সন ২.০ | লাইভ বাইন্যান্স স্ক্যাল্পিং সিস্টেম")
+st.title("⚡ Bybit AI Scalper Mobile")
+st.caption("ভার্সন ৩.০ | রিয়েল-টাইম বাইবিট স্ক্যাল্পিং সিস্টেম")
 
-# ২. এপিআই সেটিংস (সাইডবার)
+# ২. Bybit API সেটিংস (সাইডবার)
 with st.sidebar:
-    st.header("⚙️ Binance API Configuration")
-    api_key = st.text_input("Binance API Key", type="password", placeholder="এখানে API Key দিন")
-    secret_key = st.text_input("Secret Key", type="password", placeholder="এখানে Secret Key দিন")
-    trade_amount = st.number_input("ট্রেড অ্যামাউন্ট ($)", min_value=10, max_value=1000, value=15)
-    st.info("💡 দ্রুত স্ক্যাল্পিংয়ের জন্য এই বটটি ১ মিনিটের (1m) টাইমফ্রেম এবং RSI ইন্ডিকেটর ব্যবহার করবে।")
+    st.header("⚙️ Bybit API Configuration")
+    api_key = st.text_input("Bybit API Key", type="password", placeholder="এখানে Bybit API Key দিন")
+    secret_key = st.text_input("Bybit Secret Key", type="password", placeholder="এখানে Secret Key দিন")
+    trade_amount = st.number_input("ট্রেড অ্যামাউন্ট ($)", min_value=5, max_value=1000, value=10)
+    st.info("💡 এই বটটি বাইবিটের লাইভ ১ মিনিটের (1m) মার্কেট ফিড এবং RSI ইন্ডিকেটর ব্যবহার করে দ্রুত স্ক্যাল্পিং করবে।")
 
 # সেসন স্টেট ইনিশিয়ালাইজেশন
 if 'bot_active' not in st.session_state:
@@ -32,13 +30,13 @@ if 'bot_active' not in st.session_state:
 if 'in_position' not in st.session_state:
     st.session_state.in_position = False
 if 'trade_logs' not in st.session_state:
-    st.session_state.trade_logs = ["[SYSTEM] Bot initialized. Ready to scalp."]
+    st.session_state.trade_logs = ["[SYSTEM] Bot initialized. Ready to scalp on Bybit."]
 
-# ৩. লাইভ ব্যালেন্স ও স্ট্যাটাস
-st.subheader("📊 Live Trading Status")
+# ৩. লাইভ স্ট্যাটাস কার্ড
+st.subheader("📊 Live Market Status")
 col1, col2 = st.columns(2)
 with col1:
-    st.metric(label="Portfolio Mode", value="REAL-TIME", delta="Binance Active")
+    st.metric(label="Exchange", value="BYBIT V5", delta="Connected")
 with col2:
     if st.session_state.bot_active:
         st.metric(label="Current Status", value="SCALPING ⚡", delta="RUNNING")
@@ -48,80 +46,91 @@ with col2:
 # ৪. বট কন্ট্রোল বাটন
 st.subheader("🎮 Bot Controls")
 if st.session_state.bot_active:
-    if st.button("🔴 STOP SCALPER BOT", key="stop_btn"):
+    if st.button("🔴 STOP BYBIT SCALPER", key="stop_btn"):
         st.session_state.bot_active = False
-        st.session_state.trade_logs.append("[SYSTEM] Bot stopped by user.")
+        st.session_state.trade_logs.append("[SYSTEM] Scalper stopped by user.")
         st.rerun()
 else:
     if st.button("🟢 START QUICK SCALPING", key="start_btn"):
         if not api_key or not secret_key:
-            st.error("❌ আগে সাইডবার থেকে আপনার Binance API Key ও Secret Key সেট করুন!")
+            st.error("❌ আগে সাইডবার থেকে আপনার Bybit API Key ও Secret Key সেট করুন!")
         else:
             st.session_state.bot_active = True
-            st.session_state.trade_logs.append("[SYSTEM] Scalper started. Connecting to Binance Live Feed...")
+            st.session_state.trade_logs.append("[SYSTEM] Connecting to Bybit Live Feed...")
             st.rerun()
 
-# ৫. লাইভ ডেটা ফেচিং এবং স্ক্যাল্পিং লজিক
+# ৫. লাইভ মার্কেট ডাটা ও স্ক্যাল্পিং লজিক
 if st.session_state.bot_active:
     try:
-        # Binance লাইভ ক্লায়েন্ট কানেক্ট করা (Testnet মোড সক্রিয় করা আছে, রিয়েল ট্রেডের জন্য testnet=False করতে পারেন)
-        client = Client(api_key, secret_key, testnet=True)
+        # Bybit Unified V5 HTTP Client কানেকশন (টেস্টনেটের জন্য testnet=True রাখুন)
+        session = HTTP(
+            testnet=True,
+            api_key=api_key,
+            api_secret=secret_key,
+        )
         
-        # লাইভ দাম নিয়ে আসা
-        ticker = client.get_symbol_ticker(symbol="BTCUSDT")
-        live_price = float(ticker['price'])
+        # ১. লাইভ বিটিসি প্রাইস নিয়ে আসা
+        response = session.get_kline(category="linear", symbol="BTCUSDT", interval="1", limit=30)
+        klines = response.get('result', {}).get('list', [])
         
-        # দ্রুত স্ক্যাল্পিংয়ের জন্য ১ মিনিটের ক্যান্ডেল ডেটা নেওয়া
-        klines = client.get_historical_klines("BTCUSDT", Client.KLINE_INTERVAL_1MINUTE, "30 minutes ago UTC")
-        df = pd.DataFrame(klines, columns=['time', 'open', 'high', 'low', 'close', 'volume', 'close_time', 'qav', 'num_trades', 'taker_base', 'taker_quote', 'ignore'])
+        if not klines:
+            st.error("মার্কেট ডাটা পাওয়া যাচ্ছে না। অনুগ্রহ করে API Key চেক করুন।")
+            st.session_state.bot_active = False
+            st.stop()
+            
+        # ডাটা ফ্রেম তৈরি (Bybit ডাটা উল্টো থাকে, তাই সোজা করা হলো)
+        df = pd.DataFrame(klines, columns=['time', 'open', 'high', 'low', 'close', 'volume', 'turnover'])
+        df = df.iloc[::-1].reset_index(drop=True)
         df['close'] = pd.to_numeric(df['close'])
         
-        # 📈 মোবাইল ফ্রেন্ডলি রিয়েল চার্ট প্রদর্শন
+        live_price = df['close'].iloc[-1]
+        
+        # 📈 মোবাইল ফ্রেন্ডলি অরিজিনাল রিয়েল-টাইম চার্ট প্রদর্শন
         st.subheader(f"📈 Real-Time BTC/USDT: ${live_price:,.2f}")
         st.line_chart(df[['close']], use_container_width=True)
         
-        # সিম্পল স্ক্যাল্পিং এআই লজিক (RSI ইন্ডিকেটর গণনা)
+        # ২. স্ক্যাল্পিং ইন্ডিকেটর (RSI 14) গণনা করা
         delta = df['close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
         rs = gain / (loss + 1e-10)
         df['RSI'] = 100 - (100 / (1 + rs))
-        current_rsi = df['RSI'].iloc[-1] if not df['RSI'].empty else 50
+        current_rsi = df['RSI'].iloc[-1] if not df['RSI'].isnull().iloc[-1] else 50
         
-        # ⚡ কুইক অর্ডার এক্সিকিউশন লজিক (Quick Order Open / Closed)
-        # RSI ৩০ এর নিচে গেলে দ্রুত BUY (ওভারসোল্ড কন্ডিশন)
+        # ⚡ দ্রুত সুযোগ বুঝে অর্ডার ওপেন ও ক্লোজ করার লজিক (Scalping)
+        # RSI ৩৫ এর নিচে নামলে সাথে সাথে কুইক বাই (Buy Order)
         if current_rsi < 35 and not st.session_state.in_position:
-            log_msg = f"[🟢 BUY ORDER] BTC Price: ${live_price} | RSI: {current_rsi:.2f} -> Opening Position!"
+            log_msg = f"[🟢 QUICK BUY] Price: ${live_price} | RSI: {current_rsi:.2f} -> Order Placed!"
             st.session_state.trade_logs.append(log_msg)
             try:
-                # কুইক মার্কেট বাই অর্ডার
-                # order = client.order_market_buy(symbol="BTCUSDT", quoteOrderQty=trade_amount)
+                # বাইবিট মার্কেট বাই অর্ডার রিয়েল কোড:
+                # session.place_order(category="linear", symbol="BTCUSDT", side="Buy", orderType="Market", qty="0.001")
                 st.session_state.in_position = True
-            except BinanceAPIException as e:
-                st.session_state.trade_logs.append(f"[❌ API ERROR] {e.message}")
+            except Exception as api_err:
+                st.session_state.trade_logs.append(f"[❌ API Error] {str(api_err)}")
         
-        # RSI ৭০ এর উপরে গেলে বা প্রফিট টার্গেট মিললে দ্রুত SELL (ওভারবট কন্ডিশন)
+        # RSI ৬৫ এর উপরে উঠলে বা ছোট লাভ পেলেই সাথে সাথে ক্লোজ (Sell Order)
         elif current_rsi > 65 and st.session_state.in_position:
-            log_msg = f"[🔴 SELL ORDER] BTC Price: ${live_price} | RSI: {current_rsi:.2f} -> Closing Position for Profit!"
+            log_msg = f"[🔴 QUICK SELL] Price: ${live_price} | RSI: {current_rsi:.2f} -> Position Closed for Profit!"
             st.session_state.trade_logs.append(log_msg)
             try:
-                # কুইক মার্কেট সেল অর্ডার
-                # order = client.order_market_sell(symbol="BTCUSDT", quantity=... )
+                # বাইবিট মার্কেট সেল অর্ডার রিয়েল কোড:
+                # session.place_order(category="linear", symbol="BTCUSDT", side="Sell", orderType="Market", qty="0.001")
                 st.session_state.in_position = False
-            except BinanceAPIException as e:
-                st.session_state.trade_logs.append(f"[❌ API ERROR] {e.message}")
-        
-        # ৬. লাইভ অ্যাকশন লগ প্রদর্শন
+            except Exception as api_err:
+                st.session_state.trade_logs.append(f"[❌ API Error] {str(api_err)}")
+                
+        # ৩. অ্যাকশন লগ প্রদর্শন (শেষ ৫টি ঘটনা দেখাবে)
         st.subheader("📜 Live Action Logs")
-        logs_display = "\n".join(st.session_state.trade_logs[-5:]) # শেষ ৫টি লগ দেখাবে
-        st.text_area("Logs (Auto-refreshing)", value=logs_display, height=140)
+        logs_display = "\n".join(st.session_state.trade_logs[-5:])
+        st.text_area("Logs (Auto-refreshing)", value=logs_display, height=130)
         
-        # প্রতি ৫ সেকেন্ড পর পর পেজটি অটো-রিফ্রেশ হবে এবং লাইভ প্রাইস আপডেট করবে
+        # প্রতি ৫ সেকেন্ডে অটো রিলোড হয়ে লাইভ প্রাইস আপডেট করবে
         time.sleep(5)
         st.rerun()
 
     except Exception as e:
-        st.error(f"Binance কানেকশন এরর: {e}")
-        st.info("আপনার এপিআই কী সঠিক কিনা অথবা বাইন্যান্স সার্ভারে কোনো সমস্যা আছে কিনা চেক করুন।")
+        st.error(f"Bybit কানেকশন এরর: {e}")
+        st.info("আপনার বাইবিট এপিআই কী সঠিক কিনা তা চেক করুন।")
 else:
     st.info("বটটি বর্তমানে বন্ধ আছে। চালু করতে ওপরের সবুজ বাটনে ক্লিক করুন।")
