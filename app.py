@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 from pybit.unified_trading import HTTP
 
 # ১. মোবাইল ভিউ অপ্টিমাইজেশন
-st.set_page_config(page_title="Bybit Local Scalper", page_icon="⚡", layout="centered")
+st.set_page_config(page_title="Bybit Dual Scalper", page_icon="⚡", layout="centered")
 
 st.markdown("""
     <style>
@@ -15,16 +15,21 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 st.title("⚡ Bybit AI Pro Scalper")
-st.caption("ভার্সন ৩.৮ | লোকাল ক্যান্ডেলস্টিক চার্ট ও স্ক্যাল্পার ফিক্সড")
+st.caption("ভার্সন ৪.০ | রিয়েল ও ডেমো ব্যালেন্স অটো-সুইচিং সিস্টেম")
 
 # ২. Bybit API সেটিংস (সাইডবার)
 with st.sidebar:
     st.header("⚙️ Configuration")
+    
+    # 🔁 রিয়েল নাকি ডেমো অ্যাকাউন্ট তা মোবাইল থেকেই সিলেক্ট করার বাটন
+    account_mode = st.radio("অ্যাকাউন্টের ধরন সিলেক্ট করুন:", ["Demo (নকল টেস্ট অ্যাকাউন্ট)", "Live (আসল রিয়েল অ্যাকাউন্ট)"])
+    is_demo = True if account_mode == "Demo (নকল টেস্ট অ্যাকাউন্ট)" else False
+    
     api_key = st.text_input("Bybit API Key", type="password", placeholder="API Key দিন")
     secret_key = st.text_input("Secret Key", type="password", placeholder="Secret Key দিন")
     trade_amount = st.number_input("ট্রেড কস্ট/অ্যামাউন্ট ($)", min_value=1, max_value=500, value=10, step=1)
-    account_type = st.radio("অ্যাকাউন্টের ধরন", ["আসল অ্যাকাউন্ট (Mainnet)", "নকল অ্যাকাউন্ট (Demo Testnet)"])
-    is_testnet = True if account_type == "নকল অ্যাকাউন্ট (Demo Testnet)" else False
+    
+    st.info("💡 ডেমো মোডে আপনার আসল টাকা কাটবে না। Bybit থেকে পাওয়া ফেইক ডলার দিয়ে টেস্ট হবে।")
 
 # সেসন স্টেট ইনিশিয়ালাইজেশন
 if 'bot_active' not in st.session_state:
@@ -41,20 +46,28 @@ position_status = "চেক করা হচ্ছে..."
 
 if api_key and secret_key:
     try:
-        session = HTTP(testnet=is_testnet, api_key=api_key, api_secret=secret_key)
+        # Bybit V5 অনুযায়ী ডেমো মোডের জন্য আলাদা ডোমেন ও সেটিংস হ্যান্ডেল করা
+        if is_demo:
+            session = HTTP(testnet=True, api_key=api_key, api_secret=secret_key)
+        else:
+            session = HTTP(testnet=False, api_key=api_key, api_secret=secret_key)
         
-        # 💰 লাইভ ব্যালেন্স রিড করার ইউনিভার্সাল মেথড
+        # 💰 লাইভ ব্যালেন্স রিড করা (Demo ও Real অ্যাকাউন্টের জন্য কাস্টমাইজড)
         try:
             wallet_info = session.get_wallet_balance(accountType="UNIFIED", coin="USDT")
             member_list = wallet_info.get('result', {}).get('list', [])
             if member_list and len(member_list) > 0:
                 coin_list = member_list[0].get('coin', [])
+                usd_bal = 0.0
                 for c in coin_list:
                     if c.get('coin') == 'USDT':
-                        balance_usd = f"${float(c.get('walletBalance', 0)):,.2f}"
+                        usd_bal = float(c.get('walletBalance', 0))
                         break
+                balance_usd = f"${usd_bal:,.2f}"
+            else:
+                balance_usd = "$0.00"
         except:
-            balance_usd = "ডলার স্পট/UTA-তে রাখুন"
+            balance_usd = "ফান্ড স্পট বা UTA-তে রাখুন"
             
         # 📦 বর্তমান পজিশন চেক
         pos_info = session.get_positions(category="linear", symbol="BTCUSDT")
@@ -67,14 +80,14 @@ if api_key and secret_key:
             st.session_state.in_position = False
             
     except Exception as e:
-        balance_usd = "API কী ভুল"
+        balance_usd = "API কী ভুল বা মোড ম্যাচ করেনি"
         position_status = "কানেকশন ভুল"
 
 # ৩. লাইভ ব্যালেন্স ও স্ট্যাটাস ডিসপ্লে
-st.subheader("📊 Live Wallet & Positions")
+st.subheader(f"📊 Live Wallet & Positions ({account_mode})")
 col1, col2 = st.columns(2)
 with col1:
-    st.metric(label="Bybit Live Balance", value=balance_usd, delta="USDT")
+    st.metric(label="Available Balance", value=balance_usd, delta="USDT")
 with col2:
     st.metric(label="Active Position", value=position_status)
 
@@ -83,7 +96,7 @@ st.subheader("🎮 Bot Controls")
 if st.session_state.bot_active:
     if st.button("🔴 STOP SCALPER BOT", key="stop_btn"):
         st.session_state.bot_active = False
-        st.session_state.trade_logs.append("[SYSTEM] Scalper stopped by user.")
+        st.session_state.trade_logs.append(f"[SYSTEM] Bot stopped in {account_mode} mode.")
         st.rerun()
 else:
     if st.button("🟢 START QUICK SCALPING", key="start_btn"):
@@ -91,7 +104,7 @@ else:
             st.error("❌ আগে সাইডবার থেকে আপনার Bybit API Key ও Secret Key সেট করুন!")
         else:
             st.session_state.bot_active = True
-            st.session_state.trade_logs.append(f"[SYSTEM] Scalper Activated. Target: ${trade_amount}")
+            st.session_state.trade_logs.append(f"[SYSTEM] Scalper Activated in {account_mode}. Target: ${trade_amount}")
             st.rerun()
 
 # ৫. লাইভ মার্কেট ডাটা ও ইন্টাররেক্টিভ ক্যান্ডেলস্টিক চার্ট
@@ -101,11 +114,9 @@ if st.session_state.bot_active and session:
         klines = response.get('result', {}).get('list', [])
         
         if klines:
-            # Bybit ডাটা ফরম্যাট: [startTime, openPrice, highPrice, lowPrice, closePrice, volume, turnover]
             df = pd.DataFrame(klines, columns=['time', 'open', 'high', 'low', 'close', 'volume', 'turnover'])
             df = df.iloc[::-1].reset_index(drop=True)
             
-            # সংখ্যায় রূপান্তর
             df['open'] = pd.to_numeric(df['open'])
             df['high'] = pd.to_numeric(df['high'])
             df['low'] = pd.to_numeric(df['low'])
@@ -114,22 +125,14 @@ if st.session_state.bot_active and session:
             live_price = df['close'].iloc[-1]
             st.subheader(f"📈 Real-Time BTC/USDT: ${live_price:,.2f}")
             
-            # 📊 পাইথনের নিজস্ব১০০% নিরাপদ মোবাইল ক্যান্ডেলস্টিক চার্ট (Plotly)
+            # 📊 লোকাল ক্যান্ডেলস্টিক চার্ট
             fig = go.Figure(data=[go.Candlestick(
-                x=df.index,
-                open=df['open'],
-                high=df['high'],
-                low=df['low'],
-                close=df['close'],
-                increasing_line_color='#00cc66', 
-                decreasing_line_color='#ff3333'
+                x=df.index, open=df['open'], high=df['high'], low=df['low'], close=df['close'],
+                increasing_line_color='#00cc66', decreasing_line_color='#ff3333'
             )])
-            
             fig.update_layout(
                 margin=dict(l=10, r=10, t=10, b=10),
-                xaxis_rangeslider_visible=False,
-                template="plotly_dark",
-                height=300
+                xaxis_rangeslider_visible=False, template="plotly_dark", height=280
             )
             st.plotly_chart(fig, use_container_width=True)
 
@@ -141,7 +144,7 @@ if st.session_state.bot_active and session:
             df['RSI'] = 100 - (100 / (1 + rs))
             current_rsi = df['RSI'].iloc[-1] if not df['RSI'].isnull().iloc[-1] else 50
             
-            # বিটিসি মিনিমাম লট সাইজ ক্যালকুলেশন
+            # বিটিসি লট সাইজ ক্যালকুলেশন
             calculated_qty = round((trade_amount / live_price), 4)
             if calculated_qty < 0.0001:
                 calculated_qty = 0.0001
@@ -153,10 +156,10 @@ if st.session_state.bot_active and session:
                         category="linear", symbol="BTCUSDT", side="Buy", 
                         orderType="Market", qty=str(calculated_qty)
                     )
-                    st.session_state.trade_logs.append(f"[🟢 BUY PLACED] Cost: ${trade_amount} | Qty: {calculated_qty}")
+                    st.session_state.trade_logs.append(f"[🟢 BUY PLACED] Mode: {account_mode} | Cost: ${trade_amount}")
                     st.session_state.in_position = True
                 except Exception as e:
-                    st.session_state.trade_logs.append(f"[❌ Order Fail] ফান্ড নেই অথবা মার্জিন কম।")
+                    st.session_state.trade_logs.append(f"[❌ Order Fail] ফান্ড নেই অথবা সাবমিশন রিজেক্টেড।")
             
             elif current_rsi > 65 and st.session_state.in_position:
                 try:
