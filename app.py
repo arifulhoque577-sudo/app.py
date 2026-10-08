@@ -3,15 +3,15 @@ import pandas as pd
 import time
 import random
 import string
+import requests
 import plotly.graph_objects as go
 from pybit.unified_trading import HTTP
-# 1. Page Configuration Setup
+# 1. UI Optimization
 st.set_page_config(
     page_title="Bybit AI Scalper", 
     page_icon="⚡", 
     layout="centered"
 )
-
 st.markdown("""
     <style>
     .main { background-color: #0b0e14; }
@@ -26,14 +26,12 @@ st.markdown("""
     iframe { border: none !important; }
     </style>
     """, unsafe_allow_html=True)
-# Bybit Branding Logo Header Custom Web Widget Design
 st.markdown("""
     <div style="background: linear-gradient(90deg, #f5a623 0%, #ffcc00 100%); padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: center; box-shadow: 0px 4px 15px rgba(245, 166, 35, 0.2);">
         <h1 style="margin: 0; color: #0b0e14; font-family: 'Arial Black', sans-serif; font-size: 28px; letter-spacing: 1px;">BYBIT AI PRO SCALPER</h1>
         <p style="margin: 5px 0 0 0; color: #1c2434; font-weight: bold; font-size: 13px;">FRONTLINE VERSION 15.0 • HIGH-LEVERAGE PERPETUAL ENGINE</p>
     </div>
     """, unsafe_allow_html=True)
-# Multi-Coin Configuration Specifications Mapping
 COIN_DATABASE = {
     "🪙 BTCUSDT (Bitcoin)": {"symbol": "BTCUSDT", "max_leverage": 100, "default_tp": 100.0, "default_sl": 150.0, "step": 10.0},
     "🔷 ETHUSDT (Ethereum)": {"symbol": "ETHUSDT", "max_leverage": 100, "default_tp": 8.0, "default_sl": 15.0, "step": 1.0},
@@ -48,121 +46,123 @@ COIN_DATABASE = {
 }
 
 YOUR_SECRET_MASTER_CODE = "ADMIN1234"
-# Server-Wide Central Shared Directories (Cross-User Space)
-if not hasattr(st, "_central_user_creds"):
-    st._central_user_creds = {}        # Username -> {"password": P, "uid": UID, "sponsor": S}
-if not hasattr(st, "_central_key_registry"):
-    st._central_key_registry = {}      # License Key -> Hardware Signature
-if not hasattr(st, "_central_blacklist"):
-    st._central_blacklist = []         # Banned License Keys Array
-if not hasattr(st, "_license_csv_database"):
-    st._license_csv_database = []      # Generated Token Logs Array
-if not hasattr(st, "_global_referral_tree"):
-    st._global_referral_tree = {}      # Sponsor UID -> List of Downline UIDs
-if not hasattr(st, "_global_user_pnl_history"):
-    st._global_user_pnl_history = []   # List of all user trading close operations
-# Session Initial Cache Locks Mapping
-if 'demo_balance' not in st.session_state: st.session_state.demo_balance = 5000.0
-if 'bot_active' not in st.session_state: st.session_state.bot_active = False
-if 'in_position' not in st.session_state: st.session_state.in_position = False
-if 'buy_price' not in st.session_state: st.session_state.buy_price = 0.0
-if 'current_side' not in st.session_state: st.session_state.current_side = "NONE"
-if 'all_trades_history' not in st.session_state: st.session_state.all_trades_history = []
-if 'win_count' not in st.session_state: st.session_state.win_count = 0
-if 'loss_count' not in st.session_state: st.session_state.loss_count = 0
-if 'logged_in_user' not in st.session_state: st.session_state.logged_in_user = None
-
+if not hasattr(st, "_central_user_creds"): 
+    st._central_user_creds = {}
+if not hasattr(st, "_central_key_registry"): 
+    st._central_key_registry = {}
+if not hasattr(st, "_central_blacklist"): 
+    st._central_blacklist = []
+if not hasattr(st, "_license_csv_database"): 
+    st._license_csv_database = []
+if not hasattr(st, "_global_referral_tree"): 
+    st._global_referral_tree = {} 
+if not hasattr(st, "_global_user_pnl_history"): 
+    st._global_user_pnl_history = [] 
+if 'demo_balance' not in st.session_state: 
+    st.session_state.demo_balance = 5000.0
+if 'bot_active' not in st.session_state: 
+    st.session_state.bot_active = False
+if 'in_position' not in st.session_state: 
+    st.session_state.in_position = False
+if 'buy_price' not in st.session_state: 
+    st.session_state.buy_price = 0.0
+if 'current_side' not in st.session_state: 
+    st.session_state.current_side = "NONE"
+if 'all_trades_history' not in st.session_state: 
+    st.session_state.all_trades_history = []
+if 'win_count' not in st.session_state: 
+    st.session_state.win_count = 0
+if 'loss_count' not in st.session_state: 
+    st.session_state.loss_count = 0
+if 'logged_in_user' not in st.session_state: 
+    st.session_state.logged_in_user = None
 if 'my_hardware_signature' not in st.session_state:
-    st.session_state.my_hardware_signature = "DEV-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=10))
+    st.session_state.my_hardware_signature = "DEV-" + "".join(
+        random.choices(string.ascii_uppercase + string.digits, k=10)
+    )
 
 my_signature = st.session_state.my_hardware_signature
-# Secure Authentication Portal Framework Entry
-if st.session_state.logged_in_user is超 None:
-    st.subheader("🔑 Membership Authentication Portal")
-    auth_mode = st.radio("Choose Action Mode:", ["Login Existing Account", "Create New Trading ID"])
+if st.session_state.logged_in_user is None:
+    st.subheader("🔑 Membership Portal")
+    auth_mode = st.radio("Choose Mode:", ["Login Account", "Create New ID"])
     
-    if auth_mode == "Create New Trading ID":
-        reg_username = st.text_input("Choose Unique Username:", key="reg_u").strip()
-        reg_password = st.text_input("Set Secure Password:", type="password", key="reg_p").strip()
-        reg_sponsor = st.text_input("Enter Sponsor Referral ID (Optional):", key="reg_s").strip()
+    if auth_mode == "Create New ID":
+        reg_username = st.text_input("Username:", key="reg_u").strip()
+        reg_password = st.text_input("Password:", type="password", key="reg_p").strip()
+        reg_sponsor = st.text_input("Sponsor ID (Optional):", key="reg_s").strip()
         
-        if st.button("🚀 Register & Create My ID"):
+        if st.button("🚀 Register My ID"):
             if reg_username == "" or reg_password == "":
-                st.error("Fields cannot be left blank!")
+                st.error("Fields cannot be blank!")
             elif reg_username in st._central_user_creds:
-                st.error("Username already taken! Choose another.")
+                st.error("Username taken!")
             else:
                 new_uid = "UID-" + "".join(random.choices(string.digits, k=6))
                 st._central_user_creds[reg_username] = {"password": reg_password, "uid": new_uid, "sponsor": reg_sponsor if reg_sponsor != "" else "None"}
                 if reg_sponsor != "":
                     if reg_sponsor not in st._global_referral_tree: st._global_referral_tree[reg_sponsor] = []
                     st._global_referral_tree[reg_sponsor].append(new_uid)
-                st.success(f"Account Created! Your Unique Referral ID: {new_uid}")
-                st.info("Switch to Login Mode above to boot.")
+                st.success(f"Created! Your Referral ID: {new_uid}")
         st.stop()
-        
-    elif auth_mode == "Login Existing Account":
+    elif auth_mode == "Login Account":
         login_u = st.text_input("Username:", key="log_u").strip()
         login_p = st.text_input("Password:", type="password", key="log_p").strip()
         if st.button("🔓 Sign In"):
             if login_u in st._central_user_creds and st._central_user_creds[login_u]["password"] == login_p:
                 st.session_state.logged_in_user = login_u
-                st.success("Access Granted! Loading trading node configurations...")
+                st.success("Access Granted!")
                 st.rerun()
-            else: st.error("Invalid Username or Password parameters!")
+            else: st.error("Invalid Credential parameters!")
         st.stop()
-# Fetch details of authenticated running session
 user_data = st._central_user_creds[st.session_state.logged_in_user]
 allocated_user_id = user_data["uid"]
 my_sponsor_id = user_data["sponsor"]
 
-# Sidebar Parameter Injection Module
 with st.sidebar:
     st.markdown("<h2 style='color:#f5a623;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#e2a826; font-size:12px; margin:0;'>👤 User: <b>{st.session_state.logged_in_user}</b></p>", unsafe_allow_html=True)
-    st.markdown(f"<p style='color:#38bdf8; font-size:12px; margin:0;'>🆔 Your Referral ID: <b>{allocated_user_id}</b></p>", unsafe_allow_html=True)
-    st.markdown(f"<p style='color:#94a3b8; font-size:12px; margin:0;'>🔗 Joined Under: <b>{my_sponsor_id}</b></p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color:#38bdf8; font-size:12px; margin:0;'>🆔 Your ID: <b>{allocated_user_id}</b></p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color:#94a3b8; font-size:12px; margin:0;'>🔗 Sponsor: <b>{my_sponsor_id}</b></p>", unsafe_allow_html=True)
     
     if st.button("🚪 Logout Account"):
         st.session_state.logged_in_user = None
         st.rerun()
-        
-    bot_mode = st.radio("Trading Account Mode:", ["Demo Simulation (Virtual Funds)", "Live Exchange (Bybit Mainnet API)"])
+    bot_mode = st.radio("Trading Mode:", ["Demo Simulation", "Live Exchange (Bybit API)"])
     is_real_live = True if "Live" in bot_mode else False
     selected_display_name = st.selectbox("Select Perpetual Contract:", list(COIN_DATABASE.keys()), index=0)
     coin_config = COIN_DATABASE[selected_display_name]
     target_symbol = coin_config["symbol"]
     
-    ai_decision = st.toggle("AI Smart Crossover Filter (RSI Mean Reversion)", value=True)
+    ai_decision = st.toggle("AI Smart Crossover Filter", value=True)
     leverage = st.slider(f"Adjust Leverage (Max {coin_config['max_leverage']}x):", min_value=1, max_value=coin_config["max_leverage"], value=20, step=1)
     trade_amount = st.number_input("Margin Requirement ($):", min_value=1, max_value=1000, value=20, step=1)
-    price_jump_target = st.number_input("Take Profit Target ($ Price Delta):", min_value=0.00000001, max_value=5000.0, value=coin_config["default_tp"], step=coin_config["step"], format="%.8f")
-    stop_loss_gap = st.number_input("Stop Loss Threshold ($ Price Delta):", min_value=0.00000001, max_value=5000.0, value=coin_config["default_sl"], step=coin_config["step"], format="%.8f")
+    price_jump_target = st.number_input("Take Profit Target ($):", min_value=0.00000001, max_value=5000.0, value=coin_config["default_tp"], step=coin_config["step"], format="%.8f")
+    stop_loss_gap = st.number_input("Stop Loss Threshold ($):", min_value=0.00000001, max_value=5000.0, value=coin_config["default_sl"], step=coin_config["step"], format="%.8f")
     api_key, secret_key = "", ""
     if is_real_live:
         st.markdown("<hr style='border:1px solid #1e293b;'>", unsafe_allow_html=True)
-        st.markdown("<p style='color:#ff3333; font-weight:bold; font-size:12px;'>🔒 HARDWARE PROTECTION ACTIVE</p>", unsafe_allow_html=True)
-        input_license = st.text_input("Enter License Key to Unlock Live Fields:", type="password").strip()
+        st.markdown("<p style='color:#ff3333; font-weight:bold; font-size:11px;'>🔒 HARDWARE PROTECTION ACTIVE</p>", unsafe_allow_html=True)
+        input_license = st.text_input("Enter License Key:", type="password").strip()
         
         if input_license != "":
             if input_license in st._central_blacklist:
-                st.error("❌ Access Revoked: This License Key has been permanently BLOCKED!")
+                st.error("❌ Access Revoked: Key BLOCKED!")
             elif input_license in st._central_key_registry:
                 locked_device_signature = st._central_key_registry[input_license]
                 if locked_device_signature == "FREE_SLOT":
                     st._central_key_registry[input_license] = my_signature
-                    st.success("🔓 First-Touch Activation Success! Device Bond Locked.")
-                    api_key = st.text_input("Bybit Authenticated API Key:", type="password")
-                    secret_key = st.text_input("Bybit Authenticated Secret Key:", type="password")
+                    st.success("🔓 Activation Success!")
+                    api_key = st.text_input("Bybit API Key:", type="password")
+                    secret_key = st.text_input("Bybit Secret Key:", type="password")
                 elif locked_device_signature == my_signature:
-                    st.success("🔓 Authorization Verified! Fields Unlocked.")
-                    api_key = st.text_input("Bybit Authenticated API Key:", type="password")
-                    secret_key = st.text_input("Bybit Authenticated Secret Key:", type="password")
+                    st.success("🔓 Authorized!")
+                    api_key = st.text_input("Bybit API Key:", type="password")
+                    secret_key = st.text_input("Bybit Secret Key:", type="password")
                 else:
                     st._central_blacklist.append(input_license)
                     if input_license in st._central_key_registry: del st._central_key_registry[input_license]
-                    st.markdown("<div style='background-color:#450a0a; padding:10px; border-radius:5px; border:1px solid #f87171;'><p style='margin:0; color:#f87171; font-weight:bold; font-size:12px;'>❌ Access Denied: Unauthorized Second Device Detected!</p></div>", unsafe_allow_html=True)
-            else: st.error("❌ Key mismatch! License not found in centralized register.")
+                    st.error("❌ Second Device Detected! Key blocked.")
+            else: st.error("❌ Invalid Key!")
 if 'active_coin' not in st.session_state or st.session_state.active_coin != target_symbol:
     st.session_state.in_position = False; st.session_state.buy_price = 0.0; st.session_state.current_side = "NONE"; st.session_state.active_coin = target_symbol
 
@@ -172,17 +172,15 @@ total_trades = st.session_state.win_count + st.session_state.loss_count
 win_rate = (st.session_state.win_count / total_trades * 100) if total_trades > 0 else 0.0
 
 with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Developer Console)"):
-    master_input = st.text_input("Input Master Administrative Code Override:", type="password")
+    master_input = st.text_input("Input Master Security Override Code:", type="password")
     if master_input == YOUR_SECRET_MASTER_CODE:
-        st.success("Authorization successful. Key Pool Registry unlocked.")
-        st.markdown("<b style='color:#00e676;'>🎰 Token Minting Generator:</b>", unsafe_allow_html=True)
+        st.success("Authorized.")
         if st.button("Mint New Randomized License Token Key"):
             random_token = "SCLP-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
             st._central_key_registry[random_token] = "FREE_SLOT"
             st._license_csv_database.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "License Key": random_token, "Status": "Active (Unused)"})
             st.code(f"{random_token}", language="text")
             st.rerun()
-        st.markdown("<b style='color:#ff1744;'>🚫 Token Blacklist Revocation Panel:</b>", unsafe_allow_html=True)
         target_block_key = st.text_input("Paste Target License Token to BAN permanently:")
         if st.button("Execute Permanent Revocation Ban"):
             found = False
@@ -192,7 +190,7 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Developer Consol
                 found = True
             for row in st._license_csv_database:
                 if row["License Key"] == target_block_key: row["Status"] = "Permanently Banned ❌"; found = True
-            if found: st.warning(f"TOKEN STATUS REVOKED: {target_block_key} has been banned."); st.rerun()
+            if found: st.warning(f"TOKEN REVOKED: {target_block_key} banned."); st.rerun()
             else: st.error("Token matching failed!")
             
         st.markdown("<br><b style='color:#f5a623;'>🌿 Global Master Network Tree View:</b>", unsafe_allow_html=True)
@@ -201,13 +199,10 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Developer Consol
                 st.markdown(f"👤 **Sponsor ID:** `{parent}`")
                 for child in children: st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;└── 📱 **Downline ID:** `{child}`")
         else: st.info("No hierarchy chains built yet.")
-        
-        st.markdown("<br><b style='color:#38bdf8;'>📜 Live License Token Database Register:</b>", unsafe_allow_html=True)
         if st._license_csv_database:
             db_df = pd.DataFrame(st._license_csv_database)
             st.dataframe(db_df.iloc[::-1], height=130, use_container_width=True)
-    elif master_input != "": st.error("Administrative authentication mismatch.")
-
+    elif master_input != "": st.error("Authentication mismatch.")
 # 🌿 Isolated Referral Network Engine Display for Normal Logged-In Users
 st.markdown("<h3 style='color:#f5a623; font-size:16px;'>🌿 My Referral Network Hub</h3>", unsafe_allow_html=True)
 my_children = st._global_referral_tree.get(allocated_user_id, [])
@@ -216,17 +211,13 @@ if my_children:
     st.markdown(f"🎯 Total Direct Referrals: <b>{len(my_children)} Users</b>", unsafe_allow_html=True)
     selected_child_uid = st.selectbox("Select Downline ID to audit performance analytics:", my_children)
     
-    # Calculate Earnings Metrics for Selected Downline Profile Account
     if st._global_user_pnl_history:
         pnl_df = pd.DataFrame(st._global_user_pnl_history)
         child_pnl_df = pnl_df[pnl_df["User ID"] == selected_child_uid]
-        
         if not child_pnl_df.empty:
             child_pnl_df["Net P&L (\$)"] = pd.to_numeric(child_pnl_df["Net P&L (\$)"])
             total_earned = child_pnl_df["Net P&L (\$)"].sum()
-            
             st.markdown(f"💰 Cumulative Earnings of `{selected_child_uid}`: <b style='color:#00e676;'>\${total_earned:.2f} USDT</b>", unsafe_allow_html=True)
-            st.markdown("📋 **Recent Activity History Logs:**")
             st.dataframe(child_pnl_df.iloc[::-1], use_container_width=True)
         else: st.info(f"User `{selected_child_uid}` has not completed any operations yet.")
     else: st.info("Network node pipeline ledger currently empty.")
@@ -239,8 +230,7 @@ st.markdown(f"""
         <span style="color:#ffffff; font-size:14px; font-weight:bold;">🎯 NET WIN RATE: <b style="color:#29b6f6;">{win_rate:.1f}%</b></span>
     </div>
 """, unsafe_allow_html=True)
-
-# 🔍 Real-Time Ingestion Market Feed Inflow (5s High-Resolution Interval)
+# Real-Time Ingestion Market Feed Inflow (5s High-Resolution Interval)
 live_price, current_rsi, df_kline = 0.0, 50.0, None
 if st.session_state.bot_active:
     try:
@@ -284,7 +274,7 @@ rsi_color = "#ff1744" if current_rsi > 50 else "#00e676"
 st.markdown(f"""
     <div style="background-color:#141a24; padding:10px; border-radius:10px; margin-bottom:12px; border-left: 5px solid {rsi_color}; text-align:center; border: 1px solid #1f2c3f;">
         <span style="color:#94a3b8; font-size:12px; font-weight:bold;">📡 LIVE AI RSI OSCILLATOR (5s FEED):</span>
-        <h3 style="margin:2px 0; color:{rsi_color}; font-size:24px; font-family: monospace;">{current_rsi:.2f}</h3>
+        <h3 style="margin:2px 0; color:#ffffff; font-size:24px; font-family: monospace;">{current_rsi:.2f}</h3>
     </div>
     <div style="background-color:#141a24; padding:15px; border-radius:12px; margin-bottom:12px; border: 1px solid #1f2c3f;">
         <p style="margin:0; font-size:12px; color:#94a3b8; font-weight:bold;">💰 AVAILABLE BALANCE ACCOUNT ({bot_mode})</p>
@@ -292,7 +282,19 @@ st.markdown(f"""
         <p style="margin:0; font-size:14px; color:{'#00e676' if floating_pnl >= 0 else '#ff1744'}; font-weight:bold;">Live Floating P&L: {floating_pnl:+.2f} USDT</p>
     </div>
 """, unsafe_allow_html=True)
+if st.session_state.in_position and live_price > 0:
+    is_long_pos = True if st.session_state.current_side == "LONG" else False
+    live_target = (st.session_state.buy_price + price_jump_target) if is_long_pos else (st.session_state.buy_price - price_jump_target)
+    live_sl = (st.session_state.buy_price - stop_loss_gap) if is_long_pos else (st.session_state.buy_price + stop_loss_gap)
+    st.markdown(f"""
+    <div style="background-color:#0b0e14; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; border-left: 5px solid #29b6f6;">
+        <span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Entry Price: {st.session_state.buy_price} | Live Index: {live_price}</span><br>
+        <span style="font-size:14px; color:#00e676; font-weight:bold; font-family: monospace;">Take Profit Target: {live_target} (Expected Net: +${expected_net_profit:.2f})</span><br>
+        <span style="font-size:14px; color:#ff1744; font-weight:bold; font-family: monospace;">Stop Loss Boundary: {live_sl}</span>
+    </div>
+    """, unsafe_allow_html=True)
 
+st.info(f"💡 Estimated Execution Trading Fee: **${estimated_fee:.3f} USDT**")
 st.markdown("<h3 style='color:#ffffff; font-size:16px;'>🎮 Engine Controls</h3>", unsafe_allow_html=True)
 c1, c2 = st.columns(2)
 with c1:
