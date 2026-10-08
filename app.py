@@ -27,14 +27,14 @@ st.markdown("""
     iframe { border: none !important; }
     </style>
     """, unsafe_allow_html=True)
-# Bybit Branding Logo Header
+# Bybit Branding Logo Header Custom Web Widget Design
 st.markdown("""
     <div style="background: linear-gradient(90deg, #f5a623 0%, #ffcc00 100%); padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: center; box-shadow: 0px 4px 15px rgba(245, 166, 35, 0.2);">
         <h1 style="margin: 0; color: #0b0e14; font-family: 'Arial Black', sans-serif; font-size: 28px; letter-spacing: 1px;">BYBIT AI PRO SCALPER</h1>
         <p style="margin: 5px 0 0 0; color: #1c2434; font-weight: bold; font-size: 13px;">FRONTLINE VERSION 15.0 • HIGH-LEVERAGE PERPETUAL ENGINE</p>
     </div>
     """, unsafe_allow_html=True)
-# Multi-Coin Configuration Specifications
+# Multi-Coin Configuration Specifications Mapping
 COIN_DATABASE = {
     "🪙 BTCUSDT (Bitcoin)": {"symbol": "BTCUSDT", "max_leverage": 100, "default_tp": 100.0, "default_sl": 150.0, "step": 10.0},
     "🔷 ETHUSDT (Ethereum)": {"symbol": "ETHUSDT", "max_leverage": 100, "default_tp": 8.0, "default_sl": 15.0, "step": 1.0},
@@ -49,14 +49,14 @@ COIN_DATABASE = {
 }
 
 YOUR_SECRET_MASTER_CODE = "ADMIN1234"
-# Central Server Subsystem Database (Global Shared Space)
+# Server-Wide Central Shared Directories (Cross-User Space)
 if not hasattr(st, "_central_user_creds"): st._central_user_creds = {}
 if not hasattr(st, "_central_key_registry"): st._central_key_registry = {}
 if not hasattr(st, "_central_blacklist"): st._central_blacklist = []
 if not hasattr(st, "_license_csv_database"): st._license_csv_database = []
 if not hasattr(st, "_global_referral_tree"): st._global_referral_tree = {} 
 if not hasattr(st, "_global_user_pnl_history"): st._global_user_pnl_history = [] 
-# State Cache Mapping
+# Session Initial Cache Locks Mapping
 if 'demo_balance' not in st.session_state: st.session_state.demo_balance = 5000.0
 if 'bot_active' not in st.session_state: st.session_state.bot_active = False
 if 'in_position' not in st.session_state: st.session_state.in_position = False
@@ -82,10 +82,8 @@ if st.session_state.logged_in_user is None:
         reg_sponsor = st.text_input("Enter Sponsor Referral ID (Optional):", key="reg_s").strip()
         
         if st.button("🚀 Register & Create My ID"):
-            if reg_username == "" or reg_password == "":
-                st.error("Fields cannot be left blank!")
-            elif reg_username in st._central_user_creds:
-                st.error("Username already taken! Choose another.")
+            if reg_username == "" or reg_password == "": st.error("Fields cannot be left blank!")
+            elif reg_username in st._central_user_creds: st.error("Username taken!")
             else:
                 new_uid = "UID-" + "".join(random.choices(string.digits, k=6))
                 st._central_user_creds[reg_username] = {"password": reg_password, "uid": new_uid, "sponsor": reg_sponsor if reg_sponsor != "" else "None"}
@@ -94,15 +92,15 @@ if st.session_state.logged_in_user is None:
                     if new_uid not in st._global_referral_tree[reg_sponsor]:
                         st._global_referral_tree[reg_sponsor].append(new_uid)
                 st.success(f"Account Created! Your Unique Referral ID: {new_uid}")
-                st.info("Switch to Login Mode above to boot.")
         st.stop()
+        
     elif auth_mode == "Login Existing Account":
         login_u = st.text_input("Username:", key="log_u").strip()
         login_p = st.text_input("Password:", type="password", key="log_p").strip()
         if st.button("🔓 Sign In"):
             if login_u in st._central_user_creds and st._central_user_creds[login_u]["password"] == login_p:
                 st.session_state.logged_in_user = login_u
-                st.success("Access Granted! Loading trading node configurations...")
+                st.success("Access Granted! Loading configurations...")
                 st.rerun()
             else: st.error("Invalid Username or Password parameters!")
         st.stop()
@@ -116,10 +114,7 @@ with st.sidebar:
     st.markdown(f"<p style='color:#e2a826; font-size:12px; margin:0;'>👤 User: <b>{st.session_state.logged_in_user}</b></p>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#38bdf8; font-size:12px; margin:0;'>🆔 Your Referral ID: <b>{allocated_user_id}</b></p>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#94a3b8; font-size:12px; margin:0;'>🔗 Joined Under: <b>{my_sponsor_id}</b></p>", unsafe_allow_html=True)
-    
-    if st.button("🚪 Logout Account"):
-        st.session_state.logged_in_user = None
-        st.rerun()
+    if st.button("🚪 Logout Account"): st.session_state.logged_in_user = None; st.rerun()
         
     bot_mode = st.radio("Trading Account Mode:", ["Demo Simulation (Virtual Funds)", "Live Exchange (Bybit Mainnet API)"])
     is_real_live = True if "Live" in bot_mode else False
@@ -139,8 +134,7 @@ with st.sidebar:
         input_license = st.text_input("Enter License Key to Unlock Live Fields:", type="password").strip()
         
         if input_license != "":
-            if input_license in st._central_blacklist:
-                st.error("❌ Access Revoked: This License Key has been permanently BLOCKED!")
+            if input_license in st._central_blacklist: st.error("❌ Access Revoked: Key BLOCKED!")
             elif input_license in st._central_key_registry:
                 locked_device_signature = st._central_key_registry[input_license]
                 if locked_device_signature == "FREE_SLOT":
@@ -155,8 +149,8 @@ with st.sidebar:
                 else:
                     st._central_blacklist.append(input_license)
                     if input_license in st._central_key_registry: del st._central_key_registry[input_license]
-                    st.markdown("<div style='background-color:#450a0a; padding:10px; border-radius:5px; border:1px solid #f87171;'><p style='margin:0; color:#f87171; font-weight:bold; font-size:12px;'>❌ Access Denied: Unauthorized Second Device Detected!</p></div>", unsafe_allow_html=True)
-            else: st.error("❌ Key mismatch! License not found in centralized register.")
+                    st.error("❌ Access Denied: Second Device Found!")
+            else: st.error("❌ Key mismatch! Not found in centralized register.")
 if 'active_coin' not in st.session_state or st.session_state.active_coin != target_symbol:
     st.session_state.in_position = False; st.session_state.buy_price = 0.0; st.session_state.current_side = "NONE"; st.session_state.active_coin = target_symbol
 
@@ -169,15 +163,12 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Developer Consol
     master_input = st.text_input("Input Master Administrative Code Override:", type="password")
     if master_input == YOUR_SECRET_MASTER_CODE:
         st.success("Authorization successful. Key Pool Registry unlocked.")
-        st.markdown("<b style='color:#00e676;'>🎰 Token Minting Generator:</b>", unsafe_allow_html=True)
         if st.button("Mint New Randomized License Token Key"):
             random_token = "SCLP-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
             st._central_key_registry[random_token] = "FREE_SLOT"
             st._license_csv_database.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "License Key": random_token, "Status": "Active (Unused)"})
             st.code(f"{random_token}", language="text")
             st.rerun()
-            
-        st.markdown("<b style='color:#ff1744;'>🚫 Token Blacklist Revocation Panel:</b>", unsafe_allow_html=True)
         target_block_key = st.text_input("Paste Target License Token to BAN permanently:")
         if st.button("Execute Permanent Revocation Ban"):
             found = False
@@ -187,18 +178,21 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Developer Consol
                 found = True
             for row in st._license_csv_database:
                 if row["License Key"] == target_block_key: row["Status"] = "Permanently Banned ❌"; found = True
-            if found: st.warning(f"TOKEN STATUS REVOKED: {target_block_key} has been banned."); st.rerun()
+            if found: st.warning(f"TOKEN STATUS REVOKED: {target_block_key} banned."); st.rerun()
             else: st.error("Token matching failed!")
             
-        st.markdown("<br><b style='color:#f5a623;'>🌿 Global Master Network Tree View:</b>", unsafe_allow_html=True)
+        st.markdown("<br><b style='color:#f5a623;'>🌿 Global Master Network Tree View (Interactive Audit):</b>", unsafe_allow_html=True)
+        # 🌐 গ্লোবাল ইন্টারেক্টিভ অডিট সিস্টেম মডিউল (ক্লিক করে আর্নিং দেখার প্যানেল)
+        all_creds_df = pd.DataFrame.from_dict(st._central_user_creds, orient='index')
+        if not all_creds_df.empty:
+            st.markdown("📋 **All Active System Registered Nodes:**")
+            st.dataframe(all_creds_df[["uid", "sponsor"]], use_container_width=True)
         if st._global_referral_tree:
             for parent, children in st._global_referral_tree.items():
                 st.markdown(f"👤 **Sponsor ID:** `{parent}`")
                 for child in children: st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;└── 📱 **Downline ID:** `{child}`")
-        else: st.info("No hierarchy chains built yet.")
         if st._license_csv_database:
-            db_df = pd.DataFrame(st._license_csv_database)
-            st.dataframe(db_df.iloc[::-1], height=130, use_container_width=True)
+            st.dataframe(pd.DataFrame(st._license_csv_database).iloc[::-1], height=100, use_container_width=True)
     elif master_input != "": st.error("Administrative authentication mismatch.")
 # 🌿 Isolated Referral Network Engine Display for Normal Logged-In Users
 st.markdown("<h3 style='color:#f5a623; font-size:16px;'>🌿 My Referral Network Hub</h3>", unsafe_allow_html=True)
@@ -208,9 +202,7 @@ if my_children:
     st.markdown(f"🎯 Total Direct Referrals: <b>{len(my_children)} Users</b>", unsafe_allow_html=True)
     selected_child_uid = st.selectbox("Select Downline ID to audit performance analytics:", my_children)
     
-    # 🗂️ রিয়েল বনাম ডেমো আলাদা আর্নিং ফিল্টারিং ট্যাব মডিউল
-    t1, t2 = st.tabs(["🟢 Live Market Earnings", "🔵 Demo Sandbox Earnings"])
-    
+    t1, t2 = st.tabs(["实时 Real Earnings Gate 🟢", "模拟 Demo Earnings Gate 🔵"])
     with t1:
         if st._global_user_pnl_history:
             pnl_df = pd.DataFrame(st._global_user_pnl_history)
@@ -221,7 +213,6 @@ if my_children:
                 st.dataframe(child_real_df.iloc[::-1], use_container_width=True)
             else: st.info("No live production real funds data recorded yet.")
         else: st.info("Ledger registry is empty.")
-        
     with t2:
         if st._global_user_pnl_history:
             pnl_df = pd.DataFrame(st._global_user_pnl_history)
@@ -242,7 +233,7 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# Real-Time Ingestion Market Feed Inflow (5s High-Resolution Interval)
+# Market Data Stream Engine (5s Intervals)
 live_price, current_rsi, df_kline = 0.0, 50.0, None
 if st.session_state.bot_active:
     try:
@@ -261,18 +252,19 @@ if st.session_state.bot_active:
             df_kline['RSI'] = 100 - (100 / (1 + rs))
             current_rsi = df_kline['RSI'].iloc[-1] if not df_kline['RSI'].isnull().iloc[-1] else 50.0
     except: pass
+
 floating_pnl, expected_net_profit = 0.0, 0.0
 if st.session_state.in_position and live_price > 0:
     is_long_pos = True if st.session_state.current_side == "LONG" else False
     if is_long_pos: floating_pnl = (live_price - st.session_state.buy_price) * (effective_vol / st.session_state.buy_price)
     else: floating_pnl = (st.session_state.buy_price - live_price) * (effective_vol / st.session_state.buy_price)
     expected_net_profit = (price_jump_target * (effective_vol / st.session_state.buy_price)) - estimated_fee
-
 display_balance = st.session_state.demo_balance + floating_pnl if not is_real_live else 0.0
 balance_usd_text = f"${display_balance:,.2f}"
+
 if is_real_live and api_key and secret_key:
     try:
-        session = HTTP(testnet=False, api_key=api_key, api_secret=secret_key)
+        session = HTTP(testnet=False, api_key=api_key, secret_key=secret_key)
         wallet_info = session.get_wallet_balance(accountType="UNIFIED", coin="USDT")
         member_list = wallet_info.get('result', {}).get('list', [])
         if member_list:
@@ -283,6 +275,7 @@ if is_real_live and api_key and secret_key:
 position_status = "NO ACTIVE POSITION 💤" if not st.session_state.in_position else f"FUTURE {target_symbol} {st.session_state.current_side} CONTRACT RUNNING"
 rsi_color = "#ff1744" if current_rsi > 50 else "#00e676"
 
+# 📦 আপনার অনুরোধ করা restored প্রথম বক্স: MARGIN STATUS EXECUTION
 st.markdown(f"""
     <div style="background-color:#141a24; padding:10px; border-radius:10px; margin-bottom:12px; border-left: 5px solid {rsi_color}; text-align:center; border: 1px solid #1f2c3f;">
         <span style="color:#94a3b8; font-size:12px; font-weight:bold;">📡 LIVE AI RSI OSCILLATOR (5s FEED):</span>
@@ -293,8 +286,25 @@ st.markdown(f"""
         <h2 style="margin:5px 0; color:#ffffff; font-size:28px; font-family: monospace;">{balance_usd_text}</h2>
         <p style="margin:0; font-size:14px; color:{'#00e676' if floating_pnl >= 0 else '#ff1744'}; font-weight:bold;">Live Floating P&L: {floating_pnl:+.2f} USDT</p>
     </div>
+    <div style="background-color:#141a24; padding:15px; border-radius:12px; margin-bottom:15px; border: 1px solid #1f2c3f;">
+        <p style="margin:0; font-size:12px; color:#94a3b8; font-weight:bold;">📦 MARGIN STATUS EXECUTION</p>
+        <h3 style="margin:5px 0; color:{'#ffffff' if st.session_state.current_side == 'NONE' else ('#00e676' if st.session_state.current_side == 'LONG' else '#ff1744')}; font-size:16px; font-weight:bold;">{position_status}</h3>
+    </div>
 """, unsafe_allow_html=True)
+if st.session_state.in_position and live_price > 0:
+    is_long_pos = True if st.session_state.current_side == "LONG" else False
+    live_target = (st.session_state.buy_price + price_jump_target) if is_long_pos else (st.session_state.buy_price - price_jump_target)
+    live_sl = (st.session_state.buy_price - stop_loss_gap) if is_long_pos else (st.session_state.buy_price + stop_loss_gap)
+    # 💎 আপনার অনুরোধ করা restored দ্বিতীয় বক্স: TARGETS DETAILS MODULE WITH SKY BLUE LEFT-BORDER
+    st.markdown(f"""
+    <div style="background-color:#0b0e14; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; border-left: 5px solid #29b6f6;">
+        <span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Entry Price: {st.session_state.buy_price} | Live Index: {live_price}</span><br>
+        <span style="font-size:14px; color:#00e676; font-weight:bold; font-family: monospace;">Take Profit Target: {live_target} (Expected Net: +${expected_net_profit:.2f})</span><br>
+        <span style="font-size:14px; color:#ff1744; font-weight:bold; font-family: monospace;">Stop Loss Boundary: {live_sl}</span>
+    </div>
+    """, unsafe_allow_html=True)
 
+st.info(f"💡 Estimated Execution Trading Fee: **${estimated_fee:.3f} USDT**")
 st.markdown("<h3 style='color:#ffffff; font-size:16px;'>🎮 Engine Controls</h3>", unsafe_allow_html=True)
 c1, c2 = st.columns(2)
 with c1:
@@ -310,9 +320,14 @@ with c2:
         if st.button("🚨 EMERGENCY LIQUIDATE", key="force_sell_btn"):
             net_pnl = floating_pnl - estimated_fee
             if not is_real_live: st.session_state.demo_balance += net_pnl
+            status_tag = "MANUAL CLOSE 🛑"
             st._global_user_pnl_history.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "User ID": allocated_user_id, "Coin": target_symbol, "Action": f"CLOSE {st.session_state.current_side}", "Net P&L ($)": f"{net_pnl:.2f}", "Type": "REAL" if is_real_live else "DEMO"})
             if net_pnl >= 0: st.session_state.win_count += 1
             else: st.session_state.loss_count += 1
+            for idx, trade in enumerate(st.session_state.all_trades_history):
+                if trade["Status"] == "RUNNING" and trade["Coin"] == target_symbol:
+                    st.session_state.all_trades_history[idx]["Status"] = status_tag
+                    st.session_state.all_trades_history[idx]["Net P&L ($)"] = f"{net_pnl:.2f}"
             st.session_state.in_position = False; st.session_state.buy_price = 0.0; st.session_state.current_side = "NONE"; st.rerun()
 
 if st.session_state.bot_active and df_kline is not None:
@@ -364,8 +379,6 @@ if st.session_state.bot_active and df_kline is not None:
                     except: pass
                 else: st.session_state.demo_balance += net_pnl
                 target_display = (st.session_state.buy_price + price_jump_target) if is_long_pos else (st.session_state.buy_price - price_jump_target)
-                
-                # Dynamic index matching logic to update the running status box safely
                 for idx, trade in enumerate(st.session_state.all_trades_history):
                     if trade["Status"] == "RUNNING" and trade["Coin"] == target_symbol:
                         st.session_state.all_trades_history[idx]["Status"] = status_tag
