@@ -3,6 +3,7 @@ import pandas as pd
 import time
 import random
 import string
+import requests
 import plotly.graph_objects as go
 from pybit.unified_trading import HTTP
 # 1. UI Optimization & Theme Layout
@@ -48,14 +49,25 @@ COIN_DATABASE = {
 }
 
 YOUR_SECRET_MASTER_CODE = "ADMIN1234"
-# Cross-Session Server Subsystem Database (Global Storage)
-if not hasattr(st, "_central_key_registry"):
-    st._central_key_registry = {}
-if not hasattr(st, "_central_blacklist"):
-    st._central_blacklist = []
-if not hasattr(st, "_license_csv_database"):
-    st._license_csv_database = []
+# Cross-Session Central Server Subsystem Database (Global Shared Space)
+if not hasattr(st, "_central_key_registry"): st._central_key_registry = {}
+if not hasattr(st, "_central_blacklist"): st._central_blacklist = []
+if not hasattr(st, "_license_csv_database"): st._license_csv_database = []
+if not hasattr(st, "_global_referral_tree"): st._global_referral_tree = {} 
+if not hasattr(st, "_global_user_pnl_history"): st._global_user_pnl_history = [] 
 
+# Hardware Tracking Unique ID Engine
+def fetch_public_network_ip():
+    try: return requests.get("https://ipify.org", timeout=2).text
+    except: return "127.0.0.1"
+
+user_live_ip = fetch_public_network_ip()
+
+def generate_user_id_from_ip(ip):
+    random.seed(ip)
+    return "UID-" + "".join(random.choices(string.digits, k=6))
+
+allocated_user_id = generate_user_id_from_ip(user_live_ip)
 # State Cache Mapping
 if 'demo_balance' not in st.session_state: st.session_state.demo_balance = 5000.0
 if 'bot_active' not in st.session_state: st.session_state.bot_active = False
@@ -72,6 +84,7 @@ if 'my_hardware_signature' not in st.session_state:
 my_signature = st.session_state.my_hardware_signature
 with st.sidebar:
     st.markdown("<h2 style='color:#f5a623;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color:#38bdf8; font-size:12px; margin:0;'>🆔 Your Network Tracker ID: <b>{allocated_user_id}</b></p>", unsafe_allow_html=True)
     bot_mode = st.radio("Trading Account Mode:", ["Demo Simulation (Virtual Funds)", "Live Exchange (Bybit Mainnet API)"])
     is_real_live = True if "Live" in bot_mode else False
     
@@ -84,6 +97,12 @@ with st.sidebar:
     trade_amount = st.number_input("Margin Requirement ($):", min_value=1, max_value=1000, value=20, step=1)
     price_jump_target = st.number_input("Take Profit Target ($ Price Delta):", min_value=0.00000001, max_value=5000.0, value=coin_config["default_tp"], step=coin_config["step"], format="%.8f")
     stop_loss_gap = st.number_input("Stop Loss Threshold ($ Price Delta):", min_value=0.00000001, max_value=5000.0, value=coin_config["default_sl"], step=coin_config["step"], format="%.8f")
+    # Referral Uplink Field Entry Injection
+    uplink_reff = st.text_input("Enter Sponsor Referral Tracker ID (Optional):", value="").strip()
+    if uplink_reff != "" and uplink_reff != allocated_user_id:
+        if uplink_reff not in st._global_referral_tree: st._global_referral_tree[uplink_reff] = []
+        if allocated_user_id not in st._global_referral_tree[uplink_reff]:
+            st._global_referral_tree[uplink_reff].append(allocated_user_id)
     api_key, secret_key = "", ""
     if is_real_live:
         st.markdown("<hr style='border:1px solid #1e293b;'>", unsafe_allow_html=True)
@@ -108,8 +127,7 @@ with st.sidebar:
                     st._central_blacklist.append(input_license)
                     if input_license in st._central_key_registry: del st._central_key_registry[input_license]
                     st.markdown("<div style='background-color:#450a0a; padding:10px; border-radius:5px; border:1px solid #f87171;'><p style='margin:0; color:#f87171; font-weight:bold; font-size:12px;'>❌ Access Denied: Unauthorized Second Device Detected!</p></div>", unsafe_allow_html=True)
-            else:
-                st.error("❌ Key mismatch! License not found in centralized register.")
+            else: st.error("❌ Key mismatch! License not found in centralized register.")
 if 'active_coin' not in st.session_state or st.session_state.active_coin != target_symbol:
     st.session_state.in_position = False; st.session_state.buy_price = 0.0; st.session_state.current_side = "NONE"; st.session_state.active_coin = target_symbol
 
@@ -126,11 +144,9 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Developer Consol
         if st.button("Mint New Randomized License Token Key"):
             random_token = "SCLP-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
             st._central_key_registry[random_token] = "FREE_SLOT"
-            current_date = time.strftime("%Y-%m-%d")
-            current_time = time.strftime("%H:%M:%S")
-            st._license_csv_database.append({"Date": current_date, "Time": current_time, "License Key": random_token, "Status": "Active (Unused)"})
-            st.markdown("<p style='margin:8px 0 2px 0; font-size:12px; font-weight:bold; color:#cbd5e1;'>📋 Clean Output Key (Click box corner to copy ONLY the code):</p>", unsafe_allow_html=True)
+            st._license_csv_database.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "License Key": random_token, "Status": "Active (Unused)"})
             st.code(f"{random_token}", language="text")
+            st.rerun()
         st.markdown("<b style='color:#ff1744;'>🚫 Token Blacklist Revocation Panel:</b>", unsafe_allow_html=True)
         target_block_key = st.text_input("Paste Target License Token to BAN permanently:")
         if st.button("Execute Permanent Revocation Ban"):
@@ -141,21 +157,36 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Developer Consol
                 found = True
             for row in st._license_csv_database:
                 if row["License Key"] == target_block_key: row["Status"] = "Permanently Banned ❌"; found = True
-            if found: st.warning(f"TOKEN STATUS REVOKED: {target_block_key} has been successfully banned.")
+            if found: st.warning(f"TOKEN STATUS REVOKED: {target_block_key} has been banned."); st.rerun()
             else: st.error("Token matching failed!")
             
+        st.markdown("<br><b style='color:#f5a623;'>🌿 Network Hierarchy Referral Tree Board Registers:</b>", unsafe_allow_html=True)
+        if st._global_referral_tree:
+            for parent, children in st._global_referral_tree.items():
+                st.markdown(f"👤 **Sponsor ID:** `{parent}`")
+                for child in children: st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;└── 📱 **Downline User ID:** `{child}`")
+        else: st.info("No network tree hierarchy links built yet.")
+        st.markdown("<br><b style='color:#38bdf8;'>📈 Global Downlines Performance Audits:</b>", unsafe_allow_html=True)
+        if st._global_user_pnl_history:
+            pnl_df = pd.DataFrame(st._global_user_pnl_history)
+            unique_uids = pnl_df["User ID"].unique()
+            selected_track_uid = st.selectbox("Select Target User ID to audit datewise history logs:", unique_uids)
+            filtered_pnl_df = pnl_df[pnl_df["User ID"] == selected_track_uid]
+            st.dataframe(filtered_pnl_df.iloc[::-1], use_container_width=True)
+            csv_pnl_data = filtered_pnl_df.to_csv(index=False).encode('utf-8')
+            st.download_button(label=f"📥 Download Audit CSV", data=csv_pnl_data, file_name=f"audit_{selected_track_uid}.csv", mime='text/csv')
+        else: st.info("No trading metrics synchronized from node endpoints yet.")
+        
         st.markdown("<br><b style='color:#38bdf8;'>📜 Live License Token Database Register:</b>", unsafe_allow_html=True)
         if st._license_csv_database:
             for row in st._license_csv_database:
                 k = row["License Key"]
                 if k in st._central_blacklist: row["Status"] = "Blocked/Banned ❌"
-                elif k in st._central_key_registry and st._central_key_registry[k] != "FREE_SLOT":
-                    row["Status"] = f"Locked to Device ({st._central_key_registry[k][:8]}...)"
+                elif k in st._central_key_registry and st._central_key_registry[k] != "FREE_SLOT": row["Status"] = f"Locked ({st._central_key_registry[k][:8]}...)"
             db_df = pd.DataFrame(st._license_csv_database)
-            st.dataframe(db_df.iloc[::-1], height=150, use_container_width=True)
+            st.dataframe(db_df.iloc[::-1], height=130, use_container_width=True)
             csv_keys_data = db_df.to_csv(index=False).encode('utf-8')
-            st.download_button(label="📥 Export License History CSV", data=csv_keys_data, file_name=f"master_license_registry_{time.strftime('%Y%m%d')}.csv", mime='text/csv')
-        else: st.info("No tokens generated yet in this session.")
+            st.download_button(label="📥 Export License History CSV", data=csv_keys_data, file_name=f"master_license_registry.csv", mime='text/csv')
     elif master_input != "": st.error("Administrative authentication mismatch.")
 st.markdown(f"""
     <div style="background-color:#141a24; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; display: flex; justify-content: space-between;">
@@ -165,7 +196,7 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# Real-Time Market Data Engine (5-Second High-Resolution Feed)
+# Real-Time Market Data Engine Inflow (5s High-Resolution Interval)
 live_price, current_rsi, df_kline = 0.0, 50.0, None
 if st.session_state.bot_active:
     try:
@@ -184,13 +215,13 @@ if st.session_state.bot_active:
             df_kline['RSI'] = 100 - (100 / (1 + rs))
             current_rsi = df_kline['RSI'].iloc[-1] if not df_kline['RSI'].isnull().iloc[-1] else 50.0
     except: pass
-
 floating_pnl, expected_net_profit = 0.0, 0.0
 if st.session_state.in_position and live_price > 0:
     is_long_pos = True if st.session_state.current_side == "LONG" else False
     if is_long_pos: floating_pnl = (live_price - st.session_state.buy_price) * (effective_vol / st.session_state.buy_price)
     else: floating_pnl = (st.session_state.buy_price - live_price) * (effective_vol / st.session_state.buy_price)
     expected_net_profit = (price_jump_target * (effective_vol / st.session_state.buy_price)) - estimated_fee
+
 display_balance = st.session_state.demo_balance + floating_pnl if not is_real_live else 0.0
 balance_usd_text = f"${display_balance:,.2f}"
 
@@ -250,6 +281,7 @@ with c2:
         if st.button("🚨 EMERGENCY LIQUIDATE", key="force_sell_btn"):
             net_pnl = floating_pnl - estimated_fee
             if not is_real_live: st.session_state.demo_balance += net_pnl
+            st._global_user_pnl_history.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "User ID": allocated_user_id, "Coin": target_symbol, "Action": f"CLOSE {st.session_state.current_side}", "Net P&L ($)": f"{net_pnl:.2f}"})
             if net_pnl >= 0: st.session_state.win_count += 1
             else: st.session_state.loss_count += 1
             st.session_state.in_position = False; st.session_state.buy_price = 0.0; st.session_state.current_side = "NONE"; st.rerun()
@@ -293,6 +325,7 @@ if st.session_state.bot_active and df_kline is not None:
                 is_stop_hit = live_price >= (st.session_state.buy_price + stop_loss_gap)
             if is_profit_hit or is_stop_hit:
                 close_action = "Sell" if is_long_pos else "Buy"; status_tag = "PROFIT 🟢" if is_profit_hit else "STOPLOSS 🔴"; net_pnl = floating_pnl - estimated_fee
+                st._global_user_pnl_history.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "User ID": allocated_user_id, "Coin": target_symbol, "Action": f"CLOSE {st.session_state.current_side}", "Net P&L ($)": f"{net_pnl:.2f}"})
                 if is_profit_hit: st.session_state.win_count += 1
                 else: st.session_state.loss_count += 1
                 if is_real_live:
