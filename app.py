@@ -3,22 +3,8 @@ import pandas as pd
 import time
 import random
 import string
-import requests
 import plotly.graph_objects as go
 from pybit.unified_trading import HTTP
-
-# 1. Fixed Global Cross-Session Server Registry using new Streamlit guidelines
-if not hasattr(st, "_global_key_pool"):
-    st._global_key_pool = {}  # Format: {"KEY-TOKEN": "IP_ADDRESS_OR_FREE"}
-if not hasattr(st, "_global_blacklist"):
-    st._global_blacklist = [] # Format: ["COMPROMISED_KEYS"]
-
-# Page Setup Optimization
-st.set_page_config(
-    page_title="Bybit AI Frontline Scaler", 
-    page_icon="⚡", 
-    layout="centered"
-)
 st.markdown("""
     <style>
     .main { background-color: #0b0e14; }
@@ -53,6 +39,12 @@ COIN_DATABASE = {
 }
 
 YOUR_SECRET_MASTER_CODE = "ADMIN1234"
+# Fixed Central Subsystem Database Engine
+if not hasattr(st, "_central_key_registry"):
+    st._central_key_registry = {}
+if not hasattr(st, "_central_blacklist"):
+    st._central_blacklist = []
+
 if 'demo_balance' not in st.session_state: st.session_state.demo_balance = 5000.0
 if 'bot_active' not in st.session_state: st.session_state.bot_active = False
 if 'in_position' not in st.session_state: st.session_state.in_position = False
@@ -62,11 +54,10 @@ if 'all_trades_history' not in st.session_state: st.session_state.all_trades_his
 if 'win_count' not in st.session_state: st.session_state.win_count = 0
 if 'loss_count' not in st.session_state: st.session_state.loss_count = 0
 
-def fetch_live_network_ip():
-    try: return requests.get("https://ipify.org", timeout=2).text
-    except: return "127.0.0.1"
+if 'my_hardware_signature' not in st.session_state:
+    st.session_state.my_hardware_signature = "DEV-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=10))
 
-resolved_network_ip = fetch_live_network_ip()
+my_signature = st.session_state.my_hardware_signature
 with st.sidebar:
     st.markdown("<h2 style='color:#f5a623;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
     bot_mode = st.radio("Trading Account Mode:", ["Demo Simulation (Virtual Funds)", "Live Exchange (Bybit Mainnet API)"])
@@ -85,29 +76,28 @@ with st.sidebar:
     api_key, secret_key = "", ""
     if is_real_live:
         st.markdown("<hr style='border:1px solid #1e293b;'>", unsafe_allow_html=True)
-        st.markdown("<p style='color:#ff3333; font-weight:bold; font-size:12px;'>🔒 LICENSE PROTECTION GATEWAY ACTIVE</p>", unsafe_allow_html=True)
-        input_license = st.text_input("Enter License Key to Unlock Live Fields:", type="password")
+        st.markdown("<p style='color:#ff3333; font-weight:bold; font-size:12px;'>🔒 HARDWARE PROTECTION ACTIVE</p>", unsafe_allow_html=True)
+        input_license = st.text_input("Enter License Key to Unlock Live Fields:", type="password").strip()
         
         if input_license != "":
-            if input_license in st._global_blacklist:
-                st.error("❌ Access Revoked: Second Device Found! Key is globally quarantined.")
-            elif input_license in st._global_key_pool:
-                tracked_device_ip = st._global_key_pool[input_license]
-                if tracked_device_ip == "FREE_REGISTRATION_SLOT":
-                    st._global_key_pool[input_license] = resolved_network_ip
-                    st.success("🔓 First-Touch Activation Success! IP Registered.")
+            if input_license in st._central_blacklist:
+                st.error("❌ Access Revoked: This License Key has been permanently BLOCKED!")
+            elif input_license in st._central_key_registry:
+                locked_device_signature = st._central_key_registry[input_license]
+                if locked_device_signature == "FREE_SLOT":
+                    st._central_key_registry[input_license] = my_signature
+                    st.success("🔓 First-Touch Activation Success! Device Bond Locked.")
                     api_key = st.text_input("Bybit Authenticated API Key:", type="password")
                     secret_key = st.text_input("Bybit Authenticated Secret Key:", type="password")
-                elif tracked_device_ip == resolved_network_ip:
-                    st.success("🔓 Authorization Verified! Access Granted.")
+                elif locked_device_signature == my_signature:
+                    st.success("🔓 Authorization Verified! Fields Unlocked.")
                     api_key = st.text_input("Bybit Authenticated API Key:", type="password")
                     secret_key = st.text_input("Bybit Authenticated Secret Key:", type="password")
                 else:
-                    st._global_blacklist.append(input_license)
-                    if input_license in st._global_key_pool: del st._global_key_pool[input_license]
-                    st.error("❌ Access Denied: Second Device Found! Token Auto-Blocked.")
-            else:
-                st.error("❌ Key Validation Mismatch! Token not registered.")
+                    st._central_blacklist.append(input_license)
+                    if input_license in st._central_key_registry: del st._central_key_registry[input_license]
+                    st.markdown("<div style='background-color:#450a0a; padding:10px; border-radius:5px; border:1px solid #f87171;'><p style='margin:0; color:#f87171; font-weight:bold; font-size:12px;'>❌ Access Denied: Unauthorized Second Device Detected!</p></div>", unsafe_allow_html=True)
+            else: st.error("❌ Key mismatch! License not found in centralized register.")
 if 'active_coin' not in st.session_state or st.session_state.active_coin != target_symbol:
     st.session_state.in_position = False; st.session_state.buy_price = 0.0; st.session_state.current_side = "NONE"; st.session_state.active_coin = target_symbol
 
@@ -119,42 +109,32 @@ win_rate = (st.session_state.win_count / total_trades * 100) if total_trades > 0
 with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Developer Console)"):
     master_input = st.text_input("Input Master Administrative Code Override:", type="password")
     if master_input == YOUR_SECRET_MASTER_CODE:
-        st.success("Authorization successful. Subsystem unlocked.")
-        
+        st.success("Authorization successful. Key Pool Registry unlocked.")
         st.markdown("<b style='color:#00e676;'>🎰 Token Minting Generator:</b>", unsafe_allow_html=True)
         if st.button("Mint New Randomized License Token Key"):
-            random_token = "SCLP-PRO-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
-            st._global_key_pool[random_token] = "FREE_REGISTRATION_SLOT"
-            st.markdown("<p style='margin:4px 0 0 0; font-size:12px; color:#cbd5e1;'>📋 Click top-right box inside code frame to copy ONLY the token:</p>", unsafe_allow_html=True)
+            random_token = "SCLP-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
+            st._central_key_registry[random_token] = "FREE_SLOT"
+            st.markdown("<p style='margin:8px 0 2px 0; font-size:12px; font-weight:bold; color:#cbd5e1;'>📋 Clean Output Key (Click box corner to copy ONLY the code):</p>", unsafe_allow_html=True)
             st.code(f"{random_token}", language="text")
             
         st.markdown("<b style='color:#ff1744;'>🚫 Token Blacklist Revocation Panel:</b>", unsafe_allow_html=True)
         target_block_key = st.text_input("Paste Target License Token to BAN permanently:")
         if st.button("Execute Permanent Revocation Ban"):
-            if target_block_key in st._global_key_pool or target_block_key in st._global_blacklist:
-                if target_block_key not in st._global_blacklist: st._global_blacklist.append(target_block_key)
-                if target_block_key in st._global_key_pool: del st._global_key_pool[target_block_key]
-                st.warning(f"TOKEN TERMINATED: {target_block_key} banned successfully.")
-            else: st.error("Token signature validation match failed.")
-    elif master_input != "": st.error("Administrative credential mismatch.")
+            if target_block_key in st._central_key_registry or target_block_key in st._central_blacklist:
+                if target_block_key not in st._central_blacklist: st._central_blacklist.append(target_block_key)
+                if target_block_key in st._central_key_registry: del st._central_key_registry[target_block_key]
+                st.warning(f"TOKEN STATUS REVOKED: {target_block_key} has been successfully banned.")
+            else: st.error("Token matching failed!")
+    elif master_input != "": st.error("Administrative authentication mismatch.")
 st.markdown(f"""
-    <div style="background-color:#141a24; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; display: flex; justify-content: space-between; text-align: center;">
-        <div style="flex: 1; border-right: 1px solid #1f2c3f;">
-            <p style="margin:0; font-size:11px; color:#94a3b8; font-weight:bold;">🏆 PERFORMANCES WON</p>
-            <span style="font-size:16px; font-weight:800; color:#00e676; font-family:monospace;">{st.session_state.win_count}</span>
-        </div>
-        <div style="flex: 1; border-right: 1px solid #1f2c3f;">
-            <p style="margin:0; font-size:11px; color:#94a3b8; font-weight:bold;">❌ EXITS LOST</p>
-            <span style="font-size:16px; font-weight:800; color:#ff1744; font-family:monospace;">{st.session_state.loss_count}</span>
-        </div>
-        <div style="flex: 1;">
-            <p style="margin:0; font-size:11px; color:#94a3b8; font-weight:bold;">🎯 NET WIN RATE</p>
-            <span style="font-size:16px; font-weight:800; color:#29b6f6; font-family:monospace;">{win_rate:.1f}%</span>
-        </div>
+    <div style="background-color:#141a24; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; display: flex; justify-content: space-between;">
+        <span style="color:#ffffff; font-size:14px; font-weight:bold;">🏆 PERFORMANCES WON: <b style="color:#00e676;">{st.session_state.win_count}</b></span>
+        <span style="color:#ffffff; font-size:14px; font-weight:bold;">❌ EXITS LOST: <b style="color:#ff1744;">{st.session_state.loss_count}</b></span>
+        <span style="color:#ffffff; font-size:14px; font-weight:bold;">🎯 NET WIN RATE: <b style="color:#29b6f6;">{win_rate:.1f}%</b></span>
     </div>
 """, unsafe_allow_html=True)
 
-# Live Data Feed Core Streams Ingestion
+# 🔍 Real-Time Market Data Engine (5-Second High-Resolution Feed)
 live_price, current_rsi, df_kline = 0.0, 50.0, None
 if st.session_state.bot_active:
     try:
@@ -173,7 +153,7 @@ if st.session_state.bot_active:
             df_kline['RSI'] = 100 - (100 / (1 + rs))
             current_rsi = df_kline['RSI'].iloc[-1] if not df_kline['RSI'].isnull().iloc[-1] else 50.0
     except: pass
-floating_pnl, expected_net_profit = 0.0, 0.0
+        floating_pnl, expected_net_profit = 0.0, 0.0
 if st.session_state.in_position and live_price > 0:
     is_long_pos = True if st.session_state.current_side == "LONG" else False
     if is_long_pos: floating_pnl = (live_price - st.session_state.buy_price) * (effective_vol / st.session_state.buy_price)
@@ -203,7 +183,7 @@ st.markdown(f"""
     </div>
     <div style="background-color:#141a24; padding:15px; border-radius:12px; margin-bottom:12px; border: 1px solid #1f2c3f;">
         <p style="margin:0; font-size:12px; color:#94a3b8; font-weight:bold;">💰 AVAILABLE BALANCE ACCOUNT ({bot_mode})</p>
-        <h2 style="margin:5px 0; color:#ffffff; font-size:26px; font-family: monospace;">{balance_usd_text}</h2>
+        <h2 style="margin:5px 0; color:#ffffff; font-size:28px; font-family: monospace;">{balance_usd_text}</h2>
         <p style="margin:0; font-size:14px; color:{'#00e676' if floating_pnl >= 0 else '#ff1744'}; font-weight:bold;">Live Floating P&L: {floating_pnl:+.2f} USDT</p>
     </div>
     <div style="background-color:#141a24; padding:15px; border-radius:12px; margin-bottom:15px; border: 1px solid #1f2c3f;">
@@ -309,3 +289,4 @@ else:
     if st.session_state.all_trades_history:
         st.subheader("📋 Past Session Trading History")
         st.dataframe(pd.DataFrame(st.session_state.all_trades_history).iloc[::-1], use_container_width=True)
+
