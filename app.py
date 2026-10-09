@@ -419,7 +419,57 @@ if st.session_state.bot_active and df_kline is not None:
             is_profit_hit = live_price >= (st.session_state.buy_price + price_jump_target) if is_long_pos else live_price <= (st.session_state.buy_price - price_jump_target)
             is_stop_hit = live_price <= (st.session_state.buy_price - stop_loss_gap) if is_long_pos else live_price >= (st.session_state.buy_price + stop_loss_gap)
             if is_profit_hit or is_stop_hit:
-                status_tag = "PROFIT 🟢" if is_profit_hit else "STOPLOSS 🔴"; net_pnl = floating_pnl - estimated_fee
+                st.info(f"💡 Estimated Execution Trading Fee: **${estimated_fee:.3f} USDT**")
+st.markdown("<h3 style='color:#ffffff; font-size:16px;'>🎮 Engine Controls</h3>", unsafe_allow_html=True)
+c1, c2 = st.columns(2)
+with c1:
+    if st.session_state.bot_active:
+        if st.button("🔴 STOP ENGINE", key="stop_engine_bot_btn"): 
+            st.session_state.bot_active = False
+            st.rerun()
+    else:
+        if st.button("🟢 START SCALPER", key="start_engine_bot_btn"): 
+            st.session_state.bot_active = True
+            st.rerun()
+with c2:
+    if st.session_state.in_position:
+        if st.button("🚨 EMERGENCY LIQUIDATE", key="force_sell_engine_btn"):
+            net_pnl = floating_pnl - estimated_fee
+            if not is_real_live: st.session_state.demo_balance += net_pnl
+            status_tag = "MANUAL CLOSE 🛑"
+            st._global_user_pnl_history.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "User ID": allocated_user_id, "Coin": target_symbol, "Action": f"CLOSE {st.session_state.current_side}", "Net P&L ($)": f"{net_pnl:.2f}", "Type": "REAL" if is_real_live else "DEMO"})
+            if net_pnl >= 0: st.session_state.win_count += 1
+            else: st.session_state.loss_count += 1
+            for idx, trade in enumerate(st.session_state.all_trades_history):
+                if trade["Status"] == "RUNNING" and trade["Coin"] == target_symbol:
+                    st.session_state.all_trades_history[idx]["Status"] = status_tag
+                    st.session_state.all_trades_history[idx]["Net P&L ($)"] = f"{net_pnl:.2f}"
+            st.session_state.in_position = False
+            st.session_state.buy_price = 0.0
+            st.session_state.current_side = "NONE"
+            st.rerun()
+
+if st.session_state.bot_active and df_kline is not None:
+    try:
+        if not st.session_state.in_position:
+            decision_side = "NONE"
+            if ai_decision:
+                if current_rsi < 45.0: decision_side = "BUY"
+                elif current_rsi > 55.0: decision_side = "SELL"
+            else: decision_side = "BUY"
+            if decision_side != "NONE":
+                st.session_state.buy_price = live_price
+                st.session_state.in_position = True
+                st.session_state.current_side = "LONG" if decision_side == "BUY" else "SHORT"
+                st.session_state.all_trades_history.append({"Time": time.strftime("%H:%M:%S"), "Coin": target_symbol, "Action": f"OPEN {st.session_state.current_side}", "Price": live_price, "Target": f"${(live_price + price_jump_target) if decision_side == 'BUY' else (live_price - price_jump_target)}", "Trading Fee ($)": f"-{estimated_fee/2:.3f}", "Net P&L ($)": "0.00", "Status": "RUNNING"})
+            st.rerun()
+        elif st.session_state.in_position:
+            is_long_pos = True if st.session_state.current_side == "LONG" else False
+            is_profit_hit = live_price >= (st.session_state.buy_price + price_jump_target) if is_long_pos else live_price <= (st.session_state.buy_price - price_jump_target)
+            is_stop_hit = live_price <= (st.session_state.buy_price - stop_loss_gap) if is_long_pos else live_price >= (st.session_state.buy_price + stop_loss_gap)
+            if is_profit_hit or is_stop_hit:
+                status_tag = "PROFIT 🟢" if is_profit_hit else "STOPLOSS 🔴"
+                net_pnl = floating_pnl - estimated_fee
                 st._global_user_pnl_history.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "User ID": allocated_user_id, "Coin": target_symbol, "Action": f"CLOSE {st.session_state.current_side}", "Net P&L ($)": f"{net_pnl:.2f}", "Type": "REAL" if is_real_live else "DEMO"})
                 if is_profit_hit: st.session_state.win_count += 1
                 else: st.session_state.loss_count += 1
@@ -439,9 +489,18 @@ if st.session_state.bot_active and df_kline is not None:
                 for idx, trade in enumerate(st.session_state.all_trades_history):
                     if trade["Status"] == "RUNNING" and trade["Coin"] == target_symbol:
                         st.session_state.all_trades_history[idx]["Status"] = status_tag
-st.session_state.all_trades_history[idx]["Net P&L ($)"] = f"{net_pnl:.2f}"
-st.session_state.in_position = False; st.session_state.buy_price = 0.0; st.session_state.current_side = "NONE"; st.rerun()
-time.sleep(1); st.rerun()
-except: time.sleep(1); st.rerun()
-else: st.info("Engine Inactive. Invoke green trigger to start loop sequences.")
+                        st.session_state.all_trades_history[idx]["Net P&L ($)"] = f"{net_pnl:.2f}"
+                st.session_state.in_position = False
+                st.session_state.buy_price = 0.0
+                st.session_state.current_side = "NONE"
+                st.rerun()
+        time.sleep(1)
+        st.rerun()
+    except Exception:
+        time.sleep(1)
+        st.rerun()
+else:
+    st.info("Engine Inactive. Invoke green trigger to start loop sequences.")
 st.subheader("📋 Permanent Trading Action History")
+if st.session_state.all_trades_history:
+    st.dataframe(pd.DataFrame(st.session_state.all_trades_history).iloc[::-1], use_container_width=True)
