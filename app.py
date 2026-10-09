@@ -36,7 +36,23 @@ BYBYT_DATABASE_CORE = {
 }
 
 YOUR_SECRET_MASTER_CODE = "ADMIN1234"
-# Premium Anti-Blink Static CSS & Obsidian Core Layout Architecture Config Nodes
+st.set_page_config(page_title="Bybit AI Scalper", page_icon="⚡", layout="centered")
+st.markdown("""
+    <style>
+    .main { 
+        background: #06090e !important;
+        background-image: radial-gradient(circle at 50% 20%, #111723 0%, #06090e 80%) !important;
+    }
+    div[data-testid="stSidebar"] { background-color: #0c1017 !important; border-right: 1px solid #1e293b; }
+    div.stButton > button:first-child { width: 100%; border-radius: 8px; font-weight: bold; font-size: 16px; height: 46px; }
+    iframe { border: none !important; }
+    .stExpander { background-color: #0c1017 !important; border: 1px solid #1e293b !important; border-radius: 8px !important; }
+    /* Max Brightness Controls For Super Admin Fields Reading */
+    div[data-testid="stExpander"] p, div[data-testid="stExpander"] label { color: #ffffff !important; font-weight: bold !important; font-size: 13px !important; }
+    div[data-testid="stExpander"] h2, div[data-testid="stExpander"] b { color: #38bdf8 !important; font-weight: bold !important; }
+    div[data-testid="stSidebar"] p { color: #ffffff !important; font-weight: bold !important; }
+    </style>
+    """, unsafe_allow_html=True)
 if not hasattr(st, "_central_user_creds"): st._central_user_creds = {}
 if not hasattr(st, "_central_key_registry"): st._central_key_registry = {}
 if not hasattr(st, "_central_blacklist"): st._central_blacklist = []
@@ -45,29 +61,12 @@ if not hasattr(st, "_global_referral_tree"): st._global_referral_tree = {}
 if not hasattr(st, "_global_user_pnl_history"): st._global_user_pnl_history = [] 
 if not hasattr(st, "_uid_to_username"): st._uid_to_username = {} 
 
-# Dynamic MLM Network Variables Mapping Slots
+# Dynamic MLM 7-Generation Daily Income ROI Plan Configurations Setup
 if not hasattr(st, "_mlm_bonus_enabled"): st._mlm_bonus_enabled = True
-if not hasattr(st, "_mlm_bonus_type"): st._mlm_bonus_type = "Percentage %"
-if not hasattr(st, "_mlm_fixed_usd_pool"): st._mlm_fixed_usd_pool = 10.0
-if not hasattr(st, "_mlm_gen_rates"): st._mlm_gen_rates = {1:10.0, 2:5.0, 3:3.0, 4:2.0, 5:1.0, 6:0.5, 7:0.5}
-if not hasattr(st, "_mlm_id_thresholds"): st._mlm_id_thresholds = {1:3, 2:9, 3:27, 4:81, 5:243, 6:729, 7:2187}
+if not hasattr(st, "_mlm_deposit_bonus_rate"): st._mlm_deposit_bonus_rate = 5.0
+if not hasattr(st, "_mlm_gen_rates"): st._mlm_gen_rates = {1: 5.0, 2: 4.0, 3: 3.0, 4: 2.0, 5: 1.0, 6: 0.5, 7: 0.5}
+if not hasattr(st, "_mlm_id_thresholds"): st._mlm_id_thresholds = {1: 10, 2: 20, 3: 40, 4: 80, 5: 160, 6: 320, 7: 640}
 
-st.markdown("""
-    <style>
-    .main { background: #07090e !important; }
-    div[data-testid="stSidebar"] { background-color: #0c1017 !important; border-right: 1px solid #1e293b; }
-    div.stButton > button:first-child { width: 100%; border-radius: 8px; font-weight: bold; font-size: 16px; height: 46px; }
-    iframe { border: none !important; }
-    .stExpander { background-color: #0c1017 !important; border: 1px solid #1e293b !important; border-radius: 8px !important; }
-    /* Max Brightness Boost Panel for Admin Expander View */
-    div[data-testid=\"stExpander\"] p, div[data-testid=\"stExpander\"] label { color: #ffffff !important; font-weight: bold !important; font-size: 13px !important; }
-    div[data-testid=\"stExpander\"] h2, div[data-testid=\"stExpander\"] b { color: #38bdf8 !important; font-weight: bold !important; }
-    div[data-testid=\"stExpander\"] div[data-testid=\"stMarkdownContainer\"] { color: #ffffff !important; }
-    </style>
-    <div style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:#07090e; z-index:-1; overflow:hidden;">
-        <div style="position:absolute; width:450px; height:450px; background:radial-gradient(circle, rgba(245,166,35,0.04) 0%, rgba(0,0,0,0) 70%); top:10%; left:2%;"></div>
-    </div>
-    """, unsafe_allow_html=True)
 if 'demo_balance' not in st.session_state: st.session_state.demo_balance = 5000.0
 if 'bot_active' not in st.session_state: st.session_state.bot_active = False
 if 'in_position' not in st.session_state: st.session_state.in_position = False
@@ -81,22 +80,17 @@ if 'my_hardware_signature' not in st.session_state:
     st.session_state.my_hardware_signature = "DEV-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=10))
 
 my_signature = st.session_state.my_hardware_signature
-
-# Secure Authentication Portal Framework Gate Node
 if st.session_state.logged_in_user is None:
-    st.markdown("""
-        <div style="background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center; box-shadow: 0px 6px 20px rgba(255, 153, 0, 0.3);">
-            <h1 style="margin: 0; color: #0b0e14; font-family: sans-serif; font-size: 26px; font-weight: bold; letter-spacing: 1px;">BYBIT AI PRO SCALPER</h1>
-        </div>
-        """, unsafe_allow_html=True)
+    st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center; box-shadow: 0px 6px 20px rgba(255, 153, 0, 0.2);'><h1 style='margin: 0; color: #0b0e14; font-family: sans-serif; font-size: 26px; font-weight: bold; letter-spacing: 1px;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
     st.subheader("🔑 Cryptographic Membership Authentication Desk")
     auth_mode = st.radio("Choose Operations Layer:", ["Secure Login Profile", "Mint New Membership Account ID"])
+    
     if auth_mode == "Mint New Membership Account ID":
         reg_username = st.text_input("Choose Username:", key="reg_u_core").strip()
         reg_password = st.text_input("Set Password Phrase:", type="password", key="reg_p_core").strip()
         reg_sponsor = st.text_input("Enter Sponsor Referral ID Token (Optional):", key="reg_s_core").strip()
         if st.button("🚀 Register My Cryptographic Handle", key="reg_submit_btn"):
-            if reg_username == "" or reg_password == "": st.error("Fields cannot be blank!")
+            if reg_username == "" or reg_password == "": st.error("Fields cannot be left blank!")
             elif reg_username in st._central_user_creds: st.error("Handle already active in nodes!")
             else:
                 new_uid = "UID-" + "".join(random.choices(string.digits, k=6))
@@ -123,43 +117,35 @@ user_data = st._central_user_creds[st.session_state.logged_in_user]
 allocated_user_id = user_data["uid"]
 my_sponsor_id = user_data["sponsor"]
 
-# Home Page Core View Brand Gold Logo Restoration
-st.markdown("""
-    <div style="background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center; box-shadow: 0px 6px 20px rgba(255, 153, 0, 0.3);">
-        <h1 style="margin: 0; color: #0b0e14; font-family: sans-serif; font-size: 26px; font-weight: bold; letter-spacing: 1px;">BYBIT AI PRO SCALPER</h1>
-    </div>
-    """, unsafe_allow_html=True)
+st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center; box-shadow: 0px 6px 20px rgba(255, 153, 0, 0.2);'><h1 style='margin: 0; color: #0b0e14; font-family: sans-serif; font-size: 26px; font-weight: bold; letter-spacing: 1px;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
 with st.sidebar:
     st.markdown("<h2 style='color:#f5a623; margin-top:0;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#e2a826; font-size:13px; margin:0;'>👤 Handle: <b>{st.session_state.logged_in_user}</b></p>", unsafe_allow_html=True)
-    # 🆔 Your Referral ID প্যানেল সাইডবারে নিখুঁতভাবে রিস্টোর করা হলো
     st.markdown(f"<p style='color:#38bdf8; font-size:13px; margin:4px 0;'>🆔 My Referral ID: <b>{allocated_user_id}</b></p>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#94a3b8; font-size:12px; margin:0 0 12px 0;'>🔗 Sponsor UID: <b>{my_sponsor_id}</b></p>", unsafe_allow_html=True)
     if st.button("🚪 Logout Account", key="logout_sidebar_btn"): 
-        st.session_state.logged_in_user = None
-        st.rerun()
+        st.session_state.logged_in_user = None; st.rerun()
         
-    bot_mode = st.sidebar.radio("Trading Account Mode:", ["Demo Simulation (Virtual Funds)", "Live Exchange (Bybit Mainnet API)"])
+    bot_mode = st.radio("Trading Account Mode:", ["Demo Simulation (Virtual Funds)", "Live Exchange (Bybit Mainnet API)"])
     is_real_live = True if "Live" in bot_mode else False
-    selected_display_name = st.sidebar.selectbox("Select Contract Asset:", list(BYBYT_DATABASE_CORE.keys()), index=0)
+    selected_display_name = st.selectbox("Select Contract Asset:", list(BYBYT_DATABASE_CORE.keys()), index=0)
     coin_config = BYBYT_DATABASE_CORE[selected_display_name]
     target_symbol = coin_config["symbol"]
     
-    ai_decision = st.sidebar.toggle("AI Smart Crossover Filter", value=True)
-    leverage = st.sidebar.slider(f"Leverage (Max {coin_config['max_leverage']}x):", min_value=1, max_value=coin_config['max_leverage'], value=20)
-    trade_amount = st.sidebar.number_input("Margin Requirement (\$):", min_value=1, max_value=1000, value=20)
-    price_jump_target = st.sidebar.number_input("Take Profit Target (\$):", min_value=0.00000001, max_value=5000.0, value=coin_config["default_tp"], format="%.8f")
-    stop_loss_gap = st.sidebar.number_input("Stop Loss Threshold (\$):", min_value=0.00000001, max_value=5000.0, value=coin_config["default_sl"], format="%.8f")
+    ai_decision = st.toggle("AI Smart Crossover Filter", value=True)
+    leverage = st.slider(f"Leverage (Max {coin_config['max_leverage']}x):", min_value=1, max_value=coin_config['max_leverage'], value=20)
+    trade_amount = st.number_input("Margin Requirement (\$):", min_value=1, max_value=1000, value=20)
+    price_jump_target = st.number_input("Take Profit Target (\$):", min_value=0.00000001, max_value=5000.0, value=coin_config["default_tp"], format="%.8f")
+    stop_loss_gap = st.number_input("Stop Loss Threshold (\$):", min_value=0.00000001, max_value=5000.0, value=coin_config["default_sl"], format="%.8f")
     
     api_key, secret_key = "", ""
     if is_real_live:
-        st.sidebar.markdown("<hr style='border:1px solid #1e293b; margin:10px 0;'>", unsafe_allow_html=True)
-        # 🔒 Enter License Key অ্যালার্ট টেক্সট রিস্টোর করা হলো
-        st.sidebar.markdown("<p style='color:#ffffffff; font-weight:bold; font-size:12px; margin:0 0 4px 0;'>Enter License Key to Unlock Live Fields:</p>", unsafe_allow_html=True)
-        input_license = st.sidebar.text_input("License Key Password:", type="password", key="lic_field_sidebar", label_visibility="collapsed").strip()
+        st.markdown("<hr style='border:1px solid #1e293b; margin:10px 0;'>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#ffffff; font-weight:bold; font-size:13px; margin:0 0 4px 0;'>Enter License Key to Unlock Live Fields:</p>", unsafe_allow_html=True)
+        input_license = st.text_input("License Password:", type="password", key="lic_field_sidebar", label_visibility="collapsed").strip()
         if input_license in st._central_key_registry:
-            api_key = st.sidebar.text_input("Bybit API Key:", type="password", key="api_field_sidebar")
-            secret_key = st.sidebar.text_input("Bybit Secret Key:", type="password", key="sec_field_sidebar")
+            api_key = st.text_input("Bybit API Key:", type="password", key="api_field_sidebar")
+            secret_key = st.text_input("Bybit Secret Key:", type="password", key="sec_field_sidebar")
 
 effective_vol = trade_amount * leverage
 estimated_fee = effective_vol * 0.0011 
@@ -169,21 +155,16 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Modu
     master_input = st.text_input("Input Master Security Override Code Password:", type="password", key="supreme_admin_password_node")
     if master_input == YOUR_SECRET_MASTER_CODE:
         st.success("Supreme Controller Access Verified.")
-        
-        # ⚙️ রেফারেল মেম্বারশিপ বোনাস সেটআপ ইঞ্জিন কন্ট্রোল প্যানেল
-        st.markdown("<h2>⚙️ Referral Marketing Matrix Controls:</h2>", unsafe_allow_html=True)
+        st.markdown("<h2>⚙️ Referral Marketing Matrix Controls (7-Gen ROI Mode):</h2>", unsafe_allow_html=True)
         st._mlm_bonus_enabled = st.toggle("Activate MLM Multi-Generation Incentive Commissions System", value=st._mlm_bonus_enabled, key="adm_mlm_active_toggle")
-        st._mlm_bonus_type = st.selectbox("Incentive Computation Logic Engine Metric:", ["Percentage %", "Fixed USD Capital Pool"], index=0 if st._mlm_bonus_type == "Percentage %" else 1, key="adm_bonus_logic_select")
+        st._mlm_deposit_bonus_rate = st.number_input("One-Time Bonus Rate on Total Account Deposit (%):", min_value=0.0, max_value=100.0, value=st._mlm_deposit_bonus_rate, key="adm_deposit_bonus_rate_input")
         
-        if st._mlm_bonus_type == "Fixed USD Capital Pool":
-            st._mlm_fixed_usd_pool = st.number_input("Total Fixed USD Reward Allocation per Account:", min_value=0.1, max_value=500.0, value=st._mlm_fixed_usd_pool, key="adm_fixed_usd_input")
-        
-        st.markdown("<p style='color:#ffffff;'>🌐 Configure 7-Generation Split Allocation Commission Rates & Member Caps:</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#38bdf8; font-weight:bold;'>🌐 Configure 7-Generation Daily Income ROI Share Rates & Member Limits:</p>", unsafe_allow_html=True)
         c_cols = st.columns(2)
         for g in range(1, 8):
             with c_cols[(g-1)%2]:
-                st._mlm_gen_rates[g] = st.number_input(f"Gen {g} Rate (%):", min_value=0.0, max_value=100.0, value=st._mlm_gen_rates[g], key=f"adm_rates_generation_input_g_{g}")
-                st._mlm_id_thresholds[g] = st.number_input(f"Gen {g} Members Limit:", min_value=1, max_value=5000, value=st._mlm_id_thresholds[g], key=f"adm_thresholds_generation_input_g_{g}")
+                st._mlm_gen_rates[g] = st.number_input(f"Gen {g} Daily Income Share (%):", min_value=0.0, max_value=100.0, value=st._mlm_gen_rates[g], key=f"adm_rates_generation_input_g_{g}")
+                st._mlm_id_thresholds[g] = st.number_input(f"Gen {g} Fill-Up Member Cap:", min_value=1, max_value=5000, value=st._mlm_id_thresholds[g], key=f"adm_thresholds_generation_input_g_{g}")
         
         if st.button("Mint New Randomized License Token Key", key="adm_mint_token_trigger_btn"):
             random_token = "SCLP-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
@@ -210,28 +191,24 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Modu
             if st._global_referral_tree:
                 for parent, children in st._global_referral_tree.items():
                     p_user = st._uid_to_username.get(parent, parent)
-                    st.markdown(f"👤 <b>Sponsor Handle:</b> <span style='color:#38bdf8;'>`{p_user}`</span> (`{parent}`)", unsafe_allow_html=True)
+                    st.markdown(f"👤 <b>Sponsor:</b> <span style='color:#38bdf8;'>`{p_user}`</span> (`{parent}`)", unsafe_allow_html=True)
                     for child in children:
                         c_user = st._uid_to_username.get(child, child)
-                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;└── 📱 <b>Downline Node Node:</b> <span style='color:#00e676;'>`{c_user}`</span> (`{child}`)", unsafe_allow_html=True)
+                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;└── 📱 <b>Downline Node:</b> <span style='color:#00e676;'>`{c_user}`</span> (`{child}`)", unsafe_allow_html=True)
             
             st.markdown("<h2>📈 Global System Downline Performance Auditing Node Ledger:</h2>", unsafe_allow_html=True)
             if st._global_user_pnl_history:
                 global_pnl_df = pd.DataFrame(st._global_user_pnl_history)
-                target_audit_uid = st.selectbox("Select Target Registered Node UID to Inspect logs:", global_pnl_df["User ID"].unique(), key="adm_audit_node_selector_dropdown")
+                target_audit_uid = st.selectbox("Select Target UID to Inspect logs:", global_pnl_df["User ID"].unique(), key="adm_audit_node_selector_dropdown")
                 st.dataframe(global_pnl_df[global_pnl_df["User ID"] == target_audit_uid].iloc[::-1], use_container_width=True)
-            else: st.info("No logs database ledger synchronized yet.")
     elif master_input != "": st.error("Administrative override password verification failed.")
-# 🌿 Isolated Referral Network Engine Display for Logged-In Users (Masud Tree Sync Engine Fixed)
 st.markdown("<h3 style='color:#f5a623; font-size:16px;'>🌿 My Referral Network Hub</h3>", unsafe_allow_html=True)
+my_synced_children_list = st._global_referral_tree.get(allocated_user_id, [])
 
-# Dynamic Cloud Matrix Node Real-Time Connection
-my_children_nodes_list = st._global_referral_tree.get(allocated_user_id, [])
-
-if my_children_nodes_list:
-    st.markdown(f"🎯 Total Direct Network Referrals: <b>{len(my_children_nodes_list)} Active Users</b>", unsafe_allow_html=True)
-    child_display_map = {cid: f"{st._uid_to_username.get(cid, 'Unknown')} ({cid})" for cid in my_children_nodes_list}
-    selected_child_cid = st.selectbox("Select Downline Node Handle to Audit Logs:", list(child_display_map.keys()), format_func=lambda x: child_display_map[x], key="user_referral_dropdown_node_select")
+if my_synced_children_list:
+    st.markdown(f"🎯 Total Direct Network Referrals: <b>{len(my_synced_children_list)} Active Users</b>", unsafe_allow_html=True)
+    child_display_map = {cid: f"{st._uid_to_username.get(cid, 'Unknown')} ({cid})" for cid in my_synced_children_list}
+    selected_child_cid = st.selectbox("Select Downline Handle:", list(child_display_map.keys()), format_func=lambda x: child_display_map[x], key="user_referral_dropdown_node_select")
     
     t1, t2 = st.tabs(["实时 Real Production Earnings Gate 🟢", "模拟 Demo Sandbox Earnings Gate 🔵"])
     with t1:
@@ -240,9 +217,9 @@ if my_children_nodes_list:
             child_real_df = pnl_df[(pnl_df["User ID"] == selected_child_cid) & (pnl_df["Type"] == "REAL")]
             if not child_real_df.empty:
                 child_real_df["Net P&L ($)"] = pd.to_numeric(child_real_df["Net P&L ($)"])
-                st.markdown(f"💰 Real Capital Earnings: <b style='color:#00e676;'>${child_real_df['Net P&L ($)'].sum():.2f} USDT</b>", unsafe_allow_html=True)
+                st.markdown(f"💰 Real Earnings: <b style='color:#00e676;'>${child_real_df['Net P&L ($)'].sum():.2f} USDT</b>", unsafe_allow_html=True)
                 st.dataframe(child_real_df.iloc[::-1], use_container_width=True)
-            else: st.info("No live production real funds logs synchronized.")
+            else: st.info("No live production real funds data records synced yet.")
         else: st.info("Ledger registry is empty.")
     with t2:
         if st._global_user_pnl_history:
@@ -250,9 +227,9 @@ if my_children_nodes_list:
             child_demo_df = pnl_df[(pnl_df["User ID"] == selected_child_cid) & (pnl_df["Type"] == "DEMO")]
             if not child_demo_df.empty:
                 child_demo_df["Net P&L ($)"] = pd.to_numeric(child_demo_df["Net P&L ($)"])
-                st.markdown(f"💰 Demo Sandbox Earnings: <b style='color:#29b6f6;'>${child_demo_df['Net P&L ($)'].sum():.2f} USDT</b>", unsafe_allow_html=True)
+                st.markdown(f"💰 Demo Earnings: <b style='color:#29b6f6;'>${child_demo_df['Net P&L ($)'].sum():.2f} USDT</b>", unsafe_allow_html=True)
                 st.dataframe(child_demo_df.iloc[::-1], use_container_width=True)
-            else: st.info("No sandbox simulation records synchronized.")
+            else: st.info("No sandbox simulation records synced yet.")
         else: st.info("Ledger registry is empty.")
 else: st.info("You haven't referred anyone yet. Share your Referral ID Token to grow your matrix network tree!")
 total_trades = st.session_state.win_count + st.session_state.loss_count
@@ -384,6 +361,21 @@ if st.session_state.bot_active and df_kline is not None:
                 if is_profit_hit: st.session_state.win_count += 1
                 else: st.session_state.loss_count += 1
                 if not is_real_live: st.session_state.demo_balance += net_pnl
+                
+                # 💸 ডাইনামিক ব্যাকগ্রাউন্ড কমিশন নোড সিঙ্ক্রোনাইজেশন ম্যাপিং (7-Gen ROI & Deposit Distributor)
+                if st._mlm_bonus_enabled and my_sponsor_id != "None":
+                    current_parent = my_sponsor_id
+                    for gen in range(1, 8):
+                        if current_parent in st._central_user_creds:
+                            p_user = st._uid_to_username.get(current_parent, current_parent)
+                            roi_rate = st._mlm_gen_rates.get(gen, 0.0) / 100.0
+                            if net_pnl > 0:
+                                bonus_credited = net_pnl * roi_rate
+                                st._global_user_pnl_history.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "User ID": current_parent, "Coin": f"GEN {gen} ROI", "Action": f"COMMISSION FROM {st.session_state.logged_in_user}", "Net P&L ($)": f"{bonus_credited:.2f}", "Type": "REAL" if is_real_live else "DEMO"})
+                            next_parent_data = st._central_user_creds.get(p_user, {})
+                            current_parent = next_parent_data.get("sponsor", "None")
+                        else: break
+
                 for idx, trade in enumerate(st.session_state.all_trades_history):
                     if trade["Status"] == "RUNNING" and trade["Coin"] == target_symbol:
                         st.session_state.all_trades_history[idx]["Status"] = status_tag
