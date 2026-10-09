@@ -228,14 +228,18 @@ if st.session_state.logged_in_user is None:
     if auth_mode == "Mint New Membership Account ID":
         reg_username = st.text_input("Choose Username:", key="reg_u_core").strip()
         reg_password = st.text_input("Set Password Phrase:", type="password", key="reg_p_core").strip()
-        # 📧 বাধ্যতামূলক জিমেইল রেজিষ্ট্রেশন ফিল্ড ইনজেক্টেড
         reg_email = st.text_input("Enter Valid Google Mail (Gmail ID):", key="reg_e_core").strip()
         reg_sponsor = st.text_input("Enter Sponsor Referral ID Token (Optional):", key="reg_s_core").strip()
         if st.button("🚀 Register My Cryptographic Handle", key="reg_submit_btn"):
+            # 🛑 ডুপ্লিকেট জিমেইল চেকিং অ্যালগরিদম সচল করা হলো
+            existing_emails = [d.get("email") for d in st._central_user_creds.values()]
+            
             if reg_username == "" or reg_password == "" or reg_email == "": 
                 st.error("Fields cannot be left blank! Gmail is mandatory.")
             elif "@gmail.com" not in reg_email:
                 st.error("Please enter a valid official @gmail.com address!")
+            elif reg_email in existing_emails:
+                st.error("This Gmail ID is already linked to another active ID! Duplicate emails are strictly blocked.")
             elif reg_username in st._central_user_creds: 
                 st.error("Handle already active in nodes!")
             else:
@@ -356,7 +360,6 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Modu
                 st._license_csv_database.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "License Key": random_token, "Status": "Active (Unused)"})
                 st.code(f"{random_token}", language="text"); st.rerun()
                 
-            # 🛠️ এডমিন প্যানেলের পাসওয়ার্ড চেঞ্জার ইন্টারফেস উইজেট ইনজেক্টেড
             st.markdown("<h2>🔑 Master Account Password Override Console:</h2>", unsafe_allow_html=True)
             override_uid = st.text_input("Target User ID (UID) to Hack/Change:", key="adm_override_uid_field").strip()
             override_new_pass = st.text_input("Set Custom New Password Phrase:", key="adm_override_pass_field").strip()
@@ -381,7 +384,6 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Modu
 
             if st._license_csv_database: st.dataframe(pd.DataFrame(st._license_csv_database).iloc[::-1], use_container_width=True, height=120)
             
-            # 📋 এডমিন অডিটের জন্য পাসওয়ার্ড সহ গ্লোবাল মেম্বার ডিরেক্টরি লেজার 
             st.markdown("<b>📋 Complete Nodes Registry Pool Storage (Admin Password Ledger View):</b>", unsafe_allow_html=True)
             all_creds_df = pd.DataFrame.from_dict(st._central_user_creds, orient='index')
             if not all_creds_df.empty: 
@@ -402,7 +404,6 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Modu
 st.markdown("<h3 style='color:#f5a623; font-size:16px;'>🌿 My Referral Network Hub</h3>", unsafe_allow_html=True)
 
 def calculate_sub_generations(root_uid, current_tree):
-    # 🔄 মেমরি লকিং ৭-স্তর বিশিষ্ট ডাইনামিক কমিশন নোড জেনারেটর ম্যাপিং
     gen_map = {1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: []}
     if root_uid in current_tree:
         gen_map[1] = current_tree[root_uid].copy()
@@ -418,7 +419,6 @@ def calculate_sub_generations(root_uid, current_tree):
 all_downlines_flat_list = []
 downline_display_options = {}
 if st._mlm_bonus_enabled:
-    # 🟢 অ্যাডমিন সুইচ যখন ON: ১ম থেকে ৭ম জেনারেশন ব্রেকডাউন ফিল্টারিং ভিউ শো করবে
     mapped_gens = calculate_sub_generations(allocated_user_id, st._global_referral_tree)
     for gen_num in range(1, 8):
         uids_in_gen = mapped_gens[gen_num]
@@ -428,7 +428,6 @@ if st._mlm_bonus_enabled:
                 u_name = st._uid_to_username.get(uid, 'Unknown')
                 downline_display_options[uid] = f"🔹 [Gen {gen_num}] {u_name} ({uid})"
 else:
-    # 🔴 অ্যাডমিন সুইচ যখন OFF: ডাইরেক্ট সিরিয়াল ফ্ল্যাট মেম্বার ডাউনলাইন লিস্ট শো করবে
     def pull_all_descendants(root_uid, current_tree):
         descendants = []
         queue = current_tree.get(root_uid, []).copy()
@@ -444,16 +443,19 @@ else:
         all_downlines_flat_list.append(uid)
         u_name = st._uid_to_username.get(uid, 'Unknown')
         downline_display_options[uid] = f"🔸 [Serial {idx}] {u_name} ({uid})"
-if all_downlines_flat_list:
-    st.markdown("<b>🔍 Input Specific Downline UID to Audit data records:</b>", unsafe_allow_html=True)
-    # 🎯 ইউজার আইডি (UID) দিয়ে ট্র্যাকিং ড্রপডাউন সার্চ ফিল্টার নোড
-    selected_child_cid = st.selectbox("Select Target Downline Handle to Inspect:", all_downlines_flat_list, format_func=lambda x: downline_display_options[x], key="user_referral_dropdown_node_select")
+st.markdown("<b>🔍 Input Specific Downline UID to Audit Data Records:</b>", unsafe_allow_html=True)
+# 🎯 ড্রপডাউন বাদ দিয়ে আপনার ওয়ান-অ্যান্ড-ওনলি রিয়েল টেক্সট ইনপুট বক্স উইজেট পুনরুদ্ধারকৃত
+search_uid_input = st.text_input("Enter Target Member UID box input:", value=allocated_user_id, key="custom_uid_search_field_node").strip()
+
+if search_uid_input:
+    target_display_title = downline_display_options.get(search_uid_input, f"👤 Target Account: ({search_uid_input})")
+    st.markdown(f"<p style='color:#38bdf8; font-weight:bold;'>{target_display_title}</p>", unsafe_allow_html=True)
     
     t1, t2 = st.tabs(["实时 Real Production Earnings Gate 🟢", "模拟 Demo Sandbox Earnings Gate 🔵"])
     with t1:
         if st._global_user_pnl_history:
             pnl_df = pd.DataFrame(st._global_user_pnl_history)
-            child_real_df = pnl_df[(pnl_df["User ID"] == selected_child_cid) & (pnl_df["Type"] == "REAL")]
+            child_real_df = pnl_df[(pnl_df["User ID"] == search_uid_input) & (pnl_df["Type"] == "REAL")]
             if not child_real_df.empty:
                 child_real_df["Net P&L ($)"] = pd.to_numeric(child_real_df["Net P&L ($)"])
                 st.markdown(f"💰 Real Daily Earnings: <b style='color:#00e676;'>${child_real_df['Net P&L ($)'].sum():.2f} USDT</b>", unsafe_allow_html=True)
@@ -463,14 +465,13 @@ if all_downlines_flat_list:
     with t2:
         if st._global_user_pnl_history:
             pnl_df = pd.DataFrame(st._global_user_pnl_history)
-            child_demo_df = pnl_df[(pnl_df["User ID"] == selected_child_cid) & (pnl_df["Type"] == "DEMO")]
+            child_demo_df = pnl_df[(pnl_df["User ID"] == search_uid_input) & (pnl_df["Type"] == "DEMO")]
             if not child_demo_df.empty:
                 child_demo_df["Net P&L ($)"] = pd.to_numeric(child_demo_df["Net P&L ($)"])
                 st.markdown(f"💰 Demo Virtual Sandbox Earnings: <b style='color:#29b6f6;'>${child_demo_df['Net P&L ($)'].sum():.2f} USDT</b>", unsafe_allow_html=True)
                 st.dataframe(child_demo_df.iloc[::-1], use_container_width=True)
             else: st.info("No sandbox simulation records synced yet.")
         else: st.info("Ledger registry is empty.")
-else: st.info("You haven't referred anyone yet. Share your Referral ID Token to grow your matrix network tree!")
 
 total_trades = st.session_state.win_count + st.session_state.loss_count
 win_rate = (st.session_state.win_count / total_trades * 100) if total_trades > 0 else 0.0
