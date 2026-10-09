@@ -229,13 +229,14 @@ if st.session_state.logged_in_user is None:
         reg_username = st.text_input("Choose Username:", key="reg_u_core").strip()
         reg_password = st.text_input("Set Password Phrase:", type="password", key="reg_p_core").strip()
         reg_email = st.text_input("Enter Valid Google Mail (Gmail ID):", key="reg_e_core").strip()
+        # 🔐 নিরাপত্তা প্রশ্ন ইনপুট উইজেট রেজিষ্ট্রেশন বক্সে ইনজেক্টেড
+        reg_school = st.text_input("Security Question: What is your first school name?", key="reg_sch_core").strip()
         reg_sponsor = st.text_input("Enter Sponsor Referral ID Token (Optional):", key="reg_s_core").strip()
         if st.button("🚀 Register My Cryptographic Handle", key="reg_submit_btn"):
-            # 🛑 ডুপ্লিকেট জিমেইল চেকিং অ্যালগরিদম সচল করা হলো
             existing_emails = [d.get("email") for d in st._central_user_creds.values()]
             
-            if reg_username == "" or reg_password == "" or reg_email == "": 
-                st.error("Fields cannot be left blank! Gmail is mandatory.")
+            if reg_username == "" or reg_password == "" or reg_email == "" or reg_school == "": 
+                st.error("Fields cannot be left blank! Gmail and Security Question Answer are mandatory.")
             elif "@gmail.com" not in reg_email:
                 st.error("Please enter a valid official @gmail.com address!")
             elif reg_email in existing_emails:
@@ -246,6 +247,7 @@ if st.session_state.logged_in_user is None:
                 new_uid = "UID-" + "".join(random.choices(string.digits, k=6))
                 st._central_user_creds[reg_username] = {
                     "password": reg_password, "uid": new_uid, "email": reg_email,
+                    "school_answer": reg_school.lower(),
                     "sponsor": reg_sponsor if reg_sponsor != "" else "None"
                 }
                 st._uid_to_username[new_uid] = reg_username
@@ -257,21 +259,24 @@ if st.session_state.logged_in_user is None:
                 st.success(f"Account Bound! Your Permanent Access UID: {new_uid}")
         st.stop()
     elif auth_mode == "Forget Password Profile":
-        st.markdown("<p style='color:#38bdf8; font-weight:bold;'>🔐 Automated Cryptographic Password Retrieval Gate:</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#38bdf8; font-weight:bold;'>🔐 Security Question Based Password Retrieval Gate:</p>", unsafe_allow_html=True)
         forget_uid = st.text_input("Enter Your Account User ID (UID):", key="forg_uid_input").strip()
         forget_email = st.text_input("Enter Your Registered Google Mail (Gmail):", key="forg_email_input").strip()
+        # 🔑 জিমেইলের পাশাপাশি গোপন প্রশ্নের উত্তর ভেরিফিকেশন ফিল্ড
+        forget_school = st.text_input("Verification: What is your first school name?", key="forg_sch_input").strip()
+        
         if st.button("🔑 Generate New Secure Password", key="forget_password_submit_btn"):
             found_user = None
             for uname, data in st._central_user_creds.items():
-                if data.get("uid") == forget_uid and data.get("email") == forget_email:
+                if data.get("uid") == forget_uid and data.get("email") == forget_email and data.get("school_answer") == forget_school.lower():
                     found_user = uname; break
             if found_user:
                 generated_pass = "RESET-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
                 st._central_user_creds[found_user]["password"] = generated_pass
-                st.success(f"Identity Verified! Your New Generated Temporary Password is: `{generated_pass}`")
+                st.success(f"Identity Verified via Security Question! Your New Password is: `{generated_pass}`")
                 st.info("Copy this password, toggle to Secure Login Mode, and verify sign in.")
             else:
-                st.error("Credentials mismatch! Target UID or bound Google Mail is invalid.")
+                st.error("Security mismatch! UID, bound Gmail or School Name answer is invalid.")
         st.stop()
     elif auth_mode == "Secure Login Profile":
         login_u = st.text_input("Identity Handle (Username):", key="log_u_core").strip()
@@ -288,11 +293,14 @@ if st.session_state.logged_in_user is None:
 user_data = st._central_user_creds[st.session_state.logged_in_user]
 allocated_user_id = user_data["uid"]
 my_sponsor_id = user_data["sponsor"]
+my_profile_email = user_data.get("email", "Not Set")
 st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center; box-shadow: 0px 6px 20px rgba(255, 153, 0, 0.2);'><h1 style='margin: 0; color: #0b0e14; font-family: sans-serif; font-size: 26px; font-weight: bold; letter-spacing: 1px;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
 with st.sidebar:
     st.markdown("<h2 style='color:#f5a623; margin-top:0;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#e2a826; font-size:13px; margin:0;'>👤 Handle: <b>{st.session_state.logged_in_user}</b></p>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#38bdf8; font-size:13px; margin:4px 0;'>🆔 My Referral ID: <b>{allocated_user_id}</b></p>", unsafe_allow_html=True)
+    # 📧 গ্রাহকের ম্যান্ডেটরি জিমেইল আইডি সাইডবারে অবিকল রিস্টোরড
+    st.markdown(f"<p style='color:#00e676; font-size:12px; margin:0 0 4px 0;'>📧 Email: <b>{my_profile_email}</b></p>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#94a3b8; font-size:12px; margin:0 0 12px 0;'>🔗 Sponsor UID: <b>{my_sponsor_id}</b></p>", unsafe_allow_html=True)
     if st.button("🚪 Logout Account", key="logout_sidebar_btn"): 
         st.session_state.logged_in_user = None; st.rerun()
@@ -301,13 +309,13 @@ with st.sidebar:
                         ["Demo Simulation (Virtual Funds)", 
                          "Live Exchange (Bybit Mainnet API)"])
     is_real_live = True if "Live" in bot_mode else False
+with st.sidebar:
     selected_display_name = st.selectbox("Select Contract Asset:", 
                                          list(BYBYT_DATABASE_CORE.keys()), 
                                          index=0)
     coin_config = BYBYT_DATABASE_CORE[selected_display_name]
     target_symbol = coin_config["symbol"]
     ai_decision = st.toggle("AI Smart Crossover Filter", value=True)
-with st.sidebar:
     leverage = st.slider(f"Leverage (Max {coin_config['max_leverage']}x):", 
                          min_value=1, max_value=coin_config['max_leverage'], 
                          value=20)
@@ -444,7 +452,6 @@ else:
         u_name = st._uid_to_username.get(uid, 'Unknown')
         downline_display_options[uid] = f"🔸 [Serial {idx}] {u_name} ({uid})"
 st.markdown("<b>🔍 Input Specific Downline UID to Audit Data Records:</b>", unsafe_allow_html=True)
-# 🎯 ড্রপডাউন বাদ দিয়ে আপনার ওয়ান-অ্যান্ড-ওনলি রিয়েল টেক্সট ইনপুট বক্স উইজেট পুনরুদ্ধারকৃত
 search_uid_input = st.text_input("Enter Target Member UID box input:", value=allocated_user_id, key="custom_uid_search_field_node").strip()
 
 if search_uid_input:
@@ -473,10 +480,32 @@ if search_uid_input:
             else: st.info("No sandbox simulation records synced yet.")
         else: st.info("Ledger registry is empty.")
 
+    # 📊 টার্গেট মেম্বারের আন্ডারে থাকা সম্পূর্ণ ডাউনলাইন টিমের UID এবং লাইভ প্রফিট লেজার টেবিল
+    st.markdown("<br><b style='color:#f5a623;'>📊 Sub-Downline Network Tree & Earning Ledger Tables:</b>", unsafe_allow_html=True)
+    my_sub_gens = calculate_sub_generations(search_uid_input, st._global_referral_tree)
+    sub_tree_records = []
+    
+    for g_idx in range(1, 8):
+        for sub_uid in my_sub_gens[g_idx]:
+            sub_uname = st._uid_to_username.get(sub_uid, 'Unknown')
+            sub_pnl = 0.0
+            if st._global_user_pnl_history:
+                pdf = pd.DataFrame(st._global_user_pnl_history)
+                m_df = pdf[pdf["User ID"] == sub_uid]
+                if not m_df.empty: sub_pnl = pd.to_numeric(m_df["Net P&L ($)"]).sum()
+            
+            label_text = f"Gen {g_idx}" if st._mlm_bonus_enabled else f"Serial {len(sub_tree_records)+1}"
+            sub_tree_records.append({"Hierarchy Level": label_text, "User ID": sub_uid, "Username Name": sub_uname, "Lifetime P&L Profit ($)": f"${sub_pnl:.2f} USDT"})
+            
+    if sub_tree_records:
+        st.dataframe(pd.DataFrame(sub_tree_records), use_container_width=True)
+    else: st.info("No sub-downline tree network nodes connected under this target token UID.")
+
 total_trades = st.session_state.win_count + st.session_state.loss_count
 win_rate = (st.session_state.win_count / total_trades * 100) if total_trades > 0 else 0.0
 st.markdown("<hr style='border:1px solid #1f2c3f;'>", unsafe_allow_html=True)
 st.markdown(f"""<div style="background-color:#141a24; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; display: flex; justify-content: space-between;"><span style="color:#ffffff; font-size:14px; font-weight:bold;">🏆 PERFORMANCES WON: <b style="color:#00e676;">{st.session_state.win_count}</b></span><span style="color:#ffffff; font-size:14px; font-weight:bold;">❌ EXITS LOST: <b style="color:#ff1744;">{st.session_state.loss_count}</b></span><span style="color:#ffffff; font-size:14px; font-weight:bold;">🎯 NET WIN RATE: <b style="color:#29b6f6;">{win_rate:.1f}%</b></span></div>""", unsafe_allow_html=True)
+
 live_price, current_rsi, df_kline = 0.0, 50.0, None
 if st.session_state.bot_active:
     try:
