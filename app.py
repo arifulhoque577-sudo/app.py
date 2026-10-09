@@ -504,3 +504,5 @@ else:
 st.subheader("📋 Permanent Trading Action History")
 if st.session_state.all_trades_history:
     st.dataframe(pd.DataFrame(st.session_state.all_trades_history).iloc[::-1], use_container_width=True)
+
+    
