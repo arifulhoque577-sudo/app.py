@@ -134,32 +134,30 @@ BYBYT_DATABASE_CORE = {
 }
 YOUR_SECRET_MASTER_CODE = "ADMIN1234"
 st.set_page_config(page_title="Bybit AI Scalper", page_icon="⚡", layout="centered")
-# 📱 লাইট ব্লু নিওন সায়ান রেডিয়াল গ্রেডিয়েন্ট এবং মোবাইল অ্যাপ টাচ স্ক্রোল ফিক্স
+# 📱 আগের আসল ওবসিডিয়ান থিম পুনরুদ্ধার এবং গ্লোবাল টাচ স্ক্রোল লক ফিক্স
 st.markdown("""
     <style>
     html, body, [data-testid="stAppViewContainer"] {
-        background: #040810 !important;
-        background-image: radial-gradient(circle at 50% 15%, 
-                          #005b8c 0%, #030a16 65%, #010408 100%) !important;
+        background: #06090e !important;
+        background-image: radial-gradient(circle at 50% 20%, 
+                          #111723 0%, #06090e 80%) !important;
         overflow-y: auto !important;
         overflow-x: hidden !important;
         touch-action: auto !important;
         -webkit-overflow-scrolling: touch !important;
     }
     div[data-testid="stSidebar"] { 
-        background-color: #050e1a !important; 
-        border-right: 1px solid #005b8c; 
+        background-color: #0c1017 !important; 
+        border-right: 1px solid #1e293b; 
     }
     div.stButton > button:first-child { 
-        width: 100%; border-radius: 8px; font-weight: bold; 
-        font-size: 16px; height: 46px; border: 1px solid #38bdf8;
-        background: linear-gradient(135deg, #004066 0%, #050e1a 100%);
-        color: #ffffff !important;
+        width: 100%; border-radius: 8px; 
+        font-weight: bold; font-size: 16px; height: 46px; 
     }
     iframe { border: none !important; }
     .stExpander { 
-        background-color: #050e1a !important; 
-        border: 1px solid #005b8c !important; 
+        background-color: #0c1017 !important; 
+        border: 1px solid #1e293b !important; 
         border-radius: 8px !important; 
     }
     div[data-testid="stExpander"] p, 
@@ -227,7 +225,7 @@ if 'my_hardware_signature' not in st.session_state:
     )
 my_signature = st.session_state.my_hardware_signature
 if st.session_state.logged_in_user is None:
-    st.markdown("<div style='background: linear-gradient(135deg, #007acc 0%, #38bdf8 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center; box-shadow: 0px 6px 20px rgba(56, 189, 248, 0.3);'><h1 style='margin: 0; color: #ffffff; font-family: sans-serif; font-size: 26px; font-weight: bold; letter-spacing: 1px;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
+    st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center; box-shadow: 0px 6px 20px rgba(255, 153, 0, 0.2);'><h1 style='margin: 0; color: #0b0e14; font-family: sans-serif; font-size: 26px; font-weight: bold; letter-spacing: 1px;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
     st.subheader("🔑 Cryptographic Membership Authentication Desk")
     auth_mode = st.radio("Choose Operations Layer:", 
                          ["Secure Login Profile", "Mint New Membership Account ID", "Forget Password Profile"])
@@ -299,7 +297,7 @@ user_data = st._central_user_creds[st.session_state.logged_in_user]
 allocated_user_id = user_data["uid"]
 my_sponsor_id = user_data["sponsor"]
 my_profile_email = user_data.get("email", "Not Set")
-st.markdown("<div style='background: linear-gradient(135deg, #007acc 0%, #38bdf8 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center; box-shadow: 0px 6px 20px rgba(56, 189, 248, 0.3);'><h1 style='margin: 0; color: #ffffff; font-family: sans-serif; font-size: 26px; font-weight: bold; letter-spacing: 1px;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
+st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center; box-shadow: 0px 6px 20px rgba(255, 153, 0, 0.2);'><h1 style='margin: 0; color: #0b0e14; font-family: sans-serif; font-size: 26px; font-weight: bold; letter-spacing: 1px;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
 with st.sidebar:
     st.markdown("<h2 style='color:#f5a623; margin-top:0;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#e2a826; font-size:13px; margin:0;'>👤 Handle: <b>{st.session_state.logged_in_user}</b></p>", unsafe_allow_html=True)
@@ -410,13 +408,13 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Modu
                         st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;└── 📱 <b>Downline Node:</b> <span style='color:#00e676;'>`{c_user}`</span> (`{child}`)", unsafe_allow_html=True)
             if st._global_user_pnl_history:
                 global_pnl_df = pd.DataFrame(st._global_user_pnl_history)
-                target_audit_uid = st.selectbox("Select Target UID to Inspect logs:", global_pnl_df["User ID"].unique(), key="adm_audit_node_selector_dropdown")
+                target_audit_uid = st.selectbox("Select Target Registered Node UID to Inspect logs:", global_pnl_df["User ID"].unique(), key="adm_audit_node_selector_dropdown")
                 st.dataframe(global_pnl_df[global_pnl_df["User ID"] == target_audit_uid].iloc[::-1], use_container_width=True)
     elif master_input != "": st.error("Administrative override password verification failed.")
 st.markdown("<h3 style='color:#f5a623; font-size:16px;'>🌿 My Referral Network Hub</h3>", unsafe_allow_html=True)
 
 def calculate_sub_generations(root_uid, current_tree):
-    # 🔄 সুনির্দিষ্ট ৭-স্তর বিশিষ্ট লকিং ডেটা মেমরি মেথড ফিক্সড রূপ
+    # 🔄 স্তরীভূত ৭-জেনারেশন ডাটাবেজ মেমরি চেইন নোড জেনারেটর ম্যাপিং (ফিক্সড ও সচল)
     gen_map = {1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: []}
     if root_uid in current_tree:
         gen_map[1] = current_tree[root_uid].copy()
@@ -485,7 +483,7 @@ if search_uid_input:
             else: st.info("No sandbox simulation records synced yet.")
         else: st.info("Ledger registry is empty.")
 
-    # 📊 টার্গেট মেম্বারের আন্ডারে থাকা সম্পূর্ণ ডাউনলাইন টিমের UID এবং লাইভ প্রফিট লেজার টেবিল (টাইপো ফিক্সড সংস্করণ)
+    # 📊 সাব-ডাউনলাইন নেটওয়ার্ক গ্রিড টেবিল লজিক ফিক্সড (১ম থেকে ৭ম স্তরের ডাটা রিডিং বাগ ফিক্সড)
     st.markdown("<br><b style='color:#f5a623;'>📊 Sub-Downline Network Members Status Grid:</b>", unsafe_allow_html=True)
     my_sub_gens = calculate_sub_generations(search_uid_input, st._global_referral_tree)
     sub_tree_records = []
