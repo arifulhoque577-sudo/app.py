@@ -134,31 +134,29 @@ BYBYT_DATABASE_CORE = {
 }
 YOUR_SECRET_MASTER_CODE = "ADMIN1234"
 st.set_page_config(page_title="Bybit AI Scalper", page_icon="⚡", layout="centered")
-# 📱 আগের আসল ওবসিডিয়ান থিম পুনরুদ্ধার এবং গ্লোবাল টাচ স্ক্রোল লক ফিক্স
+# 📱 ১ নম্বর স্ক্রিনশটের অবিকল ওরিজিনাল ওবসিডিয়ান লাক্সারি ডার্ক থিম রিস্টোর ও স্ক্রোলিং ফিক্স
 st.markdown("""
     <style>
     html, body, [data-testid="stAppViewContainer"] {
-        background: #06090e !important;
+        background: #07090e !important; 
         background-image: radial-gradient(circle at 50% 20%, 
-                          #111723 0%, #06090e 80%) !important;
+                          #111723 0%, #07090e 80%) !important;
         overflow-y: auto !important;
         overflow-x: hidden !important;
         touch-action: auto !important;
         -webkit-overflow-scrolling: touch !important;
     }
     div[data-testid="stSidebar"] { 
-        background-color: #0c1017 !important; 
-        border-right: 1px solid #1e293b; 
+        background-color: #0c1017 !important; border-right: 1px solid #1e293b; 
     }
     div.stButton > button:first-child { 
-        width: 100%; border-radius: 8px; 
-        font-weight: bold; font-size: 16px; height: 46px; 
+        width: 100%; border-radius: 8px; font-weight: bold; 
+        font-size: 16px; height: 46px; 
     }
     iframe { border: none !important; }
     .stExpander { 
         background-color: #0c1017 !important; 
-        border: 1px solid #1e293b !important; 
-        border-radius: 8px !important; 
+        border: 1px solid #1e293b !important; border-radius: 8px !important; 
     }
     div[data-testid="stExpander"] p, 
     div[data-testid="stExpander"] label { 
@@ -234,6 +232,7 @@ if st.session_state.logged_in_user is None:
         reg_username = st.text_input("Choose Username:", key="reg_u_core").strip()
         reg_password = st.text_input("Set Password Phrase:", type="password", key="reg_p_core").strip()
         reg_email = st.text_input("Enter Valid Google Mail (Gmail ID):", key="reg_e_core").strip()
+        # 🔐 নিরাপত্তা প্রশ্ন ইনপুট ফিক্সড উইজেট স্থায়ীভাবে দৃশ্যমান
         reg_school = st.text_input("Security Question: What is your first school name?", key="reg_sch_core").strip()
         reg_sponsor = st.text_input("Enter Sponsor Referral ID Token (Optional):", key="reg_s_core").strip()
         if st.button("🚀 Register My Cryptographic Handle", key="reg_submit_btn"):
@@ -408,33 +407,42 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Modu
                         st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;└── 📱 <b>Downline Node:</b> <span style='color:#00e676;'>`{c_user}`</span> (`{child}`)", unsafe_allow_html=True)
             if st._global_user_pnl_history:
                 global_pnl_df = pd.DataFrame(st._global_user_pnl_history)
-                target_audit_uid = st.selectbox("Select Target Registered Node UID to Inspect logs:", global_pnl_df["User ID"].unique(), key="adm_audit_node_selector_dropdown")
+                target_audit_uid = st.selectbox("Select Target UID to Inspect logs:", global_pnl_df["User ID"].unique(), key="adm_audit_node_selector_dropdown")
                 st.dataframe(global_pnl_df[global_pnl_df["User ID"] == target_audit_uid].iloc[::-1], use_container_width=True)
     elif master_input != "": st.error("Administrative override password verification failed.")
 st.markdown("<h3 style='color:#f5a623; font-size:16px;'>🌿 My Referral Network Hub</h3>", unsafe_allow_html=True)
 
+# 🔄 মেমরি ওভাররাইট বাগ চিরতরে ফিক্সড: রিকার্সিভ ম্যাপিং অ্যালগরিদম সচল করা হলো
 def calculate_sub_generations(root_uid, current_tree):
-    # 🔄 স্তরীভূত ৭-জেনারেশন ডাটাবেজ মেমরি চেইন নোড জেনারেটর ম্যাপিং (ফিক্সড ও সচল)
     gen_map = {1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: []}
+    
+    # Gen 1 ডাইরেক্ট চাইল্ড মেমরি বাইন্ডিং
     if root_uid in current_tree:
-        gen_map[1] = current_tree[root_uid].copy()
+        gen_map[1] = list(current_tree[root_uid])
+        
+    # Gen 2 থেকে Gen 7 গভীরতার ডাউনলাইন চেইন রেন্ডারিং
     for g in range(2, 8):
         prev_layer = gen_map[g-1]
+        current_layer_accum = []
         for parent_uid in prev_layer:
             if parent_uid in current_tree:
-                sub_children = current_tree[parent_uid]
-                for sc in sub_children:
-                    if sc not in gen_map[g]: gen_map[g].append(sc)
+                for child_uid in current_tree[parent_uid]:
+                    if child_uid not in current_layer_accum:
+                        current_layer_accum.append(child_uid)
+        gen_map[g] = current_layer_accum
+        
     return gen_map
 
 all_downlines_flat_list = []
 downline_display_options = {}
+# গ্লোবাল ডাটাবেজের সম্পূর্ণ ডাউনলাইন মেম্বারদের আইডির তালিকা অটো-লোড মেকানিজম
+mapped_gens = calculate_sub_generations(allocated_user_id, st._global_referral_tree)
+
 if st._mlm_bonus_enabled:
-    mapped_gens = calculate_sub_generations(allocated_user_id, st._global_referral_tree)
     for gen_num in range(1, 8):
         uids_in_gen = mapped_gens[gen_num]
-        if uids_in_gen:
-            for uid in uids_in_gen:
+        for uid in uids_in_gen:
+            if uid not in all_downlines_flat_list:
                 all_downlines_flat_list.append(uid)
                 u_name = st._uid_to_username.get(uid, 'Unknown')
                 downline_display_options[uid] = f"🔹 [Gen {gen_num}] {u_name} ({uid})"
@@ -455,10 +463,11 @@ else:
         u_name = st._uid_to_username.get(uid, 'Unknown')
         downline_display_options[uid] = f"🔸 [Serial {idx}] {u_name} ({uid})"
 st.markdown("<b>🔍 Input Specific Downline UID to Audit Data Records:</b>", unsafe_allow_html=True)
+# 🎯 সার্চ উইজেট বক্স: নিজের ডাটা এবং টিম ডাটা লাইভ শো করার সলিড ইনপুট নোড
 search_uid_input = st.text_input("Enter Target Member UID box input:", value=allocated_user_id, key="custom_uid_search_field_node").strip()
 
 if search_uid_input:
-    target_display_title = downline_display_options.get(search_uid_input, f"👤 Target Account: ({search_uid_input})")
+    target_display_title = downline_display_options.get(search_uid_input, f"👤 Target Account: Self Dashboard ({search_uid_input})")
     st.markdown(f"<p style='color:#38bdf8; font-weight:bold;'>{target_display_title}</p>", unsafe_allow_html=True)
     
     t1, t2 = st.tabs(["Real Production Earnings Gate 🟢", "Demo Sandbox Earnings Gate 🔵"])
@@ -483,13 +492,13 @@ if search_uid_input:
             else: st.info("No sandbox simulation records synced yet.")
         else: st.info("Ledger registry is empty.")
 
-    # 📊 সাব-ডাউনলাইন নেটওয়ার্ক গ্রিড টেবিল লজিক ফিক্সড (১ম থেকে ৭ম স্তরের ডাটা রিডিং বাগ ফিক্সড)
+    # 📊 সাব-ডাউনলাইন নেটওয়ার্ক গ্রিড ডাটাবেজ ফিক্সড টেবিল (১০০% নিখুঁত রেন্ডারিং নোড)
     st.markdown("<br><b style='color:#f5a623;'>📊 Sub-Downline Network Members Status Grid:</b>", unsafe_allow_html=True)
-    my_sub_gens = calculate_sub_generations(search_uid_input, st._global_referral_tree)
+    target_sub_gens = calculate_sub_generations(search_uid_input, st._global_referral_tree)
     sub_tree_records = []
     
     for g_idx in range(1, 8):
-        for sub_uid in my_sub_gens[g_idx]:
+        for sub_uid in target_sub_gens[g_idx]:
             sub_uname = st._uid_to_username.get(sub_uid, 'Unknown')
             sub_pnl = 0.0
             if st._global_user_pnl_history:
@@ -498,11 +507,14 @@ if search_uid_input:
                 if not m_df.empty: sub_pnl = pd.to_numeric(m_df["Net P&L ($)"]).sum()
             
             label_text = f"Gen {g_idx}" if st._mlm_bonus_enabled else f"Serial {len(sub_tree_records)+1}"
-            sub_tree_records.append({"Hierarchy Level": label_text, "User ID": sub_uid, "Username": sub_uname, "Lifetime Profit/Loss Balance": f"${sub_pnl:.2f} USDT"})
+            sub_tree_records.append({
+                "Hierarchy Level": label_text, "User ID": sub_uid, 
+                "Username": sub_uname, "Lifetime Profit/Loss Balance": f"${sub_pnl:.2f} USDT"
+            })
             
     if sub_tree_records:
         st.dataframe(pd.DataFrame(sub_tree_records), use_container_width=True)
-    else: st.info("No active team network users registered under this target token UID.")
+    else: st.info("No active downline team network users registered under this target token UID.")
 
 total_trades = st.session_state.win_count + st.session_state.loss_count
 win_rate = (st.session_state.win_count / total_trades * 100) if total_trades > 0 else 0.0
