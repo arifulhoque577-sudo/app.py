@@ -134,25 +134,32 @@ BYBYT_DATABASE_CORE = {
 }
 YOUR_SECRET_MASTER_CODE = "ADMIN1234"
 st.set_page_config(page_title="Bybit AI Scalper", page_icon="⚡", layout="centered")
+# 📱 লাইট ব্লু নিওন সায়ান রেডিয়াল গ্রেডিয়েন্ট এবং মোবাইল অ্যাপ টাচ স্ক্রোল ফিক্স
 st.markdown("""
     <style>
-    .main { 
-        background: #06090e !important;
-        background-image: radial-gradient(circle at 50% 20%, 
-                          #111723 0%, #06090e 80%) !important;
+    html, body, [data-testid="stAppViewContainer"] {
+        background: #040810 !important;
+        background-image: radial-gradient(circle at 50% 15%, 
+                          #005b8c 0%, #030a16 65%, #010408 100%) !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        touch-action: auto !important;
+        -webkit-overflow-scrolling: touch !important;
     }
     div[data-testid="stSidebar"] { 
-        background-color: #0c1017 !important; 
-        border-right: 1px solid #1e293b; 
+        background-color: #050e1a !important; 
+        border-right: 1px solid #005b8c; 
     }
     div.stButton > button:first-child { 
-        width: 100%; border-radius: 8px; 
-        font-weight: bold; font-size: 16px; height: 46px; 
+        width: 100%; border-radius: 8px; font-weight: bold; 
+        font-size: 16px; height: 46px; border: 1px solid #38bdf8;
+        background: linear-gradient(135deg, #004066 0%, #050e1a 100%);
+        color: #ffffff !important;
     }
     iframe { border: none !important; }
     .stExpander { 
-        background-color: #0c1017 !important; 
-        border: 1px solid #1e293b !important; 
+        background-color: #050e1a !important; 
+        border: 1px solid #005b8c !important; 
         border-radius: 8px !important; 
     }
     div[data-testid="stExpander"] p, 
@@ -220,7 +227,7 @@ if 'my_hardware_signature' not in st.session_state:
     )
 my_signature = st.session_state.my_hardware_signature
 if st.session_state.logged_in_user is None:
-    st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center; box-shadow: 0px 6px 20px rgba(255, 153, 0, 0.2);'><h1 style='margin: 0; color: #0b0e14; font-family: sans-serif; font-size: 26px; font-weight: bold; letter-spacing: 1px;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
+    st.markdown("<div style='background: linear-gradient(135deg, #007acc 0%, #38bdf8 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center; box-shadow: 0px 6px 20px rgba(56, 189, 248, 0.3);'><h1 style='margin: 0; color: #ffffff; font-family: sans-serif; font-size: 26px; font-weight: bold; letter-spacing: 1px;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
     st.subheader("🔑 Cryptographic Membership Authentication Desk")
     auth_mode = st.radio("Choose Operations Layer:", 
                          ["Secure Login Profile", "Mint New Membership Account ID", "Forget Password Profile"])
@@ -229,7 +236,6 @@ if st.session_state.logged_in_user is None:
         reg_username = st.text_input("Choose Username:", key="reg_u_core").strip()
         reg_password = st.text_input("Set Password Phrase:", type="password", key="reg_p_core").strip()
         reg_email = st.text_input("Enter Valid Google Mail (Gmail ID):", key="reg_e_core").strip()
-        # 🔐 নিরাপত্তা প্রশ্ন ইনপুট উইজেট রেজিষ্ট্রেশন বক্সে ইনজেক্টেড
         reg_school = st.text_input("Security Question: What is your first school name?", key="reg_sch_core").strip()
         reg_sponsor = st.text_input("Enter Sponsor Referral ID Token (Optional):", key="reg_s_core").strip()
         if st.button("🚀 Register My Cryptographic Handle", key="reg_submit_btn"):
@@ -262,7 +268,6 @@ if st.session_state.logged_in_user is None:
         st.markdown("<p style='color:#38bdf8; font-weight:bold;'>🔐 Security Question Based Password Retrieval Gate:</p>", unsafe_allow_html=True)
         forget_uid = st.text_input("Enter Your Account User ID (UID):", key="forg_uid_input").strip()
         forget_email = st.text_input("Enter Your Registered Google Mail (Gmail):", key="forg_email_input").strip()
-        # 🔑 জিমেইলের পাশাপাশি গোপন প্রশ্নের উত্তর ভেরিফিকেশন ফিল্ড
         forget_school = st.text_input("Verification: What is your first school name?", key="forg_sch_input").strip()
         
         if st.button("🔑 Generate New Secure Password", key="forget_password_submit_btn"):
@@ -294,12 +299,11 @@ user_data = st._central_user_creds[st.session_state.logged_in_user]
 allocated_user_id = user_data["uid"]
 my_sponsor_id = user_data["sponsor"]
 my_profile_email = user_data.get("email", "Not Set")
-st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center; box-shadow: 0px 6px 20px rgba(255, 153, 0, 0.2);'><h1 style='margin: 0; color: #0b0e14; font-family: sans-serif; font-size: 26px; font-weight: bold; letter-spacing: 1px;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
+st.markdown("<div style='background: linear-gradient(135deg, #007acc 0%, #38bdf8 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center; box-shadow: 0px 6px 20px rgba(56, 189, 248, 0.3);'><h1 style='margin: 0; color: #ffffff; font-family: sans-serif; font-size: 26px; font-weight: bold; letter-spacing: 1px;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
 with st.sidebar:
     st.markdown("<h2 style='color:#f5a623; margin-top:0;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#e2a826; font-size:13px; margin:0;'>👤 Handle: <b>{st.session_state.logged_in_user}</b></p>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#38bdf8; font-size:13px; margin:4px 0;'>🆔 My Referral ID: <b>{allocated_user_id}</b></p>", unsafe_allow_html=True)
-    # 📧 গ্রাহকের ম্যান্ডেটরি জিমেইল আইডি সাইডবারে অবিকল রিস্টোরড
     st.markdown(f"<p style='color:#00e676; font-size:12px; margin:0 0 4px 0;'>📧 Email: <b>{my_profile_email}</b></p>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#94a3b8; font-size:12px; margin:0 0 12px 0;'>🔗 Sponsor UID: <b>{my_sponsor_id}</b></p>", unsafe_allow_html=True)
     if st.button("🚪 Logout Account", key="logout_sidebar_btn"): 
@@ -412,6 +416,7 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Modu
 st.markdown("<h3 style='color:#f5a623; font-size:16px;'>🌿 My Referral Network Hub</h3>", unsafe_allow_html=True)
 
 def calculate_sub_generations(root_uid, current_tree):
+    # 🔄 সুনির্দিষ্ট ৭-স্তর বিশিষ্ট লকিং ডেটা মেমরি মেথড ফিক্সড রূপ
     gen_map = {1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: []}
     if root_uid in current_tree:
         gen_map[1] = current_tree[root_uid].copy()
@@ -458,7 +463,7 @@ if search_uid_input:
     target_display_title = downline_display_options.get(search_uid_input, f"👤 Target Account: ({search_uid_input})")
     st.markdown(f"<p style='color:#38bdf8; font-weight:bold;'>{target_display_title}</p>", unsafe_allow_html=True)
     
-    t1, t2 = st.tabs(["实时 Real Production Earnings Gate 🟢", "模拟 Demo Sandbox Earnings Gate 🔵"])
+    t1, t2 = st.tabs(["Real Production Earnings Gate 🟢", "Demo Sandbox Earnings Gate 🔵"])
     with t1:
         if st._global_user_pnl_history:
             pnl_df = pd.DataFrame(st._global_user_pnl_history)
@@ -480,8 +485,8 @@ if search_uid_input:
             else: st.info("No sandbox simulation records synced yet.")
         else: st.info("Ledger registry is empty.")
 
-    # 📊 টার্গেট মেম্বারের আন্ডারে থাকা সম্পূর্ণ ডাউনলাইন টিমের UID এবং লাইভ প্রফিট লেজার টেবিল
-    st.markdown("<br><b style='color:#f5a623;'>📊 Sub-Downline Network Tree & Earning Ledger Tables:</b>", unsafe_allow_html=True)
+    # 📊 টার্গেট মেম্বারের আন্ডারে থাকা সম্পূর্ণ ডাউনলাইন টিমের UID এবং লাইভ প্রফিট লেজার টেবিল (টাইপো ফিক্সড সংস্করণ)
+    st.markdown("<br><b style='color:#f5a623;'>📊 Sub-Downline Network Members Status Grid:</b>", unsafe_allow_html=True)
     my_sub_gens = calculate_sub_generations(search_uid_input, st._global_referral_tree)
     sub_tree_records = []
     
@@ -495,11 +500,11 @@ if search_uid_input:
                 if not m_df.empty: sub_pnl = pd.to_numeric(m_df["Net P&L ($)"]).sum()
             
             label_text = f"Gen {g_idx}" if st._mlm_bonus_enabled else f"Serial {len(sub_tree_records)+1}"
-            sub_tree_records.append({"Hierarchy Level": label_text, "User ID": sub_uid, "Username Name": sub_uname, "Lifetime P&L Profit ($)": f"${sub_pnl:.2f} USDT"})
+            sub_tree_records.append({"Hierarchy Level": label_text, "User ID": sub_uid, "Username": sub_uname, "Lifetime Profit/Loss Balance": f"${sub_pnl:.2f} USDT"})
             
     if sub_tree_records:
         st.dataframe(pd.DataFrame(sub_tree_records), use_container_width=True)
-    else: st.info("No sub-downline tree network nodes connected under this target token UID.")
+    else: st.info("No active team network users registered under this target token UID.")
 
 total_trades = st.session_state.win_count + st.session_state.loss_count
 win_rate = (st.session_state.win_count / total_trades * 100) if total_trades > 0 else 0.0
