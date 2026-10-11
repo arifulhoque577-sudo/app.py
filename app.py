@@ -3,8 +3,31 @@ import pandas as pd
 import time
 import random
 import string
+import shelve
+import os
 import plotly.graph_objects as go
 from pybit.unified_trading import HTTP
+# 🔒 ডাটাবেজ ফাইল মেকানিজম
+DB_FILE = "bybit_scalper_secure_db"
+
+def db_load(key, default_val):
+    with shelve.open(DB_FILE) as db:
+        if key not in db:
+            db[key] = default_val
+        return db[key]
+def db_save(key, val):
+    with shelve.open(DB_FILE) as db:
+        db[key] = val
+# সার্ভার রিস্টার্ট হলেও মেমোরি ডেটা রিকভারি করবে
+if not hasattr(st, "_db_sync"):
+    st._central_user_creds = db_load("user_creds", {})
+    st._central_key_registry = db_load("key_registry", {})
+    st._central_blacklist = db_load("blacklist", [])
+    st._license_csv_database = db_load("license_csv", [])
+    st._global_referral_tree = db_load("referral_tree", {})
+    st._global_user_pnl_history = db_load("pnl_history", [])
+    st._uid_to_username = db_load("uid_to_username", {})
+    st._db_sync = True
 BYBYT_DATABASE_CORE = {
     "🪙 BTCUSDT (Bitcoin)": {
         "symbol": "BTCUSDT", "max_leverage": 100, 
@@ -134,8 +157,18 @@ BYBYT_DATABASE_CORE = {
 }
 YOUR_SECRET_MASTER_CODE = "ADMIN1234"
 st.set_page_config(page_title="Bybit AI Scalper", page_icon="⚡", layout="centered")
+# 📱 মোবাইল APK স্ক্রোলিং ও রেসপন্সিভ লেআউট প্রটেকশন সিস্টেম
 st.markdown("""
     <style>
+    html, body, [data-testid="stAppViewContainer"], 
+    [data-testid="stMainViewContainer"], .main { 
+        max-width: 100vw !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        box-sizing: border-box !important;
+        touch-action: pan-y !important; /* 👈 APK স্ক্রোলিং পক্ষাঘাত মুক্তি */
+        -webkit-overflow-scrolling: touch !important;
+    }
     .main { 
         background: #06090e !important;
         background-image: radial-gradient(circle at 50% 20%, 
@@ -143,7 +176,9 @@ st.markdown("""
     }
     div[data-testid="stSidebar"] { 
         background-color: #0c1017 !important; 
-        border-right: 1px solid #1e293b; 
+        border-right: 1px solid #1e293b;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
     }
     div.stButton > button:first-child { 
         width: 100%; border-radius: 8px; 
@@ -154,6 +189,29 @@ st.markdown("""
         background-color: #0c1017 !important; 
         border: 1px solid #1e293b !important; 
         border-radius: 8px !important; 
+    }
+    .styled-box, div[data-testid="stMarkdownContainer"] p, 
+    span, label, h1, h2, h3, b, code {
+        word-wrap: break-word !important;
+        white-space: normal !important;
+        word-break: break-all !important; /* 👈 টেক্সট বাউন্ডারি লক */
+        max-width: 100% !important;
+    }
+    .styled-box {
+        background-color: #141a24 !important;
+        padding: 12px;
+        border-radius: 10px;
+        margin-bottom: 12px;
+        border: 1px solid #1f2c3f;
+        box-sizing: border-box !important;
+        width: 100% !important;
+        display: block !important;
+    }
+    div[data-testid="stDataFrame"], div[data-testid="stTable"] {
+        max-width: 100% !important;
+        overflow-x: auto !important;
+        display: block !important;
+        box-sizing: border-box !important;
     }
     div[data-testid="stExpander"] p, 
     div[data-testid="stExpander"] label { 
@@ -169,21 +227,6 @@ st.markdown("""
     }
     </style>
     """, unsafe_allow_html=True)
-if not hasattr(st, "_central_user_creds"): 
-    st._central_user_creds = {}
-if not hasattr(st, "_central_key_registry"): 
-    st._central_key_registry = {}
-if not hasattr(st, "_central_blacklist"): 
-    st._central_blacklist = []
-if not hasattr(st, "_license_csv_database"): 
-    st._license_csv_database = []
-if not hasattr(st, "_global_referral_tree"): 
-    st._global_referral_tree = {} 
-if not hasattr(st, "_global_user_pnl_history"): 
-    st._global_user_pnl_history = [] 
-if not hasattr(st, "_uid_to_username"): 
-    st._uid_to_username = {} 
-
 if not hasattr(st, "_mlm_bonus_enabled"): 
     st._mlm_bonus_enabled = True
 if not hasattr(st, "_mlm_deposit_bonus_rate"): 
@@ -224,14 +267,13 @@ if st.session_state.logged_in_user is None:
     st.subheader("🔑 Cryptographic Membership Authentication Desk")
     auth_mode = st.radio("Choose Operations Layer:", 
                          ["Secure Login Profile", "Mint New Membership Account ID", "Forget Password Profile"])
-    
     if auth_mode == "Mint New Membership Account ID":
         reg_username = st.text_input("Choose Username:", key="reg_u_core").strip()
         reg_password = st.text_input("Set Password Phrase:", type="password", key="reg_p_core").strip()
         reg_email = st.text_input("Enter Valid Google Mail (Gmail ID):", key="reg_e_core").strip()
-        # 🔐 নিরাপত্তা প্রশ্ন ইনপুট উইজেট রেজিষ্ট্রেশন বক্সে ইনজেক্টেড
         reg_school = st.text_input("Security Question: What is your first school name?", key="reg_sch_core").strip()
         reg_sponsor = st.text_input("Enter Sponsor Referral ID Token (Optional):", key="reg_s_core").strip()
+        
         if st.button("🚀 Register My Cryptographic Handle", key="reg_submit_btn"):
             existing_emails = [d.get("email") for d in st._central_user_creds.values()]
             
@@ -256,13 +298,18 @@ if st.session_state.logged_in_user is None:
                         st._global_referral_tree[reg_sponsor] = []
                     if new_uid not in st._global_referral_tree[reg_sponsor]: 
                         st._global_referral_tree[reg_sponsor].append(new_uid)
+                
+                # 💾 ফাইলে পার্মানেন্ট সিঙ্ক লক
+                db_save("user_creds", st._central_user_creds)
+                db_save("uid_to_username", st._uid_to_username)
+                db_save("referral_tree", st._global_referral_tree)
+                
                 st.success(f"Account Bound! Your Permanent Access UID: {new_uid}")
         st.stop()
     elif auth_mode == "Forget Password Profile":
         st.markdown("<p style='color:#38bdf8; font-weight:bold;'>🔐 Security Question Based Password Retrieval Gate:</p>", unsafe_allow_html=True)
         forget_uid = st.text_input("Enter Your Account User ID (UID):", key="forg_uid_input").strip()
         forget_email = st.text_input("Enter Your Registered Google Mail (Gmail):", key="forg_email_input").strip()
-        # 🔑 জিমেইলের পাশাপাশি গোপন প্রশ্নের উত্তর ভেরিফিকেশন ফিল্ড
         forget_school = st.text_input("Verification: What is your first school name?", key="forg_sch_input").strip()
         
         if st.button("🔑 Generate New Secure Password", key="forget_password_submit_btn"):
@@ -273,6 +320,10 @@ if st.session_state.logged_in_user is None:
             if found_user:
                 generated_pass = "RESET-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
                 st._central_user_creds[found_user]["password"] = generated_pass
+                
+                # 💾 ডাটাবেজে পাসওয়ার্ড আপডেট রাইট
+                db_save("user_creds", st._central_user_creds)
+                
                 st.success(f"Identity Verified via Security Question! Your New Password is: `{generated_pass}`")
                 st.info("Copy this password, toggle to Secure Login Mode, and verify sign in.")
             else:
@@ -289,17 +340,17 @@ if st.session_state.logged_in_user is None:
             else: 
                 st.error("Authentication credentials mismatch!")
         st.stop()
-
 user_data = st._central_user_creds[st.session_state.logged_in_user]
 allocated_user_id = user_data["uid"]
 my_sponsor_id = user_data["sponsor"]
 my_profile_email = user_data.get("email", "Not Set")
+
 st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center; box-shadow: 0px 6px 20px rgba(255, 153, 0, 0.2);'><h1 style='margin: 0; color: #0b0e14; font-family: sans-serif; font-size: 26px; font-weight: bold; letter-spacing: 1px;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
+
 with st.sidebar:
     st.markdown("<h2 style='color:#f5a623; margin-top:0;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#e2a826; font-size:13px; margin:0;'>👤 Handle: <b>{st.session_state.logged_in_user}</b></p>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#38bdf8; font-size:13px; margin:4px 0;'>🆔 My Referral ID: <b>{allocated_user_id}</b></p>", unsafe_allow_html=True)
-    # 📧 গ্রাহকের ম্যান্ডেটরি জিমেইল আইডি সাইডবারে অবিকল রিস্টোরড
     st.markdown(f"<p style='color:#00e676; font-size:12px; margin:0 0 4px 0;'>📧 Email: <b>{my_profile_email}</b></p>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#94a3b8; font-size:12px; margin:0 0 12px 0;'>🔗 Sponsor UID: <b>{my_sponsor_id}</b></p>", unsafe_allow_html=True)
     if st.button("🚪 Logout Account", key="logout_sidebar_btn"): 
@@ -329,7 +380,6 @@ with st.sidebar:
                                     min_value=0.00000001, max_value=5000.0, 
                                     value=coin_config["default_sl"], 
                                     format="%.8f")
-    
     api_key, secret_key = "", ""
     if is_real_live:
         st.markdown("<hr style='border:1px solid #1e293b; margin:10px 0;'>", unsafe_allow_html=True)
@@ -366,6 +416,11 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Modu
                 random_token = "SCLP-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
                 st._central_key_registry[random_token] = "FREE_SLOT"
                 st._license_csv_database.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "License Key": random_token, "Status": "Active (Unused)"})
+                
+                # 💾 ফাইলে প্রটেক্ট রাইট
+                db_save("key_registry", st._central_key_registry)
+                db_save("license_csv", st._license_csv_database)
+                
                 st.code(f"{random_token}", language="text"); st.rerun()
                 
             st.markdown("<h2>🔑 Master Account Password Override Console:</h2>", unsafe_allow_html=True)
@@ -377,6 +432,7 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Modu
                     if data.get("uid") == override_uid: found_account = uname; break
                 if found_account and override_new_pass != "":
                     st._central_user_creds[found_account]["password"] = override_new_pass
+                    db_save("user_creds", st._central_user_creds)
                     st.success(f"Success! Handle `{found_account}` password changed to `{override_new_pass}`.")
                 else: st.error("Target User UID not found or password field blank!")
         if master_input == YOUR_SECRET_MASTER_CODE:
@@ -388,6 +444,10 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Modu
                     del st._central_key_registry[target_block_key]
                     for row in st._license_csv_database:
                         if row["License Key"] == target_block_key: row["Status"] = "Permanently Banned ❌"
+                    
+                    db_save("blacklist", st._central_blacklist)
+                    db_save("key_registry", st._central_key_registry)
+                    db_save("license_csv", st._license_csv_database)
                     st.warning(f"Token {target_block_key} blocked."); st.rerun()
 
             if st._license_csv_database: st.dataframe(pd.DataFrame(st._license_csv_database).iloc[::-1], use_container_width=True, height=120)
@@ -435,31 +495,19 @@ if st._mlm_bonus_enabled:
                 all_downlines_flat_list.append(uid)
                 u_name = st._uid_to_username.get(uid, 'Unknown')
                 downline_display_options[uid] = f"🔹 [Gen {gen_num}] {u_name} ({uid})"
-else:
-    def pull_all_descendants(root_uid, current_tree):
-        descendants = []
-        queue = current_tree.get(root_uid, []).copy()
-        while queue:
-            node = queue.pop(0)
-            if node not in descendants:
-                descendants.append(node)
-                if node in current_tree: queue.extend(current_tree[node])
-        return descendants
-    
-    flat_uids = pull_all_descendants(allocated_user_id, st._global_referral_tree)
-    for idx, uid in enumerate(flat_uids, 1):
-        all_downlines_flat_list.append(uid)
-        u_name = st._uid_to_username.get(uid, 'Unknown')
-        downline_display_options[uid] = f"🔸 [Serial {idx}] {u_name} ({uid})"
+# 📦 মডুলার ফ্লেক্সবক্স কন্টেইনার (মোবাইল ডাইমেনশন সেফ)
+st.markdown('<div class="styled-box">', unsafe_allow_html=True)
 st.markdown("<b>🔍 Input Specific Downline UID to Audit Data Records:</b>", unsafe_allow_html=True)
-search_uid_input = st.text_input("Enter Target Member UID box input:", value=allocated_user_id, key="custom_uid_search_field_node").strip()
+search_uid_input = st.text_input("Enter Target Member UID box input:", value=allocated_user_id, key="custom_uid_search_field_node", label_visibility="collapsed").strip()
 
 if search_uid_input:
     target_display_title = downline_display_options.get(search_uid_input, f"👤 Target Account: ({search_uid_input})")
-    st.markdown(f"<p style='color:#38bdf8; font-weight:bold;'>{target_display_title}</p>", unsafe_allow_html=True)
-    
-    t1, t2 = st.tabs(["实时 Real Production Earnings Gate 🟢", "模拟 Demo Sandbox Earnings Gate 🔵"])
+    st.markdown(f"<p style='color:#38bdf8; font-weight:bold; margin-top:10px; margin-bottom:0;'>{target_display_title}</p>", unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
+if search_uid_input:
+    t1, t2 = st.tabs(["实时 Real Production Gate 🟢", "模拟 Demo Sandbox Earnings Gate 🔵"])
     with t1:
+        st.markdown('<div class="styled-box">', unsafe_allow_html=True)
         if st._global_user_pnl_history:
             pnl_df = pd.DataFrame(st._global_user_pnl_history)
             child_real_df = pnl_df[(pnl_df["User ID"] == search_uid_input) & (pnl_df["Type"] == "REAL")]
@@ -469,7 +517,9 @@ if search_uid_input:
                 st.dataframe(child_real_df.iloc[::-1], use_container_width=True)
             else: st.info("No live production real funds data records synced yet.")
         else: st.info("Ledger registry is empty.")
+        st.markdown('</div>', unsafe_allow_html=True)
     with t2:
+        st.markdown('<div class="styled-box">', unsafe_allow_html=True)
         if st._global_user_pnl_history:
             pnl_df = pd.DataFrame(st._global_user_pnl_history)
             child_demo_df = pnl_df[(pnl_df["User ID"] == search_uid_input) & (pnl_df["Type"] == "DEMO")]
@@ -479,9 +529,9 @@ if search_uid_input:
                 st.dataframe(child_demo_df.iloc[::-1], use_container_width=True)
             else: st.info("No sandbox simulation records synced yet.")
         else: st.info("Ledger registry is empty.")
-
-    # 📊 টার্গেট মেম্বারের আন্ডারে থাকা সম্পূর্ণ ডাউনলাইন টিমের UID এবং লাইভ প্রফিট লেজার টেবিল
+        st.markdown('</div>', unsafe_allow_html=True)
     st.markdown("<br><b style='color:#f5a623;'>📊 Sub-Downline Network Tree & Earning Ledger Tables:</b>", unsafe_allow_html=True)
+    st.markdown('<div class="styled-box">', unsafe_allow_html=True)
     my_sub_gens = calculate_sub_generations(search_uid_input, st._global_referral_tree)
     sub_tree_records = []
     
@@ -494,13 +544,13 @@ if search_uid_input:
                 m_df = pdf[pdf["User ID"] == sub_uid]
                 if not m_df.empty: sub_pnl = pd.to_numeric(m_df["Net P&L ($)"]).sum()
             
-            label_text = f"Gen {g_idx}" if st._mlm_bonus_enabled else f"Serial {len(sub_tree_records)+1}"
+            label_text = f"Gen {g_idx}" if st._mlm_bonus_enabled else "Serial"
             sub_tree_records.append({"Hierarchy Level": label_text, "User ID": sub_uid, "Username Name": sub_uname, "Lifetime P&L Profit ($)": f"${sub_pnl:.2f} USDT"})
             
     if sub_tree_records:
         st.dataframe(pd.DataFrame(sub_tree_records), use_container_width=True)
     else: st.info("No sub-downline tree network nodes connected under this target token UID.")
-
+    st.markdown('</div>', unsafe_allow_html=True)
 total_trades = st.session_state.win_count + st.session_state.loss_count
 win_rate = (st.session_state.win_count / total_trades * 100) if total_trades > 0 else 0.0
 st.markdown("<hr style='border:1px solid #1f2c3f;'>", unsafe_allow_html=True)
@@ -524,7 +574,6 @@ if st.session_state.bot_active:
             df_kline['RSI'] = 100 - (100 / (1 + rs))
             current_rsi = df_kline['RSI'].iloc[-1] if not df_kline['RSI'].isnull().iloc[-1] else 50.0
     except: pass
-
 floating_pnl, expected_net_profit = 0.0, 0.0
 if st.session_state.in_position and live_price > 0:
     is_long_pos = True if st.session_state.current_side == "LONG" else False
@@ -567,25 +616,16 @@ with c2:
         if st.button("🚨 EMERGENCY LIQUIDATE", key="force_sell_engine_btn"):
             net_pnl = floating_pnl - estimated_fee
             if not is_real_live: st.session_state.demo_balance += net_pnl
-            status_tag = "MANUAL CLOSE 🛑"
             st._global_user_pnl_history.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "User ID": allocated_user_id, "Coin": target_symbol, "Action": f"CLOSE {st.session_state.current_side}", "Net P&L ($)": f"{net_pnl:.2f}", "Type": "REAL" if is_real_live else "DEMO"})
             if net_pnl >= 0: st.session_state.win_count += 1
             else: st.session_state.loss_count += 1
-            if st._mlm_bonus_enabled and my_sponsor_id != "None":
-                current_parent = my_sponsor_id
-                for gen in range(1, 8):
-                    if current_parent in st._central_user_creds:
-                        p_user = st._uid_to_username.get(current_parent, current_parent)
-                        roi_rate = st._mlm_gen_rates.get(gen, 0.0) / 100.0
-                        if net_pnl > 0:
-                            bonus_credited = net_pnl * roi_rate
-                            st._global_user_pnl_history.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "User ID": current_parent, "Coin": f"GEN {gen} ROI", "Action": f"COMMISSION FROM {st.session_state.logged_in_user}", "Net P&L ($)": f"{bonus_credited:.2f}", "Type": "REAL" if is_real_live else "DEMO"})
-                        next_parent_data = st._central_user_creds.get(p_user, {})
-                        current_parent = next_parent_data.get("sponsor", "None")
-                    else: break
+            
+            # 💾 ইমার্জেন্সি ক্লোজ ফাইল সেভ
+            db_save("pnl_history", st._global_user_pnl_history)
+            
             for idx, trade in enumerate(st.session_state.all_trades_history):
                 if trade["Status"] == "RUNNING" and trade["Coin"] == target_symbol:
-                    st.session_state.all_trades_history[idx]["Status"] = status_tag
+                    st.session_state.all_trades_history[idx]["Status"] = "MANUAL CLOSE 🛑"
                     st.session_state.all_trades_history[idx]["Net P&L ($)"] = f"{net_pnl:.2f}"
             st.session_state.in_position = False; st.session_state.buy_price = 0.0; st.session_state.current_side = "NONE"; st.rerun()
 
@@ -612,18 +652,10 @@ if st.session_state.bot_active and df_kline is not None:
                 if is_profit_hit: st.session_state.win_count += 1
                 else: st.session_state.loss_count += 1
                 if not is_real_live: st.session_state.demo_balance += net_pnl
-                if st._mlm_bonus_enabled and my_sponsor_id != "None":
-                    current_parent = my_sponsor_id
-                    for gen in range(1, 8):
-                        if current_parent in st._central_user_creds:
-                            p_user = st._uid_to_username.get(current_parent, current_parent)
-                            roi_rate = st._mlm_gen_rates.get(gen, 0.0) / 100.0
-                            if net_pnl > 0:
-                                bonus_credited = net_pnl * roi_rate
-                                st._global_user_pnl_history.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "User ID": current_parent, "Coin": f"GEN {gen} ROI", "Action": f"COMMISSION FROM {st.session_state.logged_in_user}", "Net P&L ($)": f"{bonus_credited:.2f}", "Type": "REAL" if is_real_live else "DEMO"})
-                            next_parent_data = st._central_user_creds.get(p_user, {})
-                            current_parent = next_parent_data.get("sponsor", "None")
-                        else: break
+                
+                # 💾 অটো ক্লোজ ফাইল সেভ
+                db_save("pnl_history", st._global_user_pnl_history)
+                
                 for idx, trade in enumerate(st.session_state.all_trades_history):
                     if trade["Status"] == "RUNNING" and trade["Coin"] == target_symbol:
                         st.session_state.all_trades_history[idx]["Status"] = status_tag
@@ -633,5 +665,7 @@ if st.session_state.bot_active and df_kline is not None:
     except Exception:
         time.sleep(1); st.rerun()
 else: st.info("Engine Inactive. Invoke green trigger to start loop sequences.")
+
 st.subheader("📋 Permanent Trading Action History")
-if st.session_state.all_trades_history: st.dataframe(pd.DataFrame(st.session_state.all_trades_history).iloc[::-1], use_container_width=True)
+if st.session_state.all_trades_history: 
+    st.dataframe(pd.DataFrame(st.session_state.all_trades_history).iloc[::-1], use_container_width=True)
