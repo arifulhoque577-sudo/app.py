@@ -10,16 +10,35 @@ from pybit.unified_trading import HTTP
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-# 🔐 ক্লাউড ফায়ারবেস সিকিউরিটি কানেকশন লক
+# 🔐 ক্লাউড ফায়ারবেস সিকিউরিটি কানেকশন লক (স্ট্রিক্ট রেন্ডার ফিক্স)
 if not firebase_admin._apps:
-    try:
-        fb_dict = json.loads(st.secrets["firebase_json"])
-        cred = credentials.Certificate(fb_dict)
-        firebase_admin.initialize_app(cred)
-    except:
+    fb_json = None
+    # ১. প্রথমে রেন্ডার সেটিংসের Environment Variable চেক করবে
+    if "firebase_json" in st.secrets:
+        fb_json = st.secrets["firebase_json"]
+    elif "firebase_json" in os.environ:
+        fb_json = os.environ["firebase_json"]
+        
+    if fb_json:
+        try:
+            # যদি স্ট্রিং আকারে থাকে, ডিকশনারিতে কনভার্ট করবে
+            if isinstance(fb_json, str):
+                fb_dict = json.loads(fb_json)
+            else:
+                fb_dict = fb_json
+            cred = credentials.Certificate(fb_dict)
+            firebase_admin.initialize_app(cred)
+        except Exception as e:
+            st.error(f"Firebase Config Error: {str(e)}")
+            st.stop()
+    else:
+        # ২. লোকাল হোস্টে রান করার ব্যাকআপ মেকানিজম
         if os.path.exists("firebase_key.json"):
             cred = credentials.Certificate("firebase_key.json")
             firebase_admin.initialize_app(cred)
+        else:
+            st.error("Missing firebase_json in Render Environment Variables!")
+            st.stop()
 
 db = firestore.client()
 def db_load_cloud(collection, doc_id, default_val):
@@ -43,7 +62,7 @@ if not hasattr(st, "_db_sync"):
     st._central_blacklist = db_load_cloud("scalper_system", "blacklist", [])
     st._license_csv_database = db_load_cloud("scalper_system", "license_csv", [])
     st._global_referral_tree = db_load_cloud("scalper_system", "referral_tree", {})
-    st._global_user_pnl_history = db_load_cloud("scalper_system", "pnl_history", [])
+    st._global_user_pnl_history = db_load_cloud("scalper_system", "pnl_history", {})
     st._uid_to_username = db_load_cloud("scalper_system", "uid_to_username", {})
     st._db_sync = True
 BYBYT_DATABASE_CORE = {
