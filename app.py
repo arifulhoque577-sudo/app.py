@@ -10,18 +10,16 @@ from pybit.unified_trading import HTTP
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-# 🔐 ক্লাউড ফায়ারবেস সিকিউরিটি কানেকশন লক (স্ট্রিক্ট রেন্ডার ফিক্স)
+# 🔐 ক্লাউড ফায়ারবেস সিকিউরিটি কানেকশন লক (স্ট্রিক্ট রেন্ডার ফাইল ক্র্যাশ ফিক্স)
 if not firebase_admin._apps:
     fb_json = None
-    # ১. প্রথমে রেন্ডার সেটিংসের Environment Variable চেক করবে
-    if "firebase_json" in st.secrets:
-        fb_json = st.secrets["firebase_json"]
-    elif "firebase_json" in os.environ:
+    
+    # st.secrets এর ক্র্যাশ এড়াতে সরাসরি Render Environment থেকে রিড করবে
+    if "firebase_json" in os.environ:
         fb_json = os.environ["firebase_json"]
         
     if fb_json:
         try:
-            # যদি স্ট্রিং আকারে থাকে, ডিকশনারিতে কনভার্ট করবে
             if isinstance(fb_json, str):
                 fb_dict = json.loads(fb_json)
             else:
@@ -29,15 +27,15 @@ if not firebase_admin._apps:
             cred = credentials.Certificate(fb_dict)
             firebase_admin.initialize_app(cred)
         except Exception as e:
-            st.error(f"Firebase Config Error: {str(e)}")
+            st.error(f"Firebase Config JSON Parse Error: {str(e)}")
             st.stop()
     else:
-        # ২. লোকাল হোস্টে রান করার ব্যাকআপ মেকানিজম
+        # লোকাল কম্পিউটারে টেস্ট করার ব্যাকআপ মেকানিজম
         if os.path.exists("firebase_key.json"):
             cred = credentials.Certificate("firebase_key.json")
             firebase_admin.initialize_app(cred)
         else:
-            st.error("Missing firebase_json in Render Environment Variables!")
+            st.error("Missing 'firebase_json' in Render Environment Variables!")
             st.stop()
 
 db = firestore.client()
