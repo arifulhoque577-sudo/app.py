@@ -2,3 +2,5 @@ pybit
 pandas
 streamlit
 plotly
+firebase-admin
+gcloud
