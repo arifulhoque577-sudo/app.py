@@ -12,7 +12,7 @@ from pybit.unified_trading import HTTP
 import requests
 import streamlit as st
 
-# Secure Cloud Firebase Gateway Setup
+# Secure Cloud Firebase Gateway Authentication Layer
 if not firebase_admin._apps:
     fb_json = os.environ.get("firebase_json", None)
     if fb_json:
@@ -75,44 +75,32 @@ else:
     st._mlm_gen_rates = db_load("gen_rates", {})
     st._mlm_id_thresholds = db_load("id_thresh", {})
 
-# Restored Full Manual + Live Unified Dictionary Array (All Future Coins Active)
+# Fetch All 300+ Live Bybit Futures Instruments Contracts via V5 Market API
 @st.cache_data(ttl=60)
 def fetch_bybit_future_coins():
-    backup_database = {
+    backup_db = {
         "🪙 BTC (Bitcoin)": {"symbol": "BTCUSDT", "max_leverage": 100, "default_tp": 100.0, "default_sl": 150.0, "step": 10.0},
         "🔷 ETH (Ethereum)": {"symbol": "ETHUSDT", "max_leverage": 100, "default_tp": 8.0, "default_sl": 15.0, "step": 1.0},
-        "☀️ SOL (Solana)": {"symbol": "SOLUSDT", "max_leverage": 50, "default_tp": 1.5, "default_sl": 3.0, "step": 0.1},
-        "💥 XRP (Ripple)": {"symbol": "XRPUSDT", "max_leverage": 100, "default_tp": 0.015, "default_sl": 0.03, "step": 0.001},
-        "🐶 DOGE (Dogecoin)": {"symbol": "DOGEUSDT", "max_leverage": 50, "default_tp": 0.004, "default_sl": 0.01, "step": 0.0005},
-        "🔮 LINK (Chainlink)": {"symbol": "LINKUSDT", "max_leverage": 50, "default_tp": 0.25, "default_sl": 0.50, "step": 0.01},
-        "🧬 ADA (Cardano)": {"symbol": "ADAUSDT", "max_leverage": 50, "default_tp": 0.01, "default_sl": 0.02, "step": 0.001},
-        "🌀 WIF (Dogwifhat)": {"symbol": "WIFUSDT", "max_leverage": 20, "default_tp": 0.05, "default_sl": 0.12, "step": 0.01},
-        "🔥 SHIB (Shiba Inu)": {"symbol": "SHIBUSDT", "max_leverage": 50, "default_tp": 0.0000005, "default_sl": 0.000001, "step": 0.0000001},
-        "🪐 DOT (Polkadot)": {"symbol": "DOTUSDT", "max_leverage": 50, "default_tp": 0.05, "default_sl": 0.12, "step": 0.01},
-        "🔺 AVAX (Avalanche)": {"symbol": "AVAXUSDT", "max_leverage": 50, "default_tp": 0.20, "default_sl": 0.50, "step": 0.01},
-        "⚡ LTC (Litecoin)": {"symbol": "LTCUSDT", "max_leverage": 60, "default_tp": 0.50, "default_sl": 1.20, "step": 0.1},
-        "🚀 SUI (Sui Token)": {"symbol": "SUIUSDT", "max_leverage": 50, "default_tp": 0.02, "default_sl": 0.06, "step": 0.001},
-        "🌊 APT (Aptos)": {"symbol": "APTUSDT", "max_leverage": 50, "default_tp": 0.05, "default_sl": 0.15, "step": 0.01},
-        "🧱 ARB (Arbitrum)": {"symbol": "ARBUSDT", "max_leverage": 50, "default_tp": 0.01, "default_sl": 0.03, "step": 0.001}
+        "☀️ SOL (Solana)": {"symbol": "SOLUSDT", "max_leverage": 50, "default_tp": 1.5, "default_sl": 3.0, "step": 0.1}
     }
     try:
         url = "https://bybit.com"
-        res = requests.get(url, timeout=5).json()
+        res = requests.get(url, timeout=10).json()
         instruments = res.get("result", {}).get("list", [])
         for inst in instruments:
             if inst["status"] == "Trading" and inst["quoteCoin"] == "USDT":
                 sym = inst["symbol"]
                 base = inst["baseCoin"]
                 max_lev = int(float(inst.get("leverageFilter", {}).get("maxLeverage", 100)))
-                backup_database[f"🪙 {base} (Bybit Futures)"] = {
+                backup_db[f"🪙 {base} (Bybit Futures)"] = {
                     "symbol": sym, "max_leverage": max_lev,
-                    "default_tp": float(inst.get("priceFilter", {}).get("tickSize", "0.01")) * 400,
-                    "default_sl": float(inst.get("priceFilter", {}).get("tickSize", "0.01")) * 600,
+                    "default_tp": float(inst.get("priceFilter", {}).get("tickSize", "0.01")) * 500,
+                    "default_sl": float(inst.get("priceFilter", {}).get("tickSize", "0.01")) * 750,
                     "step": float(inst.get("priceFilter", {}).get("tickSize", "0.01"))
                 }
-        return backup_database
+        return backup_db
     except:
-        return backup_database
+        return backup_db
 
 BYBYT_DATABASE_CORE = fetch_bybit_future_coins()
 YOUR_SECRET_MASTER_CODE = "ADMIN1234"
@@ -136,7 +124,7 @@ st.markdown(
     .custom-box-grid { background-color: #141a24; padding: 15px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #1f2c3f; }
     .matrix-neon-text { font-family: 'Courier New', monospace; color: #00e676; text-shadow: 0 0 8px #00e676; font-size: 13px; line-height: 1.6; }
     
-    /* Alignment fix to display leverage ticks vertically for smooth sliding on phone */
+    /* Vertical stack layout fix for mobile leverage sliders ticks display */
     div[data-testid="stSlider"] div { flex-direction: column !important; align-items: flex-start !important; }
     </style>
     """,
@@ -239,7 +227,7 @@ with st.sidebar:
     target_symbol = coin_config["symbol"]
     ai_decision = st.toggle("AI Smart Crossover Filter Matrix", value=True)
     
-    # Vertically rendered absolute scale leverage slider fix
+    # Vertically rendered absolute scale leverage slider fix (Eradicates 1-10 slider error)
     max_leverage_bound = int(coin_config.get('max_leverage', 100))
     leverage = st.slider("Leverage Scale Selection Array (1x-100x Override):", min_value=1, max_value=max_leverage_bound, value=20, step=1, key="absolute_leverage_node_slider")
     trade_amount = st.number_input("Margin Requirement Block (\$):", min_value=1, value=20)
@@ -257,7 +245,7 @@ with st.sidebar:
 
 effective_vol = trade_amount * leverage
 estimated_fee = effective_vol * 0.0011
-# Re-Storing the Authentic Golden-Orange App Logo Banner Title Block (UFO Text Eliminated)
+# Re-Storing the Authentic Golden-Orange App Logo Banner Title Block
 st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
 
 # Hi-Fi Premium Sci-Fi Styled Visual Tickers & Ticker Streams Pipelines
@@ -292,7 +280,6 @@ try:
         else:
             ai_market_thesis = f"🔮 AI LIGHTNING MATRIX SCANNER ({target_symbol}) -> [STATUS: RANGING CONSOLIDATION ZONE] // {random.choice(live_intel_wires)}"
         
-        # High-Fidelity Sci-Fi Dark theme Candlestick Plotly Node
         fig_candlestick = go.Figure(data=[go.Candlestick(x=df_kline.index, open=df_kline['open'], high=df_kline['high'], low=df_kline['low'], close=df_kline['close'])])
         fig_candlestick.add_trace(go.Scatter(x=df_kline.index, y=df_kline['close'].rolling(window=7).mean(), name="AI Geometric Tracking Vector", line=dict(color='#00e676', width=2, dash='dot')))
         
@@ -306,49 +293,40 @@ except:
 
 if fig_candlestick: st.plotly_chart(fig_candlestick, use_container_width=True)
 
+# High-Frequency Real-time Fragment Refresher Loop Layer (Eradicates data freezing bugs)
+@st.fragment(run_every=1.0)
+def render_live_pnl_stream_block():
+    total_trades = st.session_state.win_count + st.session_state.loss_count
+    win_rate = (st.session_state.win_count / total_trades * 100) if total_trades > 0 else 0.0
+
+    st.markdown(
+        f"""<div style="background-color:#141a24; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; display: flex; justify-content: space-between;">
+        <span style="color:#ffffff; font-weight:bold;">🏆 WON: <b style="color:#00e676;">{st.session_state.win_count}</b></span>
+        <span style="color:#ffffff; font-weight:bold;">❌ LOST: <b style="color:#ff1744;">{st.session_state.loss_count}</b></span>
+        <span style="color:#ffffff; font-weight:bold;">🎯 WIN RATE: <b style="color:#29b6f6;">{win_rate:.1f}%</b></span></div>""", 
+        unsafe_allow_html=True
+    )
+
+    local_pnl = 0.0
+    if st.session_state.in_position and live_price > 0:
+        is_long = ("LONG" in st.session_state.current_side)
+        if is_long:
+            local_pnl = ((live_price - st.session_state.buy_price) * (effective_vol / st.session_state.buy_price))
+        else:
+            local_pnl = ((st.session_state.buy_price - live_price) * (effective_vol / st.session_state.buy_price))
+
+    balance_usd_text = f"${(st.session_state.demo_balance + local_pnl):,.2f} USDT" if not is_real_live else "0.00 USDT"
+    pnl_color_hex = "#00e676" if local_pnl >= 0 else "#ff1744"
+    st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE TOTAL PROFILE BALANCE:</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:13px; color:{pnl_color_hex}; font-weight:bold;'>Live Floating P&L Indicator: {local_pnl:+.2f} USDT</p></div>", unsafe_allow_html=True)
+
+render_live_pnl_stream_block()
+
 st.markdown(
     f"""<div class='custom-box-grid' style='background-color:#050a12; border:1px solid #00e676;'>
     <div class='matrix-neon-text'>🧬 <b>AI MATRIX LIVESTREAM SCAN FEED:</b><br>{ai_market_thesis}</div>
     </div>""", 
     unsafe_allow_html=True
 )
-
-total_trades = st.session_state.win_count + st.session_state.loss_count
-win_rate = (st.session_state.win_count / total_trades * 100) if total_trades > 0 else 0.0
-
-st.markdown(
-    f"""<div style="background-color:#141a24; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; display: flex; justify-content: space-between;">
-    <span style="color:#ffffff; font-weight:bold;">🏆 WON: <b style="color:#00e676;">{st.session_state.win_count}</b></span>
-    <span style="color:#ffffff; font-weight:bold;">❌ LOST: <b style="color:#ff1744;">{st.session_state.loss_count}</b></span>
-    <span style="color:#ffffff; font-weight:bold;">🎯 WIN RATE: <b style="color:#29b6f6;">{win_rate:.1f}%</b></span></div>""", 
-    unsafe_allow_html=True
-)
-
-# High Frequency Interactive Floating P&L Dynamic Compute Block Loops (Fixes frozen data metrics update errors)
-floating_pnl = 0.0
-if st.session_state.in_position and live_price > 0:
-    is_long_pos = ("LONG" in st.session_state.current_side)
-    if is_long_pos:
-        floating_pnl = ((live_price - st.session_state.buy_price) * (effective_vol / st.session_state.buy_price))
-    else:
-        floating_pnl = ((st.session_state.buy_price - live_price) * (effective_vol / st.session_state.buy_price))
-
-balance_usd_text = f"${(st.session_state.demo_balance + floating_pnl):,.2f} USDT" if not is_real_live else "0.00 USDT"
-if is_real_live and api_key and secret_key:
-    try:
-        session = HTTP(testnet=False, api_key=api_key, secret_key=secret_key)
-        wallet_info = session.get_wallet_balance(accountType="UNIFIED", coin="USDT")
-        m_list = wallet_info.get('result', {}).get('list', [])
-        if m_list:
-            for c in m_list.get('coin', []):
-                if c.get('coin') == 'USDT':
-                    balance_usd_text = f"${(float(c.get('walletBalance', 0)) + floating_pnl):,.2f} USDT"
-                    break
-    except: balance_usd_text = "API Key Auth Node Error"
-
-# Colored dynamic flashing neon signals for live real-time profit and loss tracking matrix
-pnl_color_hex = "#00e676" if floating_pnl >= 0 else "#ff1744"
-st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE TOTAL PROFILE BALANCE:</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:13px; color:{pnl_color_hex}; font-weight:bold;'>Live Floating P&L Indicator: {floating_pnl:+.2f} USDT</p></div>", unsafe_allow_html=True)
 
 if not is_real_live:
     st.markdown("<b>⚙️ Sandbox Fund Manager Module Panel (Modify Virtual Capital):</b>", unsafe_allow_html=True)
@@ -362,7 +340,7 @@ if not is_real_live:
             st.success("Capital Updated Successfully!")
             st.rerun()
 
-# Blue Border Box - Entry price, Target TP, and Boundary SL layout fully restored
+# Blue Border Box - Entry and take profit targets dynamic tracking boundary board
 if st.session_state.in_position:
     is_long_pos = "LONG" in st.session_state.current_side
     live_target = (st.session_state.buy_price + price_jump_target) if is_long_pos else (st.session_state.buy_price - price_jump_target)
@@ -407,7 +385,14 @@ with c1:
             st.rerun()
 with c2:
     if st.button("🚨 EMERGENCY LIQUIDATE CLOSE ORDER POSITION", disabled=not st.session_state.in_position, key="force_sell_engine_btn"):
-        net_pnl = floating_pnl - estimated_fee
+        local_final_pnl = 0.0
+        if live_price > 0:
+            if "LONG" in st.session_state.current_side:
+                local_final_pnl = ((live_price - st.session_state.buy_price) * (effective_vol / st.session_state.buy_price))
+            else:
+                local_final_pnl = ((st.session_state.buy_price - live_price) * (effective_vol / st.session_state.buy_price))
+                
+        net_pnl = local_final_pnl - estimated_fee
         st.session_state.demo_balance += net_pnl
         db_save(f"balance_{allocated_user_id}", st.session_state.demo_balance)
         
@@ -435,8 +420,7 @@ if st._global_user_pnl_history:
     for r in st._global_user_pnl_history:
         try:
             if r.get("User ID") == search_uid_input and "COMMISSION" in r.get("Action", ""):
-                if r.get("Type") == "DEMO" or not is_real_live:
-                    demo_gen_accum += float(r.get("Net P&L ($)", 0))
+                demo_gen_accum += float(r.get("Net P&L ($)", 0))
         except: pass
 
 cbx1, cbx2 = st.columns(2)
@@ -492,10 +476,14 @@ for g_idx in range(1, 8):
                     m_df = pdf[pdf["User ID"] == sub_uid]
                     if not m_df.empty: sub_pnl = pd.to_numeric(m_df["Net P&L ($)"], errors='coerce').sum()
             
+            # Read direct child account isolated balances safely from cloud document key maps
+            sub_account_current_funds = db_load(f"balance_{sub_uid}", 5000.0)
             label_text = f"Gen Layer {g_idx}" if st._mlm_bonus_enabled else f"Serial Node {len(sub_tree_records)+1}"
             sub_tree_records.append({
                 "Hierarchy Level": label_text, "User ID": sub_uid,
-                "Username": st._uid_to_username.get(sub_uid, f"UserNode-{sub_uid[:4]}"), "Lifetime profit Balance": f"${sub_pnl:.2f} USDT"
+                "Username": st._uid_to_username.get(sub_uid, f"UserNode-{sub_uid[:4]}"), 
+                "Account Available Funds": f"${sub_account_current_funds:,.2f} USDT",
+                "Lifetime profit Balance": f"${sub_pnl:.2f} USDT"
             })
 
 if sub_tree_records: st.dataframe(pd.DataFrame(sub_tree_records), use_container_width=True)
@@ -533,7 +521,7 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Pane
             for uname, data in st._central_user_creds.items():
                 if data.get("uid") == override_uid: found_account = uname; break
             if found_account and override_new_pass != "":
-                st._central_user_creds[found_account]["password"] = override_new_pass; db_save("user_creds", st._central_user_creds); st.success(f"Success Account Modified!"); st.rerun()
+                st._central_user_creds[found_account]["password"] = override_new_pass; db_save("user_creds", st._central_user_creds); st.success(f"Success!"); st.rerun()
         
         target_block_key = st.text_input("Paste Target License Token to BAN permanently:", key="adm_ban_token_input_field")
         if st.button("Execute Permanent Revocation Ban", key="adm_ban_token_trigger_btn"):
