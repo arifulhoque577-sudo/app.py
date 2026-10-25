@@ -12,7 +12,7 @@ from pybit.unified_trading import HTTP
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-# Cloud Firebase Application Security Initialization Node
+# Cloud Firebase Connection Framework Control
 if not firebase_admin._apps:
     fb_json = os.environ.get("firebase_json", None)
     if fb_json:
@@ -105,7 +105,6 @@ BYBYT_DATABASE_CORE = fetch_bybit_future_coins()
 YOUR_SECRET_MASTER_CODE = "ADMIN1234"
 st.set_page_config(page_title="Bybit AI Scalper", page_icon="⚡", layout="centered")
 
-# Responsive CSS Layer preventing layout overflow on mobile screens
 st.markdown(
     """
     <style>
@@ -197,7 +196,7 @@ if 'loss_count' not in st.session_state: st.session_state.loss_count = db_load(f
 
 with st.sidebar:
     st.markdown("<h2 style='color:#f5a623; margin-top:0;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
-    # Profile Meta Display System Re-Stored Perfectly
+    # Profile Display Module fully restored
     st.markdown(f"<p style='color:#ffffff; font-size:13px; margin:0;'>👤 Handle Profile: <b>{st.session_state.logged_in_user}</b></p>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#38bdf8; font-size:13px; margin:4px 0;'>🆔 My Referral ID: <b>{allocated_user_id}</b></p>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#00e676; font-size:12px; margin:0 0 4px 0;'>📧 Account Email: <b>{my_profile_email}</b></p>", unsafe_allow_html=True)
@@ -215,9 +214,9 @@ with st.sidebar:
     target_symbol = coin_config["symbol"]
     ai_decision = st.toggle("AI Smart Crossover Filter", value=True)
     
-    # Strictly Type-Casted Leverage Configuration Layer (Eradicates 1-10 Slider locking issue)
+    # Absolute Leverage Slider Type-Casting Fix (Strict integer map preventing 1-10 compression lock)
     max_leverage_bound = int(coin_config.get('max_leverage', 100))
-    leverage = st.slider("Leverage (Range 1x to 100x Override):", min_value=1, max_value=max_leverage_bound, value=20, step=1, key="absolute_leverage_node_slider")
+    leverage = st.slider("Leverage (Absolute Range 1x to 100x Override):", min_value=1, max_value=max_leverage_bound, value=20, step=1, key="absolute_leverage_node_slider")
     trade_amount = st.number_input("Margin Requirement (\$):", min_value=1, value=20)
     price_jump_target = st.number_input("Take Profit Target (\$):", value=coin_config["default_tp"], format="%.6f")
     stop_loss_gap = st.number_input("Stop Loss Threshold (\$):", value=coin_config["default_sl"], format="%.6f")
@@ -233,8 +232,8 @@ with st.sidebar:
 
 effective_vol = trade_amount * leverage
 estimated_fee = effective_vol * 0.0011
-# Sci-Fi Grid Geometric Overlay Candlestick Visualization Plot Node
-live_price, current_rsi, ai_market_thesis, fig_candlestick = 0.0, 50.0, "AI GEOMETRIC RADARS CONNECTING TO TICK STREAM... 📡", None
+# Premium Sci-Fi Styled Live Technical Analytics & Candlestick Pattern Core
+live_price, current_rsi, ai_market_thesis, fig_candlestick = 0.0, 50.0, "AI GLOBAL NETWORK RESEARCH PIPELINE SYNCING... 📡", None
 try:
     public_session = HTTP(testnet=False)
     response = public_session.get_kline(category="linear", symbol=target_symbol, interval="1", limit=30)
@@ -260,17 +259,17 @@ try:
         ]
         
         if current_rsi < 45:
-            ai_market_thesis = f"🔮 GEMINI PRO CORE SCANNER ({target_symbol}): [DECISION: OVERLAPPING LONG] -> Technical pattern confirms massive institutional buying structure building up. {random.choice(live_intel_wires)}"
+            ai_market_thesis = f"🔮 AI LIGHTNING SCANNER RESEARCH ({target_symbol}): [STATUS: BUY OVERLAPPING] -> Candlestick pattern tracking shows intense institutional buying support accumulation. {random.choice(live_intel_wires)}"
         elif current_rsi > 55:
-            ai_market_thesis = f"🔮 GEMINI PRO CORE SCANNER ({target_symbol}): [DECISION: BREAKOUT SHORT] -> Distribution resistance wall hit on live order blocks. Whale liquidations incoming. {random.choice(live_intel_wires)}"
+            ai_market_thesis = f"🔮 AI LIGHTNING SCANNER RESEARCH ({target_symbol}): [STATUS: SELL DIVERGENCE] -> Asset value stretching outside normal technical resistance boundary nodes. {random.choice(live_intel_wires)}"
         else:
-            ai_market_thesis = f"🔮 GEMINI PRO CORE SCANNER ({target_symbol}): [DECISION: BALANCED RANGING] -> Price action stabilizing in equilibrium zone channels. Tracking breakout vector nodes. {random.choice(live_intel_wires)}"
+            ai_market_thesis = f"🔮 AI LIGHTNING SCANNER RESEARCH ({target_symbol}): [STATUS: RANGING BALANCE] -> Market volatility balancing inside neutral equilibrium zone channels. Scanner is measuring support vectors. {random.choice(live_intel_wires)}"
         
-        # Sci-Fi Futuristic Styled Candlestick Visualization Plot Node
+        # Premium Pro Futuristic Candlestick Visual Plot Node
         fig_candlestick = go.Figure(data=[go.Candlestick(x=df_kline.index, open=df_kline['open'], high=df_kline['high'], low=df_kline['low'], close=df_kline['close'])])
         
-        # Adding Sci-Fi Geometric tracking cross lines simulating live matrix calculations
-        fig_candlestick.add_trace(go.Scatter(x=df_kline.index, y=df_kline['close'].rolling(window=7).mean(), name="AI Matrix Tracker Line", line=dict(color='#00e676', width=1.5, dash='dot')))
+        # Add Sci-Fi Tracker lines mapping real-time moving targets
+        fig_candlestick.add_trace(go.Scatter(x=df_kline.index, y=df_kline['close'].rolling(window=7).mean(), name="AI Geometric Array", line=dict(color='#00e676', width=1.5, dash='dash')))
         
         fig_candlestick.update_layout(
             template="plotly_dark", margin=dict(l=6, r=6, t=6, b=6), height=270, xaxis_rangeslider_visible=False,
@@ -280,11 +279,11 @@ try:
 except:
     live_price = 66500.0
 
-st.markdown("<h3 style='color:#f5a623;'>🛸 Sci-Fi AI Technical Analytics & Candle Grid</h3>", unsafe_allow_html=True)
+st.markdown("<h3 style='color:#f5a623;'>🛸 Premium Pro AI Analytics & Dynamic Candle Grid</h3>", unsafe_allow_html=True)
 if fig_candlestick: st.plotly_chart(fig_candlestick, use_container_width=True)
 st.markdown(f"<div class='custom-box-grid' style='border-left: 5px solid #00e676; color: #00e676; font-family: monospace; font-size:12px; background-color:#0b0e14;'><b>{ai_market_thesis}</b></div>", unsafe_allow_html=True)
 
-# Personal User Isolated Account Dashboard Performance Layout
+# Personal User Metrics Panel Box Layout
 total_trades = st.session_state.win_count + st.session_state.loss_count
 win_rate = (st.session_state.win_count / total_trades * 100) if total_trades > 0 else 0.0
 
@@ -296,7 +295,16 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-balance_usd_text = f"${(st.session_state.demo_balance):,.2f} USDT" if not is_real_live else "0.00 USDT"
+# Dynamic Balance Logic Layer linked directly to position state updates
+floating_pnl = 0.0
+if st.session_state.in_position and live_price > 0:
+    is_long_pos = (st.session_state.current_side == "LONG")
+    if is_long_pos:
+        floating_pnl = ((live_price - st.session_state.buy_price) * (effective_vol / st.session_state.buy_price))
+    else:
+        floating_pnl = ((st.session_state.buy_price - live_price) * (effective_vol / st.session_state.buy_price))
+
+balance_usd_text = f"${(st.session_state.demo_balance + floating_pnl):,.2f} USDT" if not is_real_live else "0.00 USDT"
 if is_real_live and api_key and secret_key:
     try:
         session = HTTP(testnet=False, api_key=api_key, secret_key=secret_key)
@@ -305,12 +313,41 @@ if is_real_live and api_key and secret_key:
         if m_list:
             for c in m_list.get('coin', []):
                 if c.get('coin') == 'USDT':
-                    balance_usd_text = f"${float(c.get('walletBalance', 0)):,.2f} USDT"
+                    balance_usd_text = f"${(float(c.get('walletBalance', 0)) + floating_pnl):,.2f} USDT"
                     break
     except: balance_usd_text = "API Key Auth Error"
 
-st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE:</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2></div>", unsafe_allow_html=True)
-# Engine Controls Switches Core Modules Setup (Fixes AI Filter off instant entry criteria)
+st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE:</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:13px; color:{'#00e676' if floating_pnl >= 0 else '#ff1744'};'>Live Floating P&L: {floating_pnl:+.2f} USDT</p></div>", unsafe_allow_html=True)
+
+# Blue Border Box - Active Trade Boundary Target Info Panel Re-Stored Perfectly
+if st.session_state.in_position:
+    is_long_pos = st.session_state.current_side == "LONG"
+    live_target = (st.session_state.buy_price + price_jump_target) if is_long_pos else (st.session_state.buy_price - price_jump_target)
+    live_sl = (st.session_state.buy_price - stop_loss_gap) if is_long_pos else (st.session_state.buy_price + stop_loss_gap)
+    st.markdown(
+        f"""<div style="background-color:#0b0e14; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; border-left: 5px solid #29b6f6;">
+        <span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Entry Price Target: {st.session_state.buy_price} | Live Index: {live_price}</span><br>
+        <span style="font-size:14px; color:#00e676; font-weight:bold; font-family: monospace;">Take Profit Limit: {live_target}</span><br>
+        <span style="font-size:14px; color:#ff1744; font-weight:bold; font-family: monospace;">Stop Loss Boundary: {live_sl}</span></div>""", 
+        unsafe_allow_html=True
+    )
+# Engine Controls Switches Core Modules Setup (Fixes AI Filter off instant manual buy/sell buttons criteria)
+if not ai_decision and not st.session_state.in_position:
+    st.markdown("<p style='color:#ffcc00; font-weight:bold;'>🕹️ Manual Trading Panel Active (AI Crossover Bypassed)</p>", unsafe_allow_html=True)
+    m_col1, m_col2 = st.columns(2)
+    with m_col1:
+        if st.button("🟢 EXECUTE BUY / LONG ENTRY", key="manual_buy_long_btn"):
+            st.session_state.buy_price = live_price if live_price > 0 else 60000.0
+            st.session_state.in_position = True
+            st.session_state.current_side = "LONG"
+            st.rerun()
+    with m_col2:
+        if st.button("🔴 EXECUTE SELL / SHORT ENTRY", key="manual_sell_short_btn"):
+            st.session_state.buy_price = live_price if live_price > 0 else 60000.0
+            st.session_state.in_position = True
+            st.session_state.current_side = "SHORT"
+            st.rerun()
+
 c1, c2 = st.columns(2)
 with c1:
     if st.session_state.bot_active:
@@ -320,17 +357,10 @@ with c1:
     else:
         if st.button("🟢 START ENGINE SCALPER LOOP", key="start_engine_bot_btn"):
             st.session_state.bot_active = True
-            # AI Filter Overriding bypass layer - launches immediate manual position if toggle is false
             if not ai_decision and not st.session_state.in_position:
                 st.session_state.buy_price = live_price if live_price > 0 else 60000.0
                 st.session_state.in_position = True
                 st.session_state.current_side = "LONG"
-                st.session_state.all_trades_history.append({
-                    "Time": time.strftime("%H:%M:%S"), "Coin": target_symbol,
-                    "Action": "OPEN MANUAL LONG", "Price": st.session_state.buy_price,
-                    "Target": f"${st.session_state.buy_price + price_jump_target}",
-                    "Trading Fee ($)": f"-{estimated_fee:.3f}", "Net P&L ($)": "0.00", "Status": "RUNNING"
-                })
             st.rerun()
 with c2:
     if st.button("🚨 EMERGENCY LIQUIDATE CLOSE", disabled=not st.session_state.in_position, key="force_sell_engine_btn"):
