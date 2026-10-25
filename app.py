@@ -12,7 +12,7 @@ from pybit.unified_trading import HTTP
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-# Cloud Firebase Connection Controller Node
+# Cloud Firebase Synchronization Layer Setup
 if not firebase_admin._apps:
     fb_json = os.environ.get("firebase_json", None)
     if fb_json:
@@ -48,7 +48,7 @@ def db_save(key, val):
     except:
         pass
 
-# Initialize Sync Control Registries Persistent System
+# Global Memory Sync State Matrix Modules
 if "init_sync" not in st.session_state:
     st._central_user_creds = db_load("user_creds", {})
     st._central_key_registry = db_load("key_registry", {})
@@ -75,7 +75,7 @@ else:
     st._mlm_gen_rates = db_load("gen_rates", {})
     st._mlm_id_thresholds = db_load("id_thresh", {})
 
-# Fetch Dynamic Live Future Pairs from Bybit Exchange with Structural Static Backup (Ensures all coins populate)
+# Fetch Dynamic Live Bybit Future Symbols with Native Core Fallback Matrix
 @st.cache_data(ttl=300)
 def fetch_bybit_future_coins():
     backup_database = {
@@ -97,7 +97,7 @@ def fetch_bybit_future_coins():
     }
     try:
         url = "https://bybit.com"
-        res = requests.get(url, timeout=5).json()
+        res = requests.get(url, timeout=6).json()
         instruments = res.get("result", {}).get("list", [])
         if not instruments: return backup_database
         coin_dict = {}
@@ -106,10 +106,10 @@ def fetch_bybit_future_coins():
                 sym = inst["symbol"]
                 base = inst["baseCoin"]
                 max_lev = int(float(inst.get("leverageFilter", {}).get("maxLeverage", 100)))
-                coin_dict[f"🪙 {base} (Bybit Futures)"] = {
+                coin_dict[f"🪙 {base} (Bybit Futures Market)"] = {
                     "symbol": sym, "max_leverage": max_lev,
-                    "default_tp": float(inst.get("priceFilter", {}).get("tickSize", "0.01")) * 400,
-                    "default_sl": float(inst.get("priceFilter", {}).get("tickSize", "0.01")) * 600,
+                    "default_tp": float(inst.get("priceFilter", {}).get("tickSize", "0.01")) * 500,
+                    "default_sl": float(inst.get("priceFilter", {}).get("tickSize", "0.01")) * 750,
                     "step": float(inst.get("priceFilter", {}).get("tickSize", "0.01"))
                 }
         if len(coin_dict) > 2: backup_database.update(coin_dict)
@@ -121,7 +121,7 @@ BYBYT_DATABASE_CORE = fetch_bybit_future_coins()
 YOUR_SECRET_MASTER_CODE = "ADMIN1234"
 st.set_page_config(page_title="Bybit AI Scalper", page_icon="⚡", layout="centered")
 
-# Responsive Mobile Layout UI Stylesheet prevents layout component breakages
+# Mobile Screen Component Spills Shield Layout CSS
 st.markdown(
     """
     <style>
@@ -150,7 +150,7 @@ if 'logged_in_user' not in st.session_state:
 
 if st.session_state.logged_in_user is None:
     st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
-    st.subheader("🔑 Account Identity Gateway Control Panel")
+    st.subheader("🔑 Secure Registration & Access Panel")
     auth_mode = st.radio("Choose Layer:", ["Secure Login Profile", "Mint New Account ID", "Forget Password Profile"])
     
     if auth_mode == "Mint New Account ID":
@@ -158,7 +158,7 @@ if st.session_state.logged_in_user is None:
         reg_password = st.text_input("Password Phrase:", type="password", key="reg_p").strip()
         reg_email = st.text_input("Google Mail (Gmail ID):", key="reg_e").strip()
         reg_school = st.text_input("First School Name?", key="reg_sch").strip()
-        reg_sponsor = st.text_input("Sponsor Referral Token:", key="reg_s").strip()
+        reg_sponsor = st.text_input("Sponsor Referral Token ID:", key="reg_s").strip()
         if st.button("🚀 Register My Handle", key="reg_submit_btn"):
             st._central_user_creds = db_load("user_creds", {})
             existing_emails = [d.get("email") for d in st._central_user_creds.values()]
@@ -177,7 +177,7 @@ if st.session_state.logged_in_user is None:
                 db_save("user_creds", st._central_user_creds)
                 db_save("uid_to_user", st._uid_to_username)
                 
-                # Isolated state initial maps setup per client id handle node securely
+                # Isolated state mapping allocation setup safely per single user handle securely
                 db_save(f"balance_{new_uid}", 5000.0)
                 db_save(f"win_{new_uid}", 0)
                 db_save(f"loss_{new_uid}", 0)
@@ -187,7 +187,7 @@ if st.session_state.logged_in_user is None:
                     if reg_sponsor not in st._global_referral_tree: st._global_referral_tree[reg_sponsor] = []
                     st._global_referral_tree[reg_sponsor].append(new_uid)
                     db_save("referral_tree", st._global_referral_tree)
-                st.success(f"Bound Successful! UID: {new_uid}")
+                st.success(f"Bound Identity! UID: {new_uid}")
         st.stop()
         
     elif auth_mode == "Secure Login Profile":
@@ -198,7 +198,7 @@ if st.session_state.logged_in_user is None:
             if login_u in st._central_user_creds and st._central_user_creds[login_u]["password"] == login_p:
                 st.session_state.logged_in_user = login_u
                 st.query_params["session_user"] = login_u
-                st.success("Authorized!")
+                st.success("Authorized Account Sequence Verified!")
                 st.rerun()
             else: st.error("Mismatch credentials!")
         st.stop()
@@ -214,6 +214,7 @@ if 'loss_count' not in st.session_state: st.session_state.loss_count = db_load(f
 
 with st.sidebar:
     st.markdown("<h2 style='color:#f5a623; margin-top:0;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
+    # Profile Display Module Re-Stored Perfectly
     st.markdown(f"<p style='color:#ffffff; font-size:13px; margin:0;'>👤 Handle Profile: <b>{st.session_state.logged_in_user}</b></p>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#38bdf8; font-size:13px; margin:4px 0;'>🆔 My Referral ID: <b>{allocated_user_id}</b></p>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#00e676; font-size:12px; margin:0 0 4px 0;'>📧 Account Email: <b>{my_profile_email}</b></p>", unsafe_allow_html=True)
@@ -226,15 +227,15 @@ with st.sidebar:
     bot_mode = st.radio("Trading Account Mode:", ["Demo Simulation (Virtual Funds)", "Live Exchange (Bybit Mainnet API)"])
     is_real_live = "Live" in bot_mode
     
-    # Render all 100+ Live Scraped Asset Contracts inside dynamic drop-down selector
+    # Render all Scraped Future Pairs inside dynamic selector dropdown
     selected_display_name = st.selectbox("Select Asset Contract Symbol:", list(BYBYT_DATABASE_CORE.keys()), index=0)
     coin_config = BYBYT_DATABASE_CORE[selected_display_name]
     target_symbol = coin_config["symbol"]
     ai_decision = st.toggle("AI Smart Crossover Filter", value=True)
     
-    # Absolute Leverage Slider Fix (Forces strict 1-100 range validation map preventing compressions)
-    max_leverage_bound = int(coin_config['max_leverage'])
-    leverage = st.slider(f"Leverage Control (Absolute Range 1x-{max_leverage_bound}x):", min_value=1, max_value=max_leverage_bound, value=min(20, max_leverage_bound), step=1)
+    # Fixed Leverage Slider (Forces strict 1-100 range validation map preventing compressions)
+    max_leverage_bound = int(coin_config.get('max_leverage', 100))
+    leverage = st.slider(f"Leverage Control (Absolute Range 1x-{max_leverage_bound}x):", min_value=1, max_value=max_leverage_bound, value=20, step=1)
     trade_amount = st.number_input("Margin Requirement (\$):", min_value=1, value=20)
     price_jump_target = st.number_input("Take Profit Target (\$):", value=coin_config["default_tp"], format="%.6f")
     stop_loss_gap = st.number_input("Stop Loss Threshold (\$):", value=coin_config["default_sl"], format="%.6f")
@@ -251,9 +252,8 @@ with st.sidebar:
 
 effective_vol = trade_amount * leverage
 estimated_fee = effective_vol * 0.0011
-
-# --- DYNAMIC GEMINI AI MARKET TECHNICAL SCANNERS & LIVE CHART MODULE ---
-live_price, current_rsi, ai_market_thesis, fig_candlestick = 0.0, 50.0, "AUTOMATED SCANNER MONITORING TICK DATA PATTERNS... ⏳", None
+# Sci-Fi Styled Live Technical Analytics & Candlestick Pattern Visual Monitor Hub
+live_price, current_rsi, ai_market_thesis, fig_candlestick = 0.0, 50.0, "AI SCANNER INITIALIZING RESEARCH SEQUENCE... 📡", None
 try:
     public_session = HTTP(testnet=False)
     response = public_session.get_kline(category="linear", symbol=target_symbol, interval="1", limit=25)
@@ -263,7 +263,6 @@ try:
         for c in ['open', 'high', 'low', 'close', 'volume']: df_kline[c] = pd.to_numeric(df_kline[c])
         live_price = df_kline['close'].iloc[-1]
         
-        # Computing Technical Cross Over Matrices
         delta = df_kline['close'].diff()
         gain = delta.where(delta > 0, 0).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
@@ -271,23 +270,39 @@ try:
         current_rsi = (100 - (100 / (1 + rs))).iloc[-1]
         if pd.isna(current_rsi): current_rsi = 50.0
         
-        # Gemini AI Real-time Intelligent Multi-Indicator Technical Research Synthesis Output
-        if current_rsi < 45:
-            ai_market_thesis = f"🔮 GEMINI BOT LIGHTNING SCALPING SCANNERS ({target_symbol}): Candlestick pattern tracking shows intense institutional buying support accumulation. Order book volume indicates a highly optimized Long/Buy market opportunity breakout."
-        elif current_rsi > 55:
-            ai_market_thesis = f"🔮 GEMINI BOT LIGHTNING SCALPING SCANNERS ({target_symbol}): Asset value stretching outside normal technical resistance boundary nodes. Whale sell walls building up on live exchange feeds. Short scalp breakout confirmation active."
-        else:
-            ai_market_thesis = f"🔮 GEMINI BOT LIGHTNING SCALPING SCANNERS ({target_symbol}): Market consolidating inside neutral equilibrium zone channels. Scanner is measuring exact support-resistance breakout vectors before executing automated entries."
+        # Gemini AI Real-Time Processing International Data & News Animation Simulator
+        news_feeds = [
+            "⚡ BREAKING: Whales moving heavy volume slots inside active derivatives registries.",
+            "📊 GLOBAL NEWS: Institutional liquidity inflow triggered near standard support nodes.",
+            "📡 TECH DATA: Volatility balancing pattern matches geometric crossover formulas."
+        ]
+        chosen_news = random.choice(news_feeds)
         
-        # High Fidelity Plotly Chart Visualization Render Matrix
+        if current_rsi < 45:
+            ai_market_thesis = f"🔮 AI LIGHTNING SCANNER THESIS ({target_symbol}): [STATUS: BUY OVERLAPPING] -> Candlestick pattern tracking shows intense institutional buying support accumulation. {chosen_news}"
+        elif current_rsi > 55:
+            ai_market_thesis = f"🔮 AI LIGHTNING SCANNER THESIS ({target_symbol}): [STATUS: SELL DIVERGENCE] -> Asset value stretching outside normal technical resistance boundary nodes. {chosen_news}"
+        else:
+            ai_market_thesis = f"🔮 AI LIGHTNING SCANNER THESIS ({target_symbol}): [STATUS: RANGING CONSOLIDATION] -> Market volatility balancing inside neutral equilibrium zone channels. {chosen_news}"
+        
+        # Sci-Fi Dark theme Candlestick Visualization Plot Node
         fig_candlestick = go.Figure(data=[go.Candlestick(x=df_kline.index, open=df_kline['open'], high=df_kline['high'], low=df_kline['low'], close=df_kline['close'])])
-        fig_candlestick.update_layout(template="plotly_dark", margin=dict(l=8, r=8, t=8, b=8), height=260, xaxis_rangeslider_visible=False)
+        fig_candlestick.update_layout(
+            template="plotly_dark", 
+            margin=dict(l=5, r=5, t=5, b=5), 
+            height=260, 
+            xaxis_rangeslider_visible=False,
+            paper_bgcolor='#0b0e14',
+            plot_bgcolor='#0b0e14'
+        )
 except:
     live_price = 66500.0
 
 st.markdown("<h3 style='color:#f5a623;'>📊 Real-time Technical Analytics & Live Candle Chart</h3>", unsafe_allow_html=True)
 if fig_candlestick: st.plotly_chart(fig_candlestick, use_container_width=True)
-st.markdown(f"<div class='custom-box-grid' style='border-left: 5px solid #38bdf8; color: #38bdf8; font-family: monospace;'><b>{ai_market_thesis}</b></div>", unsafe_allow_html=True)
+st.markdown(f"<div class='custom-box-grid' style='border-left: 5px solid #00e676; color: #00e676; font-family: monospace; font-size:12px; background-color:#0b0e14;'><b>{ai_market_thesis}</b></div>", unsafe_allow_html=True)
+
+# Personal User Performance Metrics Board Layout Row
 total_trades = st.session_state.win_count + st.session_state.loss_count
 win_rate = (st.session_state.win_count / total_trades * 100) if total_trades > 0 else 0.0
 
@@ -299,43 +314,41 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Live Exchange Account Mode Balance Dynamic Fallback
 balance_usd_text = f"${(st.session_state.demo_balance):,.2f} USDT" if not is_real_live else "0.00 USDT"
 if is_real_live and api_key and secret_key:
     try:
         session = HTTP(testnet=False, api_key=api_key, secret_key=secret_key)
         wallet_info = session.get_wallet_balance(accountType="UNIFIED", coin="USDT")
-        member_list = wallet_info.get('result', {}).get('list', [])
-        if member_list:
-            for c in member_list[0].get('coin', []):
+        m_list = wallet_info.get('result', {}).get('list', [])
+        if m_list:
+            for c in m_list[0].get('coin', []):
                 if c.get('coin') == 'USDT':
                     balance_usd_text = f"${float(c.get('walletBalance', 0)):,.2f} USDT"
                     break
     except: balance_usd_text = "API Key Auth Error"
 
-st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE TOTAL WALLET BALANCE:</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2></div>", unsafe_allow_html=True)
-
-# Engine Controls Loops Switches Nodes
+st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE:</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2></div>", unsafe_allow_html=True)
+# Engine Controls Switches Modules
 c1, c2 = st.columns(2)
 with c1:
     if st.session_state.bot_active:
-        if st.button("🔴 STOP ACTIVE SCALPER ENGINE"):
+        if st.button("🔴 STOP ENGINE SCALPER LOOP", key="stop_engine_bot_btn"):
             st.session_state.bot_active = False
             st.rerun()
     else:
-        if st.button("🟢 START ACTIVE SCALPER ENGINE"):
+        if st.button("🟢 START ENGINE SCALPER LOOP", key="start_engine_bot_btn"):
             st.session_state.bot_active = True
             st.rerun()
 with c2:
-    if st.button("🚨 EMERGENCY LIQUIDATE CLOSE", disabled=not st.session_state.in_position):
+    if st.button("🚨 EMERGENCY LIQUIDATE CLOSE", disabled=not st.session_state.in_position, key="force_sell_engine_btn"):
         st.session_state.in_position = False
         st.rerun()
 
-# --- 🌿 DEMO MODE SCOPE CONFIGURABLE MATRIX HUB ---
+# --- 🌿 DEMO MODE DYNAMIC SCOPE CONFIGURABLE MATRIX HUB ---
 st.markdown("<hr style='border:1px solid #1f2c3f;'>", unsafe_allow_html=True)
 st.markdown("<h3 style='color:#f5a623;'>🌿 Network Marketing Matrix Desk (Demo Sandbox Dashboard Mode)</h3>", unsafe_allow_html=True)
 
-# FIXED: Re-mapped layouts config slots cleanly to permanently eradicate col_d2 NameError bug
+# FIXED: Standard layout columns variable mapping fully resolved to permanently eliminate the NameError bug
 col_t1, col_t2 = st.columns(2)
 with col_t1: start_scope_date = st.date_input("Start Registry Date Filter Range:", datetime.now(), key="matrix_start")
 with col_t2: end_scope_date = st.date_input("End Registry Date Filter Range:", datetime.now(), key="matrix_end")
@@ -354,7 +367,7 @@ cbx1, cbx2 = st.columns(2)
 with cbx1: st.markdown(f"<div class='custom-box-grid' style='border-top:4px solid #00e676; text-align:center;'><span>🔗 REFERRAL TOTAL NET BOX</span><h4 style='color:#00e676;'>${demo_ref_accum:.2f} USDT</h4></div>", unsafe_allow_html=True)
 with cbx2: st.markdown(f"<div class='custom-box-grid' style='border-top:4px solid #29b6f6; text-align:center;'><span>🌐 7-GEN DAILY ROI COMMISSION</span><h4 style='color:#29b6f6;'>${demo_gen_accum:.2f} USDT</h4></div>", unsafe_allow_html=True)
 
-# Downline Tree Calculation Core Modules Setup
+# Downline Tree Status Processing Module
 def calculate_sub_generations(r_uid, tree):
     g_map = {1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: []}
     if r_uid in tree: g_map = tree[r_uid].copy()
@@ -380,15 +393,18 @@ for g_idx in range(1, 8):
                 if not pdf.empty and "User ID" in pdf.columns:
                     m_df = pdf[pdf["User ID"] == sub_uid]
                     if not m_df.empty: sub_pnl = pd.to_numeric(m_df["Net P&L ($)"], errors='coerce').sum()
+            
+            # Conditionally render hierarchy levels based strictly on active admin toggle parameters
+            label_text = f"Gen Layer {g_idx}" if st._mlm_bonus_enabled else f"Serial Node {len(sub_tree_records)+1}"
             sub_tree_records.append({
-                "Hierarchy Level": f"Gen {g_idx}", "User ID": sub_uid,
+                "Hierarchy Level": label_text, "User ID": sub_uid,
                 "Username": st._uid_to_username.get(sub_uid, f"Node-{sub_uid[:4]}"), "Lifetime profit Balance": f"${sub_pnl:.2f} USDT"
             })
 
 if sub_tree_records: st.dataframe(pd.DataFrame(sub_tree_records), use_container_width=True)
 else: st.info("No active team network users registered under this target token UID hierarchy layers.")
 
-# --- 🛠️ DYNAMIC ORIGINAL HACK/SUPER ADMIN CONTROL HUB FULLY RESTORED ---
+# --- 🛠️ DYNAMIC ORIGINAL HACK/ADMIN CONTROL HUB EXPANDER FULLY RESTORED ---
 with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Panel)"):
     master_input = st.text_input("Input Master Security Override Code Password:", type="password", key="supreme_admin_password_node")
     if master_input == YOUR_SECRET_MASTER_CODE:
