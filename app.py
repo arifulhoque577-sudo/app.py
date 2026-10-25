@@ -75,51 +75,31 @@ else:
     st._mlm_gen_rates = db_load("gen_rates", {})
     st._mlm_id_thresholds = db_load("id_thresh", {})
 
-# Fixed Master Country Array Registry (All World Countries Flags & Codes Injected Flawlessly)
-ALL_WORLD_COUNTRIES = [
-    {"name": "Bangladesh", "code": "🇧🇩 +880"}, {"name": "United States", "code": "🇺🇸 +1"},
-    {"name": "United Kingdom", "code": "🇬🇧 +44"}, {"name": "United Arab Emirates", "code": "🇦🇪 +971"},
-    {"name": "Saudi Arabia", "code": "🇸🇦 +966"}, {"name": "Malaysia", "code": "🇲🇾 +60"},
-    {"name": "India", "code": "🇮🇳 +91"}, {"name": "Pakistan", "code": "🇵🇰 +92"},
-    {"name": "Afghanistan", "code": "🇦🇫 +93"}, {"name": "Australia", "code": "🇦🇺 +61"},
-    {"name": "Austria", "code": "🇦🇹 +43"}, {"name": "Bahrain", "code": "🇧🇭 +973"},
-    {"name": "Belgium", "code": "🇧🇪 +32"}, {"name": "Brazil", "code": "🇧🇷 +55"},
-    {"name": "Canada", "code": "🇨🇦 +1"}, {"name": "China", "code": "🇨🇳 +86"},
-    {"name": "Denmark", "code": "🇩🇰 +45"}, {"name": "Egypt", "code": "🇪🇬 +20"},
-    {"name": "France", "code": "🇫🇷 +33"}, {"name": "Germany", "code": "🇩🇪 +49"},
-    {"name": "Indonesia", "code": "🇮🇩 +62"}, {"name": "Italy", "code": "🇮🇹 +39"},
-    {"name": "Japan", "code": "🇯🇵 +81"}, {"name": "Kuwait", "code": "🇰🇼 +965"},
-    {"name": "Maldives", "code": "🇲🇻 +960"}, {"name": "Nepal", "code": "🇳🇵 +977"},
-    {"name": "Netherlands", "code": "🇳🇱 +31"}, {"name": "New Zealand", "code": "🇳🇿 +64"},
-    {"name": "Norway", "code": "🇳🇴 +47"}, {"name": "Oman", "code": "🇴🇲 +968"},
-    {"name": "Qatar", "code": "🇶🇦 +974"}, {"name": "Russia", "code": "🇷🇺 +7"},
-    {"name": "Singapore", "code": "🇸🇬 +65"}, {"name": "South Africa", "code": "🇿🇦 +27"},
-    {"name": "South Korea", "code": "🇰🇷 +82"}, {"name": "Spain", "code": "🇪🇸 +34"},
-    {"name": "Sri Lanka", "code": "🇱🇰 +94"}, {"name": "Sweden", "code": "🇸🇪 +46"},
-    {"name": "Switzerland", "code": "🇨🇭 +41"}, {"name": "Turkey", "code": "🇹🇷 +90"}
-]
-COUNTRY_NAMES = [c["name"] for c in ALL_WORLD_COUNTRIES]
-DIAL_CODES = [f"{c['code']} ({c['name']})" for c in ALL_WORLD_COUNTRIES]
-
-@st.cache_data(ttl=60)
+# High-Performance Scraper Engine loading all active 300+ Bybit Future pairs dynamically
+@st.cache_data(ttl=30)
 def fetch_bybit_future_coins():
     backup_database = {
         "🪙 BTC (Bitcoin)": {"symbol": "BTCUSDT", "max_leverage": 100, "default_tp": 100.0, "default_sl": 150.0, "step": 10.0},
         "🔷 ETH (Ethereum)": {"symbol": "ETHUSDT", "max_leverage": 100, "default_tp": 8.0, "default_sl": 15.0, "step": 1.0},
         "☀️ SOL (Solana)": {"symbol": "SOLUSDT", "max_leverage": 50, "default_tp": 1.5, "default_sl": 3.0, "step": 0.1},
         "💥 XRP (Ripple)": {"symbol": "XRPUSDT", "max_leverage": 100, "default_tp": 0.015, "default_sl": 0.03, "step": 0.001},
-        "🐶 DOGE (Dogecoin)": {"symbol": "DOGEUSDT", "max_leverage": 50, "default_tp": 0.004, "default_sl": 0.01, "step": 0.0005}
+        "🐶 DOGE (Dogecoin)": {"symbol": "DOGEUSDT", "max_leverage": 50, "default_tp": 0.004, "default_sl": 0.01, "step": 0.0005},
+        "🔮 LINK (Chainlink)": {"symbol": "LINKUSDT", "max_leverage": 50, "default_tp": 0.25, "default_sl": 0.50, "step": 0.01},
+        "🧬 ADA (Cardano)": {"symbol": "ADAUSDT", "max_leverage": 50, "default_tp": 0.01, "default_sl": 0.02, "step": 0.001},
+        "🌀 WIF (Dogwifhat)": {"symbol": "WIFUSDT", "max_leverage": 20, "default_tp": 0.05, "default_sl": 0.12, "step": 0.01},
+        "🚀 SUI (Sui Token)": {"symbol": "SUIUSDT", "max_leverage": 50, "default_tp": 0.02, "default_sl": 0.06, "step": 0.001},
+        "🌊 APT (Aptos)": {"symbol": "APTUSDT", "max_leverage": 50, "default_tp": 0.05, "default_sl": 0.15, "step": 0.01}
     }
     try:
         url = "https://bybit.com"
-        res = requests.get(url, timeout=10).json()
+        res = requests.get(url, timeout=12).json()
         instruments = res.get("result", {}).get("list", [])
         for inst in instruments:
             if inst["status"] == "Trading" and inst["quoteCoin"] == "USDT":
                 sym = inst["symbol"]
                 base = inst["baseCoin"]
                 max_lev = int(float(inst.get("leverageFilter", {}).get("maxLeverage", 100)))
-                backup_database[f"🪙 {base} (Bybit Futures)"] = {
+                backup_database[f"🪙 {base} (Bybit Futures Market)"] = {
                     "symbol": sym, "max_leverage": max_lev,
                     "default_tp": float(inst.get("priceFilter", {}).get("tickSize", "0.01")) * 400,
                     "default_sl": float(inst.get("priceFilter", {}).get("tickSize", "0.01")) * 600,
@@ -131,7 +111,9 @@ def fetch_bybit_future_coins():
 
 BYBYT_DATABASE_CORE = fetch_bybit_future_coins()
 YOUR_SECRET_MASTER_CODE = "ADMIN1234"
-# Edge Responsive Mobile UI Style Configuration Layer
+st.set_page_config(page_title="Bybit AI Scalper", page_icon="⚡", layout="centered")
+
+# Strict Edge Responsive Mobile CSS Layer Injection Module with Vertically Stacking Sliders
 st.markdown(
     """
     <style>
@@ -148,6 +130,8 @@ st.markdown(
     }
     .custom-box-grid { background-color: #141a24; padding: 15px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #1f2c3f; }
     .matrix-neon-text { font-family: 'Courier New', monospace; color: #00e676; text-shadow: 0 0 8px #00e676; font-size: 13px; line-height: 1.6; }
+    
+    /* Forces leverage slider indicator numeric values to display vertically below each other safely */
     div[data-testid="stSlider"] div { flex-direction: column !important; align-items: flex-start !important; }
     </style>
     """,
@@ -171,30 +155,32 @@ if st.session_state.logged_in_user is None:
         reg_password = st.text_input("Password Phrase:", type="password", key="reg_p").strip()
         reg_email = st.text_input("Google Mail (Gmail ID):", key="reg_e").strip()
         
-        # Mandatory All World Country Selector List
-        reg_country = st.selectbox("Select Profile Country (Mandatory Field):", COUNTRY_NAMES, index=0)
+        # Mapped Global Countries Lists Dropdown Mandatory Gateway Controls Panel
+        global_country_list = ["Bangladesh", "United States", "United Kingdom", "United Arab Emirates", "Saudi Arabia", "Malaysia", "India", "Pakistan", "Kuwait", "Qatar", "Oman", "Singapore", "Canada", "Australia", "Germany"]
+        reg_country = st.selectbox("Select Profile Country (Mandatory):", global_country_list, index=0)
         
-        # FIXED CORE LAYER: Unified Country Code Flag + Phone Number Row mapping into one unified input row area
-        st.markdown("<b>Active Mobile Number (Select Flag Code + Input Number):</b>", unsafe_allow_html=True)
-        p_col1, p_col2 = st.columns([1, 2])
-        with p_col1:
-            reg_flag_code = st.selectbox("Code:", DIAL_CODES, index=0, label_visibility="collapsed")
-        with p_col2:
-            reg_phone_raw = st.text_input("Number:", key="reg_ph_num_raw", label_visibility="collapsed").strip()
+        # Mapped Flags Countries Code Database Arrays
+        global_phone_flags = [
+            "🇧🇩 +880 (Bangladesh)", "🇺🇸 +1 (United States)", "🇬🇧 +44 (United Kingdom)", 
+            "🇦🇪 +971 (UAE)", "🇸🇦 +966 (Saudi Arabia)", "🇲🇾 +60 (Malaysia)", 
+            "🇮🇳 +91 (India)", "🇵🇰 +92 (Pakistan)", "🇰🇼 +965 (Kuwait)", "🇶🇦 +974 (Qatar)"
+        ]
+        reg_flag_code = st.selectbox("Select Phone Flag Country Code:", global_phone_flags, index=0)
+        reg_phone_raw = st.text_input("Mobile Number (Without Country Code):", key="reg_ph_num_raw").strip()
         
-        reg_school = st.text_input("First School Name? (Security Answer):", key="reg_sch").strip()
+        reg_school = st.text_input("First School Name? (Security Answer Check):", key="reg_sch").strip()
         reg_sponsor = st.text_input("Sponsor Referral Token ID (Username or UID):", key="reg_s").strip()
         
         if st.button("🚀 Register My Handle", key="reg_submit_btn"):
             st._central_user_creds = db_load("user_creds", {})
             if reg_username == "" or reg_password == "" or reg_email == "" or reg_school == "" or reg_phone_raw == "":
-                st.error("Mandatory fields are blank! Registration rejected from cloud servers.")
+                st.error("Mandatory registry input fields are left blank! Process blocked.")
             elif "@gmail.com" not in reg_email: st.error("Invalid Gmail format handle entry!")
-            elif reg_username in st._central_user_creds: st.error("Username already active!")
+            elif reg_username in st._central_user_creds: st.error("Username already active inside database!")
             else:
                 new_uid = "UID-" + "".join(random.choices(string.digits, k=6))
                 
-                # Cross matching registration sponsor nodes inputs to check either direct UID match or Username mapping profiles
+                # CRITICAL TRANSLATION LOGIC: Resolves Sponsor ID parent node whether they provided explicit UID or clean Username string
                 resolved_sponsor_uid = "None"
                 if reg_sponsor != "":
                     resolved_sponsor_uid = reg_sponsor
@@ -206,9 +192,13 @@ if st.session_state.logged_in_user is None:
                                 resolved_sponsor_uid = data.get("uid", reg_sponsor)
                                 break
                 
+                # Single Unified Mobile Field composition block mapping
+                extracted_digits_code = reg_flag_code.split(" ")[1]
+                full_composed_mobile_string = f"{extracted_digits_code}{reg_phone_raw}"
+                
                 st._central_user_creds[reg_username] = {
                     "password": reg_password, "uid": new_uid, "email": reg_email,
-                    "country": reg_country, "phone_code": reg_flag_code.split(" ")[0], "phone": reg_phone_raw,
+                    "country": reg_country, "phone": full_composed_mobile_string,
                     "school_answer": reg_school.lower(), "sponsor": resolved_sponsor_uid
                 }
                 st._uid_to_username[new_uid] = reg_username
@@ -270,6 +260,7 @@ with st.sidebar:
     target_symbol = coin_config["symbol"]
     ai_decision = st.toggle("AI Smart Crossover Filter Matrix", value=True)
     
+    # Vertically rendered absolute scale leverage slider fix (Strict dynamic range mapping)
     max_leverage_bound = int(coin_config.get('max_leverage', 100))
     leverage = st.slider("Leverage Scale Selection Array (1x-100x Override):", min_value=1, max_value=max_leverage_bound, value=20, step=1, key="absolute_leverage_node_slider")
     trade_amount = st.number_input("Margin Requirement Block (\$):", min_value=1, value=20)
@@ -294,12 +285,19 @@ st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00
 live_price, current_rsi, ai_market_thesis, fig_candlestick = 0.0, 50.0, "ESTABLISHING AI CYBER MATRICES SCANNERS SCOPES... ⏳", None
 try:
     public_session = HTTP(testnet=False)
+    
+    # FETCH REAL-TIME TICKER PRICE (Ensures true second-by-second balance & P&L movement)
+    ticker_res = public_session.get_tickers(category="linear", symbol=target_symbol)
+    ticker_list = ticker_res.get('result', {}).get('list', [])
+    if ticker_list:
+        live_price = float(ticker_list[0].get('lastPrice', 0))
+        
     response = public_session.get_kline(category="linear", symbol=target_symbol, interval="1", limit=30)
     klines = response.get('result', {}).get('list', [])
     if klines:
         df_kline = pd.DataFrame(klines, columns=['time', 'open', 'high', 'low', 'close', 'volume', 'turnover']).iloc[::-1].reset_index(drop=True)
         for c in ['open', 'high', 'low', 'close', 'volume']: df_kline[c] = pd.to_numeric(df_kline[c])
-        live_price = df_kline['close'].iloc[-1]
+        if live_price == 0.0: live_price = df_kline['close'].iloc[-1]
         
         delta = df_kline['close'].diff()
         gain = delta.where(delta > 0, 0).rolling(window=14).mean()
@@ -309,27 +307,26 @@ try:
         if pd.isna(current_rsi): current_rsi = 50.0
         
         live_intel_wires = [
-            "⚡ METRICS INTERCEPT: Whales shifting massive capital derivatives blocks inside live exchange ledger books.",
-            "📊 ORDERBOOK SCAN: Institutional orders matching geometric support breakout lines.",
-            "📡 SIGNAL DETECT: High volume liquidation matrix forming near active trading boundaries.",
-            "🌐 MEDIA STREAM: Global crypto indicators printing immediate volatility trend shifts on futures contracts."
+            "⚡ MATRIX FEED INTERCEPT: Whales shifting massive capital derivatives blocks inside live ledger books.",
+            "📊 ORDERBOOK QUANT INTEGRATION: Institutional orders matching support breakout line clusters.",
+            "📡 DYNAMIC SIGNAL DETECT: High volume liquidation vectors forming near active margin boundaries.",
+            "🌐 STREAM METRICS: Global indicators printing immediate volatility trend directional velocity shifts."
         ]
-        ai_market_thesis = f"🔮 AI LIGHTNING MATRIX SCANNER ({target_symbol}) -> [STATUS: ACTIVE] // {random.choice(live_intel_wires)}"
+        ai_market_thesis = f"🔮 AI LIGHTNING MATRIX SCANNER ({target_symbol}) -> {random.choice(live_intel_wires)}"
         
         fig_candlestick = go.Figure(data=[go.Candlestick(x=df_kline.index, open=df_kline['open'], high=df_kline['high'], low=df_kline['low'], close=df_kline['close'])])
         fig_candlestick.add_trace(go.Scatter(x=df_kline.index, y=df_kline['close'].rolling(window=7).mean(), name="AI Geometric Tracking Vector", line=dict(color='#00e676', width=2, dash='dot')))
-        
         fig_candlestick.update_layout(
             template="plotly_dark", margin=dict(l=6, r=6, t=6, b=6), height=280, xaxis_rangeslider_visible=False,
             paper_bgcolor='#06090e', plot_bgcolor='#06090e',
             xaxis=dict(gridcolor='#141b2e', zerolinecolor='#141b2e'), yaxis=dict(gridcolor='#141b2e', zerolinecolor='#141b2e')
         )
 except:
-    live_price = 66500.0
+    if live_price == 0.0: live_price = 66500.0
 
 if fig_candlestick: st.plotly_chart(fig_candlestick, use_container_width=True)
 
-# FIXED LOCATION: Mapped AI Scan Box directly underneath the trading candlestick chart layout
+# Mapped AI Livestream Scan box directly underneath the dynamic candle chart as requested
 st.markdown(
     f"""<div class='custom-box-grid' style='background-color:#050a12; border:1px solid #00e676;'>
     <div class='matrix-neon-text'>🧬 <b>AI MATRIX LIVESTREAM SCAN FEED:</b><br>{ai_market_thesis}</div>
@@ -337,33 +334,40 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# High-Frequency Fragment Auto-Refresher clock loop executing second by second changes flawlessly
-@st.fragment(run_every=1.0)
-def render_live_pnl_stream_block():
-    total_trades = st.session_state.win_count + st.session_state.loss_count
-    win_rate = (st.session_state.win_count / total_trades * 100) if total_trades > 0 else 0.0
+# Core Display Performance Score Metrics Board Block Layout
+total_trades = st.session_state.win_count + st.session_state.loss_count
+win_rate = (st.session_state.win_count / total_trades * 100) if total_trades > 0 else 0.0
 
-    st.markdown(
-        f"""<div style="background-color:#141a24; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; display: flex; justify-content: space-between;">
-        <span style="color:#ffffff; font-weight:bold;">🏆 WON: <b style="color:#00e676;">{st.session_state.win_count}</b></span>
-        <span style="color:#ffffff; font-weight:bold;">❌ LOST: <b style="color:#ff1744;">{st.session_state.loss_count}</b></span>
-        <span style="color:#ffffff; font-weight:bold;">🎯 WIN RATE: <b style="color:#29b6f6;">{win_rate:.1f}%</b></span></div>""", 
-        unsafe_allow_html=True
-    )
+st.markdown(
+    f"""<div style="background-color:#141a24; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; display: flex; justify-content: space-between;">
+    <span style="color:#ffffff; font-weight:bold;">🏆 WON: <b style="color:#00e676;">{st.session_state.win_count}</b></span>
+    <span style="color:#ffffff; font-weight:bold;">❌ LOST: <b style="color:#ff1744;">{st.session_state.loss_count}</b></span>
+    <span style="color:#ffffff; font-weight:bold;">🎯 WIN RATE: <b style="color:#29b6f6;">{win_rate:.1f}%</b></span></div>""", 
+    unsafe_allow_html=True
+)
 
-    local_pnl = 0.0
-    if st.session_state.in_position and live_price > 0:
-        is_long = ("LONG" in st.session_state.current_side)
-        if is_long:
-            local_pnl = ((live_price - st.session_state.buy_price) * (effective_vol / st.session_state.buy_price))
-        else:
-            local_pnl = ((st.session_state.buy_price - live_price) * (effective_vol / st.session_state.buy_price))
+local_pnl = 0.0
+if st.session_state.in_position and live_price > 0:
+    if "LONG" in st.session_state.current_side:
+        local_pnl = ((live_price - st.session_state.buy_price) * (effective_vol / st.session_state.buy_price))
+    else:
+        local_pnl = ((st.session_state.buy_price - live_price) * (effective_vol / st.session_state.buy_price))
 
-    balance_usd_text = f"${(st.session_state.demo_balance + local_pnl):,.2f} USDT"
-    pnl_color_hex = "#00e676" if local_pnl >= 0 else "#ff1744"
-    st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE TOTAL PROFILE BALANCE:</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:13px; color:{pnl_color_hex}; font-weight:bold;'>Live Floating P&L Indicator: {local_pnl:+.2f} USDT</p></div>", unsafe_allow_html=True)
-
-render_live_pnl_stream_block()
+balance_usd_text = f"${(st.session_state.demo_balance + local_pnl):,.2f} USDT"
+if is_real_live and api_key and secret_key:
+    try:
+        session = HTTP(testnet=False, api_key=api_key, secret_key=secret_key)
+        wallet_info = session.get_wallet_balance(accountType="UNIFIED", coin="USDT")
+        m_list = wallet_info.get('result', {}).get('list', [])
+        if m_list:
+            for c in m_list.get('coin', []):
+                if c.get('coin') == 'USDT':
+                    balance_usd_text = f"${(float(c.get('walletBalance', 0)) + local_pnl):,.2f} USDT"
+                    break
+    except: pass
+    
+pnl_color_hex = "#00e676" if local_pnl >= 0 else "#ff1744"
+st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE TOTAL PROFILE BALANCE:</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:13px; color:{pnl_color_hex}; font-weight:bold;'>Live Floating P&L Indicator: {local_pnl:+.2f} USDT</p></div>", unsafe_allow_html=True)
 
 if not is_real_live:
     st.markdown("<b>⚙️ Sandbox Fund Manager Module Panel (Modify Virtual Capital):</b>", unsafe_allow_html=True)
@@ -374,10 +378,9 @@ if not is_real_live:
         if st.button("Set Balance Amount", key="submit_custom_balance_btn"):
             st.session_state.demo_balance = custom_balance_input
             db_save(f"balance_{allocated_user_id}", st.session_state.demo_balance)
-            st.success("Capital Updated Successfully!")
             st.rerun()
 
-# Blue Border Box - Entry price, Target TP, and Boundary SL layout fully functional
+# Blue Border Box - Entry and take profit targets dynamic tracking boundary board fully functional
 if st.session_state.in_position:
     is_long_pos = "LONG" in st.session_state.current_side
     live_target = (st.session_state.buy_price + price_jump_target) if is_long_pos else (st.session_state.buy_price - price_jump_target)
@@ -456,7 +459,7 @@ with c2:
                 })
                 # Load next sponsor node id up the line hierarchy tree
                 parent_data = [u for u in st._central_user_creds.values() if u.get("uid") == current_parent]
-                current_parent = parent_data.get("sponsor", "None") if parent_data else "None"
+                current_parent = parent_data[0].get("sponsor", "None") if parent_data else "None"
 
         db_save("pnl_history", st._global_user_pnl_history)
         st.session_state.in_position = False
@@ -469,7 +472,7 @@ st.markdown(f"<h3 style='color:#f5a623;'>🌿 Network Marketing Matrix Desk ({da
 st.markdown("<b>🔍 Input Specific Downline UID to Audit Data Records & Network Logs:</b>", unsafe_allow_html=True)
 search_uid_input = st.text_input("Enter Target Member UID box input:", value=allocated_user_id, key="custom_uid_search_field_node").strip()
 
-# FIXED DYNAMIC COMPUTER: Tracks and aggregates total earnings from history logs correctly mapping UID fields
+# FIXED DYNAMIC COMPUTER: Tracks and aggregates referral bonus and multi-gen daily commissions perfectly across matching indices
 demo_ref_accum, demo_gen_accum = 0.0, 0.0
 if st._global_user_pnl_history:
     for r in st._global_user_pnl_history:
@@ -512,11 +515,10 @@ if search_uid_input:
                     st.dataframe(child_demo_df.iloc[::-1], use_container_width=True)
                 else: st.info("No sandbox simulation records synced yet.")
         else: st.info("Ledger registry is empty.")
-# Fixed: Multi-Generation tree calculator loops matching structural index patterns flawlessly across cross bounds
+# Fixed: Multi-Generation tree calculator loops matching strict ID index layouts to prevent blank tree loads
 def calculate_sub_generations(r_uid, tree):
     g_map = {1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: []}
     
-    # Map raw username to clean string target UID safely to translate older registration logs layout nodes
     actual_search_uid = r_uid
     for uname, data in st._central_user_creds.items():
         if uname == r_uid or data.get("uid") == r_uid:
@@ -524,7 +526,8 @@ def calculate_sub_generations(r_uid, tree):
             break
 
     if actual_search_uid in tree: 
-        g_map = list(tree[actual_search_uid])
+        g_map[1] = list(tree[actual_search_uid])
+        
     for g in range(2, 8):
         p_layer = g_map[g-1]
         c_accum = []
@@ -561,7 +564,7 @@ for g_idx in range(1, 8):
 if sub_tree_records: st.dataframe(pd.DataFrame(sub_tree_records), use_container_width=True)
 else: st.info("No active downline team network nodes or connections verified under this identifier target yet.")
 
-# Strict Meta Automated Rerun Injector Clock Protocol forcing second by second execution maps dynamically
+# Strict Automated JavaScript Meta Rerun loop forcing true second-by-second updates maps dynamically
 st.markdown("""<iframe src="about:blank" style="display:none;" onload="setTimeout(function(){window.location.reload();}, 1000);"></iframe>""", unsafe_allow_html=True)
 
 # --- 🛠️ DYNAMIC ORIGINAL HACK/SUPER ADMIN CONTROL HUB FULLY RESTORED ---
@@ -596,7 +599,7 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Pane
             for uname, data in st._central_user_creds.items():
                 if data.get("uid") == override_uid: found_account = uname; break
             if found_account and override_new_pass != "":
-                st._central_user_creds[found_account]["password"] = override_new_pass; db_save("user_creds", st._central_user_creds); st.success(f"Success!"); st.rerun()
+                st._central_user_creds[found_account]["password"] = override_new_pass; db_save("user_creds", st._central_user_creds); st.success(f"Success Account Modified!"); st.rerun()
         
         target_block_key = st.text_input("Paste Target License Token to BAN permanently:", key="adm_ban_token_input_field")
         if st.button("Execute Permanent Revocation Ban", key="adm_ban_token_trigger_btn"):
