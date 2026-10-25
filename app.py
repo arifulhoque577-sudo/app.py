@@ -6,13 +6,13 @@ import string
 import time
 from datetime import datetime
 from firebase_admin import credentials, firestore
-import plotly.graph_objects go
+import plotly.graph_objects as go
 import pandas as pd
 from pybit.unified_trading import HTTP
 import requests
 import streamlit as st
 
-# Secure Cloud Firebase Gateway Authentication Layer
+# Secure Cloud Firebase Gateway Setup
 if not firebase_admin._apps:
     fb_json = os.environ.get("firebase_json", None)
     if fb_json:
@@ -75,34 +75,44 @@ else:
     st._mlm_gen_rates = db_load("gen_rates", {})
     st._mlm_id_thresholds = db_load("id_thresh", {})
 
-# Fetch All 300+ Live Bybit Futures Instruments Contracts via V5 Market API
+# Restored Full Manual + Live Unified Dictionary Array (All Future Coins Active)
 @st.cache_data(ttl=60)
 def fetch_bybit_future_coins():
-    backup_db = {
+    backup_database = {
         "🪙 BTC (Bitcoin)": {"symbol": "BTCUSDT", "max_leverage": 100, "default_tp": 100.0, "default_sl": 150.0, "step": 10.0},
         "🔷 ETH (Ethereum)": {"symbol": "ETHUSDT", "max_leverage": 100, "default_tp": 8.0, "default_sl": 15.0, "step": 1.0},
         "☀️ SOL (Solana)": {"symbol": "SOLUSDT", "max_leverage": 50, "default_tp": 1.5, "default_sl": 3.0, "step": 0.1},
         "💥 XRP (Ripple)": {"symbol": "XRPUSDT", "max_leverage": 100, "default_tp": 0.015, "default_sl": 0.03, "step": 0.001},
-        "🐶 DOGE (Dogecoin)": {"symbol": "DOGEUSDT", "max_leverage": 50, "default_tp": 0.004, "default_sl": 0.01, "step": 0.0005}
+        "🐶 DOGE (Dogecoin)": {"symbol": "DOGEUSDT", "max_leverage": 50, "default_tp": 0.004, "default_sl": 0.01, "step": 0.0005},
+        "🔮 LINK (Chainlink)": {"symbol": "LINKUSDT", "max_leverage": 50, "default_tp": 0.25, "default_sl": 0.50, "step": 0.01},
+        "🧬 ADA (Cardano)": {"symbol": "ADAUSDT", "max_leverage": 50, "default_tp": 0.01, "default_sl": 0.02, "step": 0.001},
+        "🌀 WIF (Dogwifhat)": {"symbol": "WIFUSDT", "max_leverage": 20, "default_tp": 0.05, "default_sl": 0.12, "step": 0.01},
+        "🔥 SHIB (Shiba Inu)": {"symbol": "SHIBUSDT", "max_leverage": 50, "default_tp": 0.0000005, "default_sl": 0.000001, "step": 0.0000001},
+        "🪐 DOT (Polkadot)": {"symbol": "DOTUSDT", "max_leverage": 50, "default_tp": 0.05, "default_sl": 0.12, "step": 0.01},
+        "🔺 AVAX (Avalanche)": {"symbol": "AVAXUSDT", "max_leverage": 50, "default_tp": 0.20, "default_sl": 0.50, "step": 0.01},
+        "⚡ LTC (Litecoin)": {"symbol": "LTCUSDT", "max_leverage": 60, "default_tp": 0.50, "default_sl": 1.20, "step": 0.1},
+        "🚀 SUI (Sui Token)": {"symbol": "SUIUSDT", "max_leverage": 50, "default_tp": 0.02, "default_sl": 0.06, "step": 0.001},
+        "🌊 APT (Aptos)": {"symbol": "APTUSDT", "max_leverage": 50, "default_tp": 0.05, "default_sl": 0.15, "step": 0.01},
+        "🧱 ARB (Arbitrum)": {"symbol": "ARBUSDT", "max_leverage": 50, "default_tp": 0.01, "default_sl": 0.03, "step": 0.001}
     }
     try:
         url = "https://bybit.com"
-        res = requests.get(url, timeout=10).json()
+        res = requests.get(url, timeout=5).json()
         instruments = res.get("result", {}).get("list", [])
         for inst in instruments:
             if inst["status"] == "Trading" and inst["quoteCoin"] == "USDT":
                 sym = inst["symbol"]
                 base = inst["baseCoin"]
                 max_lev = int(float(inst.get("leverageFilter", {}).get("maxLeverage", 100)))
-                backup_db[f"🪙 {base} (Bybit Futures)"] = {
+                backup_database[f"🪙 {base} (Bybit Futures)"] = {
                     "symbol": sym, "max_leverage": max_lev,
                     "default_tp": float(inst.get("priceFilter", {}).get("tickSize", "0.01")) * 400,
                     "default_sl": float(inst.get("priceFilter", {}).get("tickSize", "0.01")) * 600,
                     "step": float(inst.get("priceFilter", {}).get("tickSize", "0.01"))
                 }
-        return backup_db
+        return backup_database
     except:
-        return backup_db
+        return backup_database
 
 BYBYT_DATABASE_CORE = fetch_bybit_future_coins()
 YOUR_SECRET_MASTER_CODE = "ADMIN1234"
