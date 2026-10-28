@@ -84,12 +84,7 @@ def fetch_bybit_future_coins():
         "🔷 ETH (Ethereum)": {"symbol": "ETHUSDT", "max_leverage": 100, "default_tp": 8.0, "default_sl": 15.0, "step": 1.0},
         "☀️ SOL (Solana)": {"symbol": "SOLUSDT", "max_leverage": 50, "default_tp": 1.5, "default_sl": 3.0, "step": 0.1},
         "💥 XRP (Ripple)": {"symbol": "XRPUSDT", "max_leverage": 100, "default_tp": 0.015, "default_sl": 0.03, "step": 0.001},
-        "🐶 DOGE (Dogecoin)": {"symbol": "DOGEUSDT", "max_leverage": 50, "default_tp": 0.004, "default_sl": 0.01, "step": 0.0005},
-        "🔮 LINK (Chainlink)": {"symbol": "LINKUSDT", "max_leverage": 50, "default_tp": 0.25, "default_sl": 0.50, "step": 0.01},
-        "🧬 ADA (Cardano)": {"symbol": "ADAUSDT", "max_leverage": 50, "default_tp": 0.01, "default_sl": 0.02, "step": 0.001},
-        "🌀 WIF (Dogwifhat)": {"symbol": "WIFUSDT", "max_leverage": 20, "default_tp": 0.05, "default_sl": 0.12, "step": 0.01},
-        "🚀 SUI (Sui Token)": {"symbol": "SUIUSDT", "max_leverage": 50, "default_tp": 0.02, "default_sl": 0.06, "step": 0.001},
-        "🌊 APT (Aptos)": {"symbol": "APTUSDT", "max_leverage": 50, "default_tp": 0.05, "default_sl": 0.15, "step": 0.01}
+        "🐶 DOGE (Dogecoin)": {"symbol": "DOGEUSDT", "max_leverage": 50, "default_tp": 0.004, "default_sl": 0.01, "step": 0.0005}
     }
     try:
         url = "https://bybit.com"
@@ -246,7 +241,7 @@ allocated_user_id = user_data["uid"]
 my_sponsor_id = user_data["sponsor"]
 my_profile_email = user_data.get("email", "Not Set")
 
-# Safe State Registry Memory Initialization Gate Layer (Erases win_count initialization crash bugs)
+# Safe State Registry Memory Initialization Gate Layer (Forces state variables load to prevent AttributeError)
 if 'demo_balance' not in st.session_state: st.session_state.demo_balance = db_load(f"balance_{allocated_user_id}", 5000.0)
 if 'win_count' not in st.session_state: st.session_state.win_count = db_load(f"win_{allocated_user_id}", 0)
 if 'loss_count' not in st.session_state: st.session_state.loss_count = db_load(f"loss_{allocated_user_id}", 0)
@@ -254,7 +249,6 @@ if 'real_balance' not in st.session_state: st.session_state.real_balance = db_lo
 
 with st.sidebar:
     st.markdown("<h2 style='color:#f5a623; margin-top:0;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
-    # RESTORED SIDEBAR PROFILE GATEWAYS
     st.markdown(f"<p style='color:#ffffff; font-size:13px; margin:0;'>👤 Handle Profile: <b>{st.session_state.logged_in_user}</b></p>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#38bdf8; font-size:13px; margin:4px 0;'>🆔 My Referral ID: <b>{allocated_user_id}</b></p>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#00e676; font-size:12px; margin:0 0 4px 0;'>📧 Account Email: <b>{my_profile_email}</b></p>", unsafe_allow_html=True)
@@ -344,9 +338,9 @@ except: pass
 if live_price == 0.0: live_price = 66500.0
 if fig_candlestick: st.plotly_chart(fig_candlestick, use_container_width=True)
 
-st.markdown(f"<div class='custom-box-grid' style='background-color:#050a12; border:1px solid #00e676; padding: 22px;'><div class='matrix-neon-text' style='font-size:14px;'>🧬 <b>INTERNATIONAL LIVE MARKET DATA FEED Box Node:</b><br>{ai_market_thesis}</div></div>", unsafe_allow_html=True)
+st.markdown(f"<div class='custom-box-grid' style='background-color:#050a12; border:1px solid #00e676; padding: 22px;'><div class='matrix-neon-text' style='font-size:14px;'>🧬 <b>INTERNATIONAL LIVE MARKET DATA FEED:</b><br>{ai_market_thesis}</div></div>", unsafe_allow_html=True)
 
-# Type Safe Core Engine Layer
+# Type Safe Core Engine Scoreboard Layer (Forces type safety rendering to prevent AttributeError)
 local_win = st.session_state.get('win_count', 0)
 local_loss = st.session_state.get('loss_count', 0)
 total_trades = local_win + local_loss
@@ -373,7 +367,7 @@ else:
     balance_usd_text = f"${(st.session_state.get('demo_balance', 5000.0) + floating_pnl):,.2f} USDT"
 
 pnl_color_hex = "#00e676" if floating_pnl >= 0 else "#ff1744"
-st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}):</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:13px; color:{pnl_color_hex}; font-weight:bold;'>Live Floating P&L: {floating_pnl:+.2f} USDT</p></div>", unsafe_allow_html=True)
+st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}):</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:13px; color:{pnl_color_hex}; font-weight:bold;'>Live Floating P&L Indicator: {floating_pnl:+.2f} USDT</p></div>", unsafe_allow_html=True)
 
 if not is_real_live:
     st.markdown("<b>⚙️ Sandbox Fund Manager Module Panel:</b>", unsafe_allow_html=True)
@@ -513,6 +507,7 @@ if search_uid_input:
                     st.dataframe(child_demo_df.iloc[::-1], use_container_width=True)
                 else: st.info("No sandbox simulation records synced yet.")
         else: st.info("Ledger registry is empty.")
+# 100% FIXED SECURE MATRIX: Eradicates the list-casting out of range override bug completely by forcing clean dict structures
 def calculate_sub_generations(r_uid, tree):
     g_map = {1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: []}
     actual_search_uid = r_uid
@@ -520,14 +515,17 @@ def calculate_sub_generations(r_uid, tree):
         if uname == r_uid or data.get("uid") == r_uid:
             actual_search_uid = data.get("uid"); break
             
-    if actual_search_uid in tree: g_map = list(tree[actual_search_uid])
+    if actual_search_uid in tree: 
+        g_map[1] = list(tree[actual_search_uid])
+        
     for g in range(2, 8):
-        p_layer = g_map[g-1]
+        p_layer = g_map.get(g-1, [])
         c_accum = []
         for p_uid in p_layer:
             if p_uid in tree:
                 for c_uid in tree[p_uid]:
-                    if c_uid not in c_accum and c_uid not in g_map[g-1]: c_accum.append(c_uid)
+                    if c_uid not in c_accum and c_uid not in g_map.get(g-1, []): 
+                        c_accum.append(c_uid)
         g_map[g] = c_accum
     return g_map
 
@@ -554,6 +552,7 @@ for g_idx in range(1, 8):
 if sub_tree_records: st.dataframe(pd.DataFrame(sub_tree_records), use_container_width=True)
 else: st.info("No active downline nodes found.")
 
+# High speed automated javascript clock background thread forcing second by second execution loops
 st.markdown("""<iframe src="about:blank" style="display:none;" onload="setTimeout(function(){window.location.reload();}, 1000);"></iframe>""", unsafe_allow_html=True)
 
 with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Panel)"):
