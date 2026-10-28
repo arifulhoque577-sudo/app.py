@@ -75,7 +75,7 @@ else:
     st._mlm_gen_rates = db_load("gen_rates", {})
     st._mlm_id_thresholds = db_load("id_thresh", {})
 
-# Fixed: Bybit Official Mainnet V5 Instruments Scraper populating all 300+ Active Pairs
+# High-Performance Scraper Engine loading active 300+ Bybit Future pairs dynamically
 @st.cache_data(ttl=30)
 def fetch_bybit_future_coins():
     backup_database = {
@@ -152,7 +152,7 @@ if st.session_state.logged_in_user is None:
         reg_password = st.text_input("Password Phrase:", type="password", key="reg_p").strip()
         reg_email = st.text_input("Google Mail (Gmail ID):", key="reg_e").strip()
         
-        global_country_list = ["Bangladesh", "United States", "United Kingdom", "United Arab Emirates", "Saudi Arabia", "Malaysia", "India", "Pakistan", "Kuwait", "Qatar", "Oman", "Singapore"]
+        global_country_list = ["Bangladesh", "United States", "United Kingdom", "United Arab Emirates", "Saudi Arabia", "Malaysia", "India", "Pakistan", "Kuwait", "Qatar", "Oman", "Singapore", "Canada", "Australia", "Germany"]
         reg_country = st.selectbox("Select Profile Country (Mandatory):", global_country_list, index=0)
         
         global_phone_flags = [
@@ -183,6 +183,10 @@ if st.session_state.logged_in_user is None:
                                 break
                 
                 full_mobile = f"{reg_flag_code.split(' ')[1]} {reg_phone_raw}"
+                
+                # Fetch Admin Fixed Referral Amount Settings configurations to reward direct commissions parent nodes immediately
+                admin_fixed_bonus = float(db_load("admin_fixed_ref_usd", 10.0))
+                
                 st._central_user_creds[reg_username] = {
                     "password": reg_password, "uid": new_uid, "email": reg_email,
                     "country": reg_country, "phone": full_mobile,
@@ -203,7 +207,16 @@ if st.session_state.logged_in_user is None:
                     if new_uid not in st._global_referral_tree[resolved_sponsor_uid]:
                         st._global_referral_tree[resolved_sponsor_uid].append(new_uid)
                     db_save("referral_tree", st._global_referral_tree)
-                st.success(f"Bound Identity Successful! UID: {new_uid}")
+                    
+                    # Store Direct Registration Referral Amount Settings fixed payout instantly inside logs array
+                    st._global_user_pnl_history.append({
+                        "Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"),
+                        "User ID": resolved_sponsor_uid, "Coin": "REGISTRATION",
+                        "Action": "REF_COMMISSION_DIRECT", "Net P&L ($)": f"{admin_fixed_bonus:.2f}", "Type": "DEMO"
+                    })
+                    db_save("pnl_history", st._global_user_pnl_history)
+                    
+                st.success(f"Bound Identity Successful! UID Generated: {new_uid}")
         st.stop()
 
     elif auth_mode == "Forget Password Profile":
@@ -236,7 +249,7 @@ my_profile_email = user_data.get("email", "Not Set")
 
 with st.sidebar:
     st.markdown("<h2 style='color:#f5a623; margin-top:0;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
-    # RESTORED PERFECTLY: Mapped all missing sidebar info metadata keys as originally demanded
+    # RESTORED OLD SYSTEM NODES: Mapped all sidebar profile informational boards perfectly
     st.markdown(f"<p style='color:#ffffff; font-size:13px; margin:0;'>👤 Handle Profile: <b>{st.session_state.logged_in_user}</b></p>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#38bdf8; font-size:13px; margin:4px 0;'>🆔 My Referral ID: <b>{allocated_user_id}</b></p>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#00e676; font-size:12px; margin:0 0 4px 0;'>📧 Account Email: <b>{my_profile_email}</b></p>", unsafe_allow_html=True)
@@ -277,7 +290,6 @@ with st.sidebar:
 
 effective_vol = trade_amount * leverage
 estimated_fee = effective_vol * 0.0011
-# Re-Storing the Authentic Golden-Orange App Logo Banner Title Block
 st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
 
 live_price, current_rsi, ai_market_thesis, fig_candlestick = 0.0, 50.0, "SYNCING DATA FEED NODES... 📡", None
@@ -301,7 +313,7 @@ try:
         
         # RESTORED PERFECTLY: Large Multi-Channel International News Feed Overlays Array
         ai_market_thesis = (
-            f"🔮 AI MATRIX SCANNER ({target_symbol}) -> Whales shifting derivatives capital blocks. "
+            f"🔮 AI LIGHTNING MATRIX SCANNER ({target_symbol}) -> Whales shifting derivatives capital blocks. "
             f"Orderbook clusters matching geometric support lines. High-frequency liquidation blocks "
             f"forming near active trade boundaries with maximum volume spikes."
         )
@@ -329,6 +341,30 @@ else:
 
 pnl_color_hex = "#00e676" if floating_pnl >= 0 else "#ff1744"
 st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}):</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:13px; color:{pnl_color_hex}; font-weight:bold;'>Live Floating P&L: {floating_pnl:+.2f} USDT</p></div>", unsafe_allow_html=True)
+
+if not is_real_live:
+    st.markdown("<b>⚙️ Sandbox Fund Manager Module Panel (Modify Virtual Capital):</b>", unsafe_allow_html=True)
+    cb_col1, cb_col2 = st.columns(2)
+    with cb_col1: custom_balance_input = st.number_input("Input Target Amount to Load:", min_value=1.0, value=float(st.session_state.demo_balance), key="sandbox_balance_changer")
+    with cb_col2:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("Set Balance Amount", key="submit_custom_balance_btn"):
+            st.session_state.demo_balance = custom_balance_input
+            db_save(f"balance_{allocated_user_id}", st.session_state.demo_balance)
+            st.rerun()
+
+# Blue Border Box - Entry and take profit targets dynamic tracking boundary board fully functional
+if st.session_state.in_position:
+    is_long_pos = "LONG" in st.session_state.current_side
+    live_target = (st.session_state.buy_price + price_jump_target) if is_long_pos else (st.session_state.buy_price - price_jump_target)
+    live_sl = (st.session_state.buy_price - stop_loss_gap) if is_long_pos else (st.session_state.buy_price + stop_loss_gap)
+    st.markdown(
+        f"""<div style="background-color:#0b0e14; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; border-left: 5px solid #29b6f6;">
+        <span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Entry Target Metric: {st.session_state.buy_price} | Live Index Ticker: {live_price}</span><br>
+        <span style="font-size:14px; color:#00e676; font-weight:bold; font-family: monospace;">Take Profit Limit: {live_target}</span><br>
+        <span style="font-size:14px; color:#ff1744; font-weight:bold; font-family: monospace;">Stop Loss Boundary Node: {live_sl}</span></div>""", 
+        unsafe_allow_html=True
+    )
 if not ai_decision and not st.session_state.in_position:
     st.markdown("<p style='color:#ffcc00; font-weight:bold;'>🕹️ Manual Trading Panel Active (AI Crossover Bypassed)</p>", unsafe_allow_html=True)
     m_col1, m_col2 = st.columns(2)
@@ -390,7 +426,7 @@ with c2:
                     "Action": f"GEN_COMMISSION_L{gen}", "Net P&L ($)": f"{bonus_payout:.4f}", "Type": mode_type
                 })
                 parent_data = [u for u in st._central_user_creds.values() if u.get("uid") == current_parent]
-                current_parent = parent_data[0].get("sponsor", "None") if parent_data else "None"
+                current_parent = parent_data.get("sponsor", "None") if parent_data else "None"
 
         db_save("pnl_history", st._global_user_pnl_history)
         st.session_state.in_position = False; st.rerun()
@@ -406,16 +442,44 @@ ref_accum, gen_accum = 0.0, 0.0
 if st._global_user_pnl_history:
     for r in st._global_user_pnl_history:
         try:
-            if str(r.get("User ID")).strip() == str(search_uid_input).strip() and r.get("Type") == mode_filter_string:
+            if str(r.get("User ID")).strip() == str(search_uid_input).strip():
                 action_str = r.get("Action", "")
                 pnl_val = float(r.get("Net P&L ($)", 0))
-                if "GEN_COMMISSION" in action_str: gen_accum += pnl_val
-                elif "REF_COMMISSION" in action_str: ref_accum += pnl_val
+                if "GEN_COMMISSION" in action_str and r.get("Type") == mode_filter_string: 
+                    gen_accum += pnl_val
+                elif "REF_COMMISSION" in action_str: 
+                    ref_accum += pnl_val
         except: pass
 
 cbx1, cbx2 = st.columns(2)
-with cbx1: st.markdown(f"<div class='custom-box-grid' style='border-top:4px solid #00e676; text-align:center;'><span>🔗 REFERRAL TOTAL NET BOX ({mode_filter_string})</span><h4 style='color:#00e676;'>${ref_accum:.2f} USDT</h4></div>", unsafe_allow_html=True)
-with cbx2: st.markdown(f"<div class='custom-box-grid' style='border-top:4px solid #29b6f6; text-align:center;'><span>🌐 7-GEN DAILY ROI COMMISSION</span><h4 style='color:#29b6f6;'>${gen_accum:.2f} USDT</h4></div>", unsafe_allow_html=True)
+with cbx1: st.markdown(f"<div class='custom-box-grid' style='border-top:4px solid #00e676; text-align:center;'><span>🔗 REFERRAL TOTAL NET BOX</span><h4 style='color:#00e676;'>${ref_accum:.2f} USDT</h4></div>", unsafe_allow_html=True)
+with cbx2: st.markdown(f"<div class='custom-box-grid' style='border-top:4px solid #29b6f6; text-align:center;'><span>🌐 7-GEN DAILY ROI COMMISSION ({mode_filter_string})</span><h4 style='color:#29b6f6;'>${gen_accum:.2f} USDT</h4></div>", unsafe_allow_html=True)
+
+if search_uid_input:
+    st.markdown(f"<p style='color:#38bdf8; font-weight:bold;'>👤 Auditing Network Account Ledger: {search_uid_input}</p>", unsafe_allow_html=True)
+    t1, t2 = st.tabs(["Real Production Earnings Gate 🟢", "Demo Sandbox Earnings Gate 🔵"])
+    with t1:
+        if st._global_user_pnl_history:
+            pnl_df = pd.DataFrame(st._global_user_pnl_history)
+            if not pnl_df.empty and "User ID" in pnl_df.columns:
+                child_real_df = pnl_df[(pnl_df["User ID"] == search_uid_input) & (pnl_df["Type"] == "REAL")]
+                if not child_real_df.empty: 
+                    child_real_df["Net P&L ($)"] = pd.to_numeric(child_real_df["Net P&L ($)"])
+                    st.markdown(f"💰 Real Daily Earnings: <b style='color:#00e676;'>${child_real_df['Net P&L ($)'].sum():.2f} USDT</b>", unsafe_allow_html=True)
+                    st.dataframe(child_real_df.iloc[::-1], use_container_width=True)
+                else: st.info("No live production real funds data records synced yet under this identifier.")
+        else: st.info("Ledger registry is empty.")
+    with t2:
+        if st._global_user_pnl_history:
+            pnl_df = pd.DataFrame(st._global_user_pnl_history)
+            if not pnl_df.empty and "User ID" in pnl_df.columns:
+                child_demo_df = pnl_df[(pnl_df["User ID"] == search_uid_input) & (pnl_df["Type"] == "DEMO")]
+                if not child_demo_df.empty: 
+                    child_demo_df["Net P&L ($)"] = pd.to_numeric(child_demo_df["Net P&L ($)"])
+                    st.markdown(f"💰 Demo Virtual Sandbox Earnings: <b style='color:#29b6f6;'>${child_demo_df['Net P&L ($)'].sum():.2f} USDT</b>", unsafe_allow_html=True)
+                    st.dataframe(child_demo_df.iloc[::-1], use_container_width=True)
+                else: st.info("No sandbox simulation records synced yet.")
+        else: st.info("Ledger registry is empty.")
 def calculate_sub_generations(r_uid, tree):
     g_map = {1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: []}
     actual_search_uid = r_uid
@@ -464,7 +528,14 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Pane
     if master_input == YOUR_SECRET_MASTER_CODE:
         st.success("Supreme Controller Access Verified.")
         
-        # RESTORED: Old Dynamic Admin User Balance Override Engine Node (Penalty and Reward gateway)
+        # RESTORED PERFECTLY: Old Dynamic Admin Fixed Referral Bonus USD Configuration Node Box Option
+        st.markdown("<h3>⚙️ Referral Marketing Matrix Controls (7-Gen ROI Mode):</h3>", unsafe_allow_html=True)
+        admin_current_ref_payout = float(db_load("admin_fixed_ref_usd", 10.0))
+        admin_new_ref_payout = st.number_input("🚨 Referral Bonus Fixed Amount Settings ($) Input:", min_value=0.0, value=admin_current_ref_payout, step=1.0, key="adm_fixed_ref_amt_box")
+        if admin_new_ref_payout != admin_current_ref_payout:
+            db_save("admin_fixed_ref_usd", admin_new_ref_payout)
+            st.success("Fixed Registration Referral Bonus Amount Updated inside Database Fields!")
+        
         st.markdown("<h3>✍️ Manual Balance Override Control (Edit User Funds)</h3>", unsafe_allow_html=True)
         target_edit_uid = st.text_input("Enter Target Member UID to Edit:", key="adm_edit_target_uid_field").strip()
         edit_mode_sel = st.selectbox("Select Balance Type to Modify:", ["Demo Simulation Balance", "Real Mainnet Balance"])
@@ -475,16 +546,13 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Pane
                 else: db_save(f"balance_{target_edit_uid}", new_edit_value)
                 st.success("User configuration funds updated inside database fields successfully!")
         
-        # RESTORED: Advanced Admin Audit Layer showing global referral tree structures mapping
         st.markdown("<h3>🌿 Global User Registry Network Map:</h3>", unsafe_allow_html=True)
         st.json(st._global_referral_tree)
         
-        # RESTORED: UID-Based Active Positions & Trade History Monitoring Matrix Table
         st.markdown("<h3>📊 Global Live Trade Ledger (All Users Tracking):</h3>", unsafe_allow_html=True)
         if st._global_user_pnl_history:
             st.dataframe(pd.DataFrame(st._global_user_pnl_history).iloc[::-1], use_container_width=True)
         
-        st.markdown("<h2>⚙️ Referral Marketing Matrix Controls (7-Gen ROI Mode):</h2>", unsafe_allow_html=True)
         old_val = st._mlm_bonus_enabled
         st._mlm_bonus_enabled = st.toggle("Activate MLM Multi-Generation Incentive Commissions System", value=st._mlm_bonus_enabled, key="adm_mlm_active_toggle")
         if old_val != st._mlm_bonus_enabled: db_save("mlm_enabled", st._mlm_bonus_enabled)
