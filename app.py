@@ -84,7 +84,12 @@ def fetch_bybit_future_coins():
         "🔷 ETH (Ethereum)": {"symbol": "ETHUSDT", "max_leverage": 100, "default_tp": 8.0, "default_sl": 15.0, "step": 1.0},
         "☀️ SOL (Solana)": {"symbol": "SOLUSDT", "max_leverage": 50, "default_tp": 1.5, "default_sl": 3.0, "step": 0.1},
         "💥 XRP (Ripple)": {"symbol": "XRPUSDT", "max_leverage": 100, "default_tp": 0.015, "default_sl": 0.03, "step": 0.001},
-        "🐶 DOGE (Dogecoin)": {"symbol": "DOGEUSDT", "max_leverage": 50, "default_tp": 0.004, "default_sl": 0.01, "step": 0.0005}
+        "🐶 DOGE (Dogecoin)": {"symbol": "DOGEUSDT", "max_leverage": 50, "default_tp": 0.004, "default_sl": 0.01, "step": 0.0005},
+        "🔮 LINK (Chainlink)": {"symbol": "LINKUSDT", "max_leverage": 50, "default_tp": 0.25, "default_sl": 0.50, "step": 0.01},
+        "🧬 ADA (Cardano)": {"symbol": "ADAUSDT", "max_leverage": 50, "default_tp": 0.01, "default_sl": 0.02, "step": 0.001},
+        "🌀 WIF (Dogwifhat)": {"symbol": "WIFUSDT", "max_leverage": 20, "default_tp": 0.05, "default_sl": 0.12, "step": 0.01},
+        "🚀 SUI (Sui Token)": {"symbol": "SUIUSDT", "max_leverage": 50, "default_tp": 0.02, "default_sl": 0.06, "step": 0.001},
+        "🌊 APT (Aptos)": {"symbol": "APTUSDT", "max_leverage": 50, "default_tp": 0.05, "default_sl": 0.15, "step": 0.01}
     }
     try:
         url = "https://bybit.com"
@@ -241,8 +246,15 @@ allocated_user_id = user_data["uid"]
 my_sponsor_id = user_data["sponsor"]
 my_profile_email = user_data.get("email", "Not Set")
 
+# Safe State Registry Memory Initialization Gate Layer (Erases win_count initialization crash bugs)
+if 'demo_balance' not in st.session_state: st.session_state.demo_balance = db_load(f"balance_{allocated_user_id}", 5000.0)
+if 'win_count' not in st.session_state: st.session_state.win_count = db_load(f"win_{allocated_user_id}", 0)
+if 'loss_count' not in st.session_state: st.session_state.loss_count = db_load(f"loss_{allocated_user_id}", 0)
+if 'real_balance' not in st.session_state: st.session_state.real_balance = db_load(f"real_balance_{allocated_user_id}", 0.0)
+
 with st.sidebar:
     st.markdown("<h2 style='color:#f5a623; margin-top:0;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
+    # RESTORED SIDEBAR PROFILE GATEWAYS
     st.markdown(f"<p style='color:#ffffff; font-size:13px; margin:0;'>👤 Handle Profile: <b>{st.session_state.logged_in_user}</b></p>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#38bdf8; font-size:13px; margin:4px 0;'>🆔 My Referral ID: <b>{allocated_user_id}</b></p>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#00e676; font-size:12px; margin:0 0 4px 0;'>📧 Account Email: <b>{my_profile_email}</b></p>", unsafe_allow_html=True)
@@ -296,62 +308,54 @@ with st.sidebar:
 
 effective_vol = trade_amount * leverage
 estimated_fee = effective_vol * 0.0011
-st.markdown("<h2 style='color:#f5a623; text-align:center;'>🛸 QUANTUM MATRIX AI SCALPER CORE</h2>", unsafe_allow_html=True)
+# RESTORED ACCURATELY: App Logo Title block is clean (UFO text completely removed)
 st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
 
 live_price, current_rsi, ai_market_thesis, fig_candlestick = 0.0, 50.0, "SYNCING DATA FEED NODES... 📡", None
 public_session = HTTP(testnet=False)
 
-# 1. ISOLATED TICKER SECTOR (Prevents frozen price or BTC fallback for other coins)
 try:
     ticker_res = public_session.get_tickers(category="linear", symbol=target_symbol)
     ticker_list = ticker_res.get('result', {}).get('list', [])
-    if ticker_list:
-        live_price = float(ticker_list[0].get('lastPrice', 0))
-except:
-    pass
+    if ticker_list: live_price = float(ticker_list.get('lastPrice', 0))
+except: pass
 
-# 2. ISOLATED KLINE & RSI SECTOR
 try:
     response = public_session.get_kline(category="linear", symbol=target_symbol, interval="1", limit=30)
     klines = response.get('result', {}).get('list', [])
     if klines:
         df_kline = pd.DataFrame(klines, columns=['time', 'open', 'high', 'low', 'close', 'volume', 'turnover']).iloc[::-1].reset_index(drop=True)
-        for c in ['open', 'high', 'low', 'close', 'volume']: 
-            df_kline[c] = pd.to_numeric(df_kline[c])
-        if live_price == 0.0: 
-            live_price = df_kline['close'].iloc[-1]
+        for c in ['open', 'high', 'low', 'close', 'volume']: df_kline[c] = pd.to_numeric(df_kline[c])
+        if live_price == 0.0: live_price = df_kline['close'].iloc[-1]
         
         delta = df_kline['close'].diff()
         gain = delta.where(delta > 0, 0).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
         current_rsi = (100 - (100 / (1 + (gain / (loss + 1e-10))))).iloc[-1]
         
-        ai_market_thesis = f"🔮 AI LIGHTNING MATRIX SCANNER ({target_symbol}) -> Orderbook clusters matching support vectors."
+        ai_market_thesis = f"🔮 AI LIGHTNING MATRIX SCANNER ({target_symbol}) -> Orderbook clusters matching support breakout line vectors."
         fig_candlestick = go.Figure(data=[go.Candlestick(x=df_kline.index, open=df_kline['open'], high=df_kline['high'], low=df_kline['low'], close=df_kline['close'])])
         
-        # RESTORED: Your original classic green dashed line tracking ray vector
+        # RESTORED CHARTS SIGNAL TRACKER: Active green dashed tracking vector streamline
         fig_candlestick.add_trace(go.Scatter(x=df_kline.index, y=df_kline['close'].rolling(window=7).mean(), name="AI Geometric Tracking Vector", line=dict(color='#00e676', width=2, dash='dot')))
         fig_candlestick.update_layout(template="plotly_dark", margin=dict(l=6, r=6, t=6, b=6), height=250, xaxis_rangeslider_visible=False, paper_bgcolor='#06090e', plot_bgcolor='#06090e')
-except:
-    pass
+except: pass
 
-if live_price == 0.0:
-    live_price = 66500.0
+if live_price == 0.0: live_price = 66500.0
+if fig_candlestick: st.plotly_chart(fig_candlestick, use_container_width=True)
 
-if fig_candlestick: 
-    st.plotly_chart(fig_candlestick, use_container_width=True)
+st.markdown(f"<div class='custom-box-grid' style='background-color:#050a12; border:1px solid #00e676; padding: 22px;'><div class='matrix-neon-text' style='font-size:14px;'>🧬 <b>INTERNATIONAL LIVE MARKET DATA FEED Box Node:</b><br>{ai_market_thesis}</div></div>", unsafe_allow_html=True)
 
-# RESTORED: Large International Live Market Data Box layout positioned right beneath the chart
-st.markdown(f"<div class='custom-box-grid' style='background-color:#050a12; border:1px solid #00e676; padding: 22px;'><div class='matrix-neon-text' style='font-size:14px;'>🧬 <b>INTERNATIONAL LIVE MARKET DATA & AI SCOPE:</b><br>{ai_market_thesis}</div></div>", unsafe_allow_html=True)
-
-total_trades = st.session_state.win_count + st.session_state.loss_count
-win_rate = (st.session_state.win_count / total_trades * 100) if total_trades > 0 else 0.0
+# Type Safe Core Engine Layer
+local_win = st.session_state.get('win_count', 0)
+local_loss = st.session_state.get('loss_count', 0)
+total_trades = local_win + local_loss
+win_rate = (local_win / total_trades * 100) if total_trades > 0 else 0.0
 
 st.markdown(
     f"""<div style="background-color:#141a24; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; display: flex; justify-content: space-between;">
-    <span style="color:#ffffff; font-weight:bold;">🏆 WON: <b style="color:#00e676;">{st.session_state.win_count}</b></span>
-    <span style="color:#ffffff; font-weight:bold;">❌ LOST: <b style="color:#ff1744;">{st.session_state.loss_count}</b></span>
+    <span style="color:#ffffff; font-weight:bold;">🏆 WON: <b style="color:#00e676;">{local_win}</b></span>
+    <span style="color:#ffffff; font-weight:bold;">❌ LOST: <b style="color:#ff1744;">{local_loss}</b></span>
     <span style="color:#ffffff; font-weight:bold;">🎯 WIN RATE: <b style="color:#29b6f6;">{win_rate:.1f}%</b></span></div>""", 
     unsafe_allow_html=True
 )
@@ -364,30 +368,29 @@ if st.session_state.in_position and live_price > 0:
         floating_pnl = ((st.session_state.buy_price - live_price) * (effective_vol / st.session_state.buy_price))
 
 if is_real_live:
-    balance_usd_text = f"${(st.session_state.real_balance + floating_pnl):,.2f} USDT"
+    balance_usd_text = f"${(st.session_state.get('real_balance', 0.0) + floating_pnl):,.2f} USDT"
 else:
-    balance_usd_text = f"${(st.session_state.demo_balance + floating_pnl):,.2f} USDT"
+    balance_usd_text = f"${(st.session_state.get('demo_balance', 5000.0) + floating_pnl):,.2f} USDT"
 
 pnl_color_hex = "#00e676" if floating_pnl >= 0 else "#ff1744"
-st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}):</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:13px; color:{pnl_color_hex}; font-weight:bold;'>Live Floating P&L Indicator: {floating_pnl:+.2f} USDT</p></div>", unsafe_allow_html=True)
+st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}):</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:13px; color:{pnl_color_hex}; font-weight:bold;'>Live Floating P&L: {floating_pnl:+.2f} USDT</p></div>", unsafe_allow_html=True)
 
 if not is_real_live:
-    st.markdown("<b>⚙️ Sandbox Fund Manager Module Panel (Modify Virtual Capital):</b>", unsafe_allow_html=True)
+    st.markdown("<b>⚙️ Sandbox Fund Manager Module Panel:</b>", unsafe_allow_html=True)
     cb_col1, cb_col2 = st.columns(2)
-    with cb_col1: custom_balance_input = st.number_input("Input Target Amount to Load:", min_value=1.0, value=float(st.session_state.demo_balance), key="sandbox_balance_changer")
+    with cb_col1: custom_balance_input = st.number_input("Input Target Amount to Load:", min_value=1.0, value=float(st.session_state.get('demo_balance', 5000.0)), key="sandbox_balance_changer")
     with cb_col2:
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("Set Balance Amount", key="submit_custom_balance_btn"):
             st.session_state.demo_balance = custom_balance_input
-            db_save(f"balance_{allocated_user_id}", st.session_state.demo_balance)
-            st.rerun()
+            db_save(f"balance_{allocated_user_id}", st.session_state.demo_balance); st.rerun()
 
 if st.session_state.in_position:
     is_long_pos = "LONG" in st.session_state.current_side
     live_target = (st.session_state.buy_price + price_jump_target) if is_long_pos else (st.session_state.buy_price - price_jump_target)
     live_sl = (st.session_state.buy_price - stop_loss_gap) if is_long_pos else (st.session_state.buy_price + stop_loss_gap)
     
-    # FIXED LOGIC: Renders absolute profit and loss estimated calculations correctly based on selected leverage margins
+    # RESTORED TP/SL DOLLAR ESTIMATORS BOARD
     est_profit_dollars = (price_jump_target * (effective_vol / st.session_state.buy_price))
     est_loss_dollars = (stop_loss_gap * (effective_vol / st.session_state.buy_price))
     
@@ -510,26 +513,21 @@ if search_uid_input:
                     st.dataframe(child_demo_df.iloc[::-1], use_container_width=True)
                 else: st.info("No sandbox simulation records synced yet.")
         else: st.info("Ledger registry is empty.")
-# FIXED DEFINITION LOOP ENGINE: Fixes the dictionary list-casting override bug to prevent IndexError completely
 def calculate_sub_generations(r_uid, tree):
-    g_map = {1: [], 2: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: []}
+    g_map = {1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: []}
     actual_search_uid = r_uid
     for uname, data in st._central_user_creds.items():
         if uname == r_uid or data.get("uid") == r_uid:
-            actual_search_uid = data.get("uid")
-            break
+            actual_search_uid = data.get("uid"); break
             
-    if actual_search_uid in tree: 
-        g_map[1] = list(tree[actual_search_uid])
-        
+    if actual_search_uid in tree: g_map = list(tree[actual_search_uid])
     for g in range(2, 8):
         p_layer = g_map[g-1]
         c_accum = []
         for p_uid in p_layer:
             if p_uid in tree:
                 for c_uid in tree[p_uid]:
-                    if c_uid not in c_accum and c_uid not in g_map[g-1]: 
-                        c_accum.append(c_uid)
+                    if c_uid not in c_accum and c_uid not in g_map[g-1]: c_accum.append(c_uid)
         g_map[g] = c_accum
     return g_map
 
@@ -547,7 +545,6 @@ for g_idx in range(1, 8):
                         if r.get("Type") == "REAL": real_pnl += val
                         else: demo_pnl += val
             
-            sub_account_current_funds = db_load(f"balance_{sub_uid}", 5000.0)
             sub_tree_records.append({
                 "Hierarchy Level": f"Gen Layer {g_idx}", "User ID": sub_uid,
                 "Username": st._uid_to_username.get(sub_uid, f"Node-{sub_uid[:4]}"), 
@@ -557,7 +554,6 @@ for g_idx in range(1, 8):
 if sub_tree_records: st.dataframe(pd.DataFrame(sub_tree_records), use_container_width=True)
 else: st.info("No active downline nodes found.")
 
-# High speed automated javascript clock background thread forcing second by second execution loops
 st.markdown("""<iframe src="about:blank" style="display:none;" onload="setTimeout(function(){window.location.reload();}, 1000);"></iframe>""", unsafe_allow_html=True)
 
 with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Panel)"):
@@ -583,7 +579,6 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Pane
         new_edit_value = st.number_input("Input Absolute New Balance Value Amount ($):", min_value=0.0, value=0.0, step=10.0)
         if st.button("🚨 Save Hard Fund Override Changes", key="adm_execute_edit_funds_btn"):
             if target_edit_uid != "":
-                # Save input as clear numeric float parameters into database
                 if "Real" in edit_mode_sel: db_save(f"real_balance_{target_edit_uid}", float(new_edit_value))
                 else: db_save(f"balance_{target_edit_uid}", float(new_edit_value))
                 st.success("User configuration funds updated inside database successfully!"); st.rerun()
@@ -591,7 +586,7 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Pane
         st.markdown("<h3>🌿 Global User Registry Network Map:</h3>", unsafe_allow_html=True)
         st.json(st._global_referral_tree)
         
-        # RESTORED & OPTIMIZED DROPDOWN: Mapped UID Search Dropdown selector box to look up ledger records
+        # SEARCH FILTER DROPDOWN LEDGER REGISTER: Lookup system monitoring entries easily
         st.markdown("<h3>📊 Global Live Trade Ledger (All Users Tracking):</h3>", unsafe_allow_html=True)
         if st._global_user_pnl_history:
             full_ledger_df = pd.DataFrame(st._global_user_pnl_history)
