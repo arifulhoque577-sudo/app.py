@@ -265,7 +265,7 @@ if st.session_state.logged_in_user is None:
                     db_save("pnl_history", st._global_user_pnl_history)
                 st.success(f"Bound Identity Successful! UID Generated: {new_uid}")
         st.stop()
-        elif auth_mode == "Forget Password Profile":
+    elif auth_mode == "Forget Password Profile":
         st.markdown("<h3>🔒 Recover Password Profile System Node</h3>", unsafe_allow_html=True)
         f_user = st.text_input("Enter Username Handle to Recover:", key="forget_u_field").strip()
         f_school = st.text_input("Verification: First School Name?", key="forget_sch_field").strip()
