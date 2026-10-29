@@ -309,6 +309,8 @@ with st.sidebar:
     st.markdown("<h2 style='color:#f5a623; margin-top:0;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#ffffff; font-size:13px; margin:0;'>👤 Handle Profile: <b>{st.session_state.logged_in_user}</b></p>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#38bdf8; font-size:13px; margin:4px 0;'>🆔 My Referral ID: <b>{allocated_user_id}</b></p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color:#00e676; font-size:12px; margin:0 0 4px 0;'>📧 Account Email: <b>{my_profile_email}</b></p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color:#94a3b8; font-size:12px; margin:0 0 12px 0;'>🔗 Sponsor UID Node: <b>{my_sponsor_id}</b></p>", unsafe_allow_html=True)
     
     if st.button("🚪 Logout Active Profile Handle Node", key="logout_sidebar_node_proc"):
         st.session_state.logged_in_user = None
@@ -368,9 +370,32 @@ with st.sidebar:
         stop_loss_gap = db_load(f"{mode_prefix}_sl_gap_{allocated_user_id}", float(coin_config["default_sl"]))
 
 with st.sidebar:
-    # 🚨 100% HARD INTIGRATION: Secure Gemini Intelligence Key Node Configuration Array
     st.markdown("<hr style='border:1px solid #1e293b; margin:10px 0;'>", unsafe_allow_html=True)
-    gemini_api_key = st.text_input("🔑 Google Gemini API Token Key:", type="password", key="gemini_key_gateway_sidebar").strip()
+    
+    # 🔒 ANTI-VANISH & LIVE VALIDATOR: Securely locks Gemini API Key into Database Core
+    saved_gemini_key = db_load(f"gemini_key_{allocated_user_id}", "")
+    gemini_api_key = st.text_input("🔑 Google Gemini API Token Key:", value=saved_gemini_key, type="password", key="gemini_key_gateway_sidebar").strip()
+    
+    gemini_is_valid = False
+    if gemini_api_key != "":
+        if gemini_api_key != saved_gemini_key:
+            try:
+                test_url = f"https://googleapis.com{gemini_api_key}"
+                test_res = requests.post(test_url, json={"contents": [{"parts": [{"text": "ping"}]}]}, headers={"Content-Type": "application/json"}, timeout=4).json()
+                if "candidates" in test_res:
+                    db_save(f"gemini_key_{allocated_user_id}", gemini_api_key)
+                    gemini_is_valid = True
+                    st.sidebar.success("🟢 Gemini API Connection Active!")
+                else:
+                    st.sidebar.error("❌ Invalid Gemini Key! Code Rejected.")
+            except:
+                st.sidebar.error("📡 API Network Timeout Connection Mismatch.")
+        else:
+            gemini_is_valid = True
+            st.sidebar.markdown("<span style='color:#00e676; font-size:12px;'>🟢 Gemini Link Authenticated</span>", unsafe_allow_html=True)
+    else:
+        st.sidebar.warning("⚠️ Enter Gemini API Key to enable AI Agent Mode")
+
     api_key, secret_key = "", ""
     if is_real_live:
         st.markdown("<div style='background-color:#ff1744; padding:6px; border-radius:5px; text-align:center; margin-bottom:6px;'><b style='color:#ffffff; font-size:11px;'>🚨 LICENSE GATE ACTIVE</b></div>", unsafe_allow_html=True)
@@ -381,6 +406,7 @@ with st.sidebar:
 
 effective_vol = trade_amount * leverage
 estimated_fee = effective_vol * 0.0011
+
 st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
 
 live_price, current_rsi, ai_market_thesis, fig_candlestick = 0.0, 50.0, "SYNCING DATA FEED NODES... 📡", None
@@ -418,7 +444,7 @@ if fig_candlestick: st.plotly_chart(fig_candlestick, use_container_width=True)
 st.markdown(f"<div class='custom-box-grid' style='background-color:#050a12; border:1px solid #00e676; padding: 22px;'><div class='matrix-neon-text' style='font-size:14px;'>🧬 <b>INTERNATIONAL LIVE MARKET DATA FEED:</b><br>{ai_market_thesis}</div></div>", unsafe_allow_html=True)
 
 # 🦾 100% VISUAL RESTORE: Renders the absolute dynamic live AI Thinking console frame
-if db_load(f"{mode_prefix}_bot_active_{allocated_user_id}", False) and gemini_api_key != "":
+if db_load(f"{mode_prefix}_bot_active_{allocated_user_id}", False) and gemini_is_valid:
     current_ai_analysis_status = db_load(f"gemini_thought_{allocated_user_id}", "📊 QUANT ENGINE: Scanning Orderbooks & Global Narrative News Streams... 📡")
     st.markdown(f"<div class='custom-box-grid' style='background-color:#09121f; border-left:5px solid #ff9900; padding:15px;'><b style='color:#ff9900; font-size:13px; font-family:monospace;'>🤖 GEMINI AI INTELLIGENCE CORE LOG:</b><br><p style='color:#94a3b8; font-size:12px; font-family:monospace; margin:5px 0 0 0;'>{current_ai_analysis_status}</p></div>", unsafe_allow_html=True)
 
@@ -456,10 +482,10 @@ def fetch_live_crypto_world_news():
         feed_url = "https://cryptocompare.com"
         news_data = requests.get(feed_url, timeout=5).json().get("Data", [])
         return " | ".join([f"Headline: {n['title']} (Source: {n['source']})" for n in news_data[:4]])
-    except: return "Global macro networks operational."
+    except: return "Global macro networks operational. Processing order book data."
 
 # --- 🤖 ADVANCED GOOGLE GEMINI REALTIME PRO SCALPER ENGINE LOOP ---
-if st.session_state.bot_active and not st.session_state.user_in_pos and ai_decision and gemini_api_key != "":
+if st.session_state.bot_active and not st.session_state.user_in_pos and ai_decision and gemini_is_valid:
     try:
         ob_res = public_session.get_orderbook(category="linear", symbol=target_symbol, limit=5)
         bids_asks_json = json.dumps(ob_res.get("result", {}))
@@ -469,7 +495,7 @@ if st.session_state.bot_active and not st.session_state.user_in_pos and ai_decis
         Analyze this live package and determine if an instant scalp entry should be executed on Bybit Futures:
         - Target Symbol Asset: {target_symbol} | Ticker Live Price: {live_price} | RSI (14): {current_rsi}
         - Live Orderbook Clustered Liquidity: {bids_asks_json}
-        - Global Live Crypto Narrative/News Stream: {global_news_stream}
+        - Global Live Crypto Narrative/News & Economic Stream: {global_news_stream}
         Respond STRICTLY in this JSON format only:
         {{"Decision": "LONG", "Reason": "..."}} or {{"Decision": "SHORT", "Reason": "..."}} or {{"Decision": "HOLD", "Reason": "..."}}
         """
@@ -479,12 +505,13 @@ if st.session_state.bot_active and not st.session_state.user_in_pos and ai_decis
         
         gemini_response = requests.post(gemini_url_endpoint, json=payload_node, headers=headers_node, timeout=8).json()
         raw_ai_text = gemini_response['candidates']['content']['parts']['text'].strip()
-        if "```json" in raw_ai_text: raw_ai_text = raw_ai_text.split("```json").split("```").strip()
+        if "```json" in raw_ai_text: raw_ai_text = raw_ai_text.split("```json")[-1].split("```").strip()
+        elif "```" in raw_ai_text: raw_ai_text = raw_ai_text.split("```")[-1].split("```").strip()
+            
         parsed_decision = json.loads(raw_ai_text)
         ai_verdict = parsed_decision.get("Decision", "HOLD")
         ai_reason = parsed_decision.get("Reason", "Monitoring liquidity bands.")
         
-        # Save current thought string state directly to show inside live log console
         db_save(f"gemini_thought_{allocated_user_id}", f"Trend Analysis Verdict: [{ai_verdict}] -> Reason: {ai_reason}")
         
         if ai_verdict in ["LONG", "SHORT"]:
@@ -497,8 +524,6 @@ if st.session_state.bot_active and not st.session_state.user_in_pos and ai_decis
             st.toast(f"🤖 Gemini AI Triggered {ai_verdict}! Reason: {ai_reason}", icon="⚡")
             st.rerun()
     except: pass
-
-# Trailing TP/SL Checker Loop Sequence
 if st.session_state.user_in_pos and live_price > 0:
     is_long_pos = "LONG" in st.session_state.user_trade_side
     live_target = (st.session_state.user_buy_price + price_jump_target) if is_long_pos else (st.session_state.user_buy_price - price_jump_target)
@@ -536,82 +561,29 @@ if st.session_state.user_in_pos:
     live_target = (st.session_state.user_buy_price + price_jump_target) if is_long_pos else (st.session_state.user_buy_price - price_jump_target)
     live_sl = (st.session_state.user_buy_price - stop_loss_gap) if is_long_pos else (st.session_state.user_buy_price + stop_loss_gap)
     st.markdown(f"""<div style="background-color:#0b0e14; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; border-left: 5px solid #29b6f6;"><span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Active Contract Asset: <b>{target_symbol}</b></span><br><span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Entry Target Metric: {st.session_state.user_buy_price:.6f} | Live Index Ticker: {live_price:.6f}</span><br><span style="font-size:14px; color:#00e676; font-weight:bold; font-family: monospace;">Take Profit Limit: {live_target:.6f}</span><br><span style="font-size:14px; color:#ff1744; font-weight:bold; font-family: monospace;">Stop Loss Boundary Node: {live_sl:.6f}</span></div>""", unsafe_allow_html=True)
+
 if not ai_decision and not st.session_state.user_in_pos:
-    st.markdown("<p style='color:#ffcc00; font-weight:bold;'>🕹️ Manual Trading Panel Active (AI Crossover Bypassed)</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#ffcc00; font-weight:bold;'>🕹️ Manual Trading Panel Active</p>", unsafe_allow_html=True)
     m_col1, m_col2 = st.columns(2)
     with m_col1:
         if st.button("🟢 EXECUTE BUY / LONG ENTRY", key="manual_buy_long_btn"):
-            db_save(f"{mode_prefix}_in_position_{allocated_user_id}", True)
-            db_save(f"{mode_prefix}_buy_price_{allocated_user_id}", live_price)
-            db_save(f"{mode_prefix}_current_side_{allocated_user_id}", "LONG")
-            db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", target_symbol)
-            db_save(f"tp_target_{allocated_user_id}", price_jump_target)
-            db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
-            st.rerun()
+            db_save(f"{mode_prefix}_in_position_{allocated_user_id}", True); db_save(f"{mode_prefix}_buy_price_{allocated_user_id}", live_price); db_save(f"{mode_prefix}_current_side_{allocated_user_id}", "LONG"); db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", target_symbol); db_save(f"tp_target_{allocated_user_id}", price_jump_target); db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap); st.rerun()
     with m_col2:
         if st.button("🔴 EXECUTE SELL / SHORT ENTRY", key="manual_sell_short_btn"):
-            db_save(f"{mode_prefix}_in_position_{allocated_user_id}", True)
-            db_save(f"{mode_prefix}_buy_price_{allocated_user_id}", live_price)
-            db_save(f"{mode_prefix}_current_side_{allocated_user_id}", "SHORT")
-            db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", target_symbol)
-            db_save(f"tp_target_{allocated_user_id}", price_jump_target)
-            db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
-            st.rerun()
+            db_save(f"{mode_prefix}_in_position_{allocated_user_id}", True); db_save(f"{mode_prefix}_buy_price_{allocated_user_id}", live_price); db_save(f"{mode_prefix}_current_side_{allocated_user_id}", "SHORT"); db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", target_symbol); db_save(f"tp_target_{allocated_user_id}", price_jump_target); db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap); st.rerun()
 
 c1, c2 = st.columns(2)
 with c1:
     if not st.session_state.bot_active:
-        if st.button("🟢 START ENGINE SCALPER LOOP SEQUENCE", key="start_engine_bot_btn"):
-            db_save(f"{mode_prefix}_bot_active_{allocated_user_id}", True)
-            st.rerun()
+        if st.button("🟢 START ENGINE SCALPER LOOP SEQUENCE", key="start_engine_bot_btn"): db_save(f"{mode_prefix}_bot_active_{allocated_user_id}", True); st.rerun()
     else:
-        if st.button("🔴 STOP ENGINE SCALPER LOOP SEQUENCE", key="stop_engine_bot_btn"):
-            db_save(f"{mode_prefix}_bot_active_{allocated_user_id}", False)
-            st.rerun()
+        if st.button("🔴 STOP ENGINE SCALPER LOOP SEQUENCE", key="stop_engine_bot_btn"): db_save(f"{mode_prefix}_bot_active_{allocated_user_id}", False); st.rerun()
 with c2:
     if st.button("🚨 EMERGENCY LIQUIDATE CLOSE ORDER POSITION", disabled=not st.session_state.user_in_pos, key="force_sell_engine_btn"):
-        local_final_pnl = 0.0
-        if live_price > 0:
-            if "LONG" in st.session_state.user_trade_side:
-                local_final_pnl = ((live_price - st.session_state.user_buy_price) * (effective_vol / st.session_state.user_buy_price))
-            else:
-                local_final_pnl = ((st.session_state.user_buy_price - live_price) * (effective_vol / st.session_state.user_buy_price))
-                
-        net_pnl = local_final_pnl - estimated_fee
-        
-        if is_real_live:
-            current_bal = db_load(f"real_balance_{allocated_user_id}", 0.0)
-            db_save(f"real_balance_{allocated_user_id}", current_bal + net_pnl)
-        else:
-            current_bal = db_load(f"balance_{allocated_user_id}", 5000.0)
-            db_save(f"balance_{allocated_user_id}", current_bal + net_pnl)
-        
-        st._global_user_pnl_history.append({
-            "Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"),
-            "User ID": allocated_user_id, "Coin": target_symbol,
-            "Action": f"CLOSE {st.session_state.user_trade_side}", "Net P&L ($)": f"{net_pnl:.2f}", "Type": "REAL" if is_real_live else "DEMO"
-        })
-        
-        if st._mlm_bonus_enabled and net_pnl > 0:
-            current_parent = my_sponsor_id
-            for gen in range(1, 8):
-                if current_parent == "None" or current_parent == "" or current_parent is None: break
-                share_rate = float(st._mlm_gen_rates.get(str(gen), 5.0)) / 100
-                bonus_payout = net_pnl * share_rate
-                st._global_user_pnl_history.append({
-                    "Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"),
-                    "User ID": current_parent, "Coin": target_symbol,
-                    "Action": f"GEN_COMMISSION_L{gen}", "Net P&L ($)": f"{bonus_payout:.4f}", "Type": "REAL" if is_real_live else "DEMO"
-                })
-                parent_data = [u for u in st._central_user_creds.values() if u.get("uid") == current_parent]
-                current_parent = parent_data.get("sponsor", "None") if parent_data else "None"
-
-        db_save("pnl_history", st._global_user_pnl_history)
-        db_save(f"{mode_prefix}_in_position_{allocated_user_id}", False)
-        db_save(f"{mode_prefix}_buy_price_{allocated_user_id}", 0.0)
-        db_save(f"{mode_prefix}_current_side_{allocated_user_id}", "NONE")
-        db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", "NONE")
-        st.rerun()
+        local_final_pnl = ((live_price - st.session_state.user_buy_price) if "LONG" in st.session_state.user_trade_side else (st.session_state.user_buy_price - live_price)) * (effective_vol / st.session_state.user_buy_price) - estimated_fee
+        db_save(f"real_balance_{allocated_user_id}" if is_real_live else f"balance_{allocated_user_id}", base_wallet_balance + local_final_pnl)
+        st._global_user_pnl_history.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "User ID": allocated_user_id, "Coin": target_symbol, "Action": f"CLOSE {st.session_state.user_trade_side}", "Net P&L ($)": f"{local_final_pnl:.2f}", "Type": "REAL" if is_real_live else "DEMO"})
+        db_save("pnl_history", st._global_user_pnl_history); db_save(f"{mode_prefix}_in_position_{allocated_user_id}", False); db_save(f"{mode_prefix}_buy_price_{allocated_user_id}", 0.0); db_save(f"{mode_prefix}_current_side_{allocated_user_id}", "NONE"); db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", "NONE"); st.rerun()
 # --- 🌿 DYNAMIC MARKETING NETWORK MODULE PANEL HUB ---
 st.markdown("<hr style='border:1px solid #1f2c3f;'>", unsafe_allow_html=True)
 st.markdown(f"<h3 style='color:#f5a623;'>🌿 Network Marketing Matrix Desk ({dashboard_mode_title})</h3>", unsafe_allow_html=True)
