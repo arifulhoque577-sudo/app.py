@@ -4,6 +4,7 @@ import os
 import random
 import string
 import time
+import re
 from datetime import datetime
 from firebase_admin import credentials, firestore
 import plotly.graph_objects as go
@@ -46,7 +47,6 @@ def db_save(key, val):
         db.collection("scalper_system").document(key).set({"data": val})
     except:
         pass
-
 # Initialize Sync Control Registries Persistent Global Cache System
 if "init_sync" not in st.session_state:
     st._central_user_creds = db_load("user_creds", {})
@@ -75,13 +75,25 @@ else:
     st._mlm_deposit_bonus_rate = db_load("dep_rate", 5.18)
     st._mlm_gen_rates = db_load("gen_rates", {1: 5.0, 2: 4.0, 3: 3.0, 4: 2.0, 5: 1.0, 6: 0.5, 7: 0.5})
     st._mlm_id_thresholds = db_load("id_thresh", {1: 10, 2: 20, 3: 40, 4: 80, 5: 160, 6: 320, 7: 640})
+
+# --- FIXED GOOGLE GEMINI REAL NETWORK INTERACTION FUNCTION ---
+def execute_real_gemini_call(api_key, context_prompt):
+    url = f"https://googleapis.com{api_key}"
+    headers = {"Content-Type": "application/json"}
+    payload = {"contents": [{"parts": [{"text": context_prompt}]}]}
+    try:
+        response = requests.post(url, json=payload, headers=headers, timeout=12)
+        if response.status_code == 200:
+            return response.json(), True
+        return response.json(), False
+    except Exception as e:
+        return str(e), False
 # --- 🚀 PREMIUM NO-BORDER SPLASH SCREEN ANIMATION TRIGGER ---
 if "splash_done" not in st.session_state:
     st.set_page_config(page_title="Bybit AI Scalper", page_icon="⚡", layout="centered")
     st.markdown(
         """
         <style>
-        /* Exclude any platform specific borders or cards */
         [data-testid="stAppViewContainer"], html, body {
             background-color: #06090e !important; margin: 0 !important; padding: 0 !important; border: none !important;
         }
@@ -117,7 +129,6 @@ if "splash_done" not in st.session_state:
     st.rerun()
 @st.cache_data(ttl=30)
 def fetch_bybit_future_coins():
-    # 25+ Comprehensive Future Coin Database List Mapping
     backup_database = {
         "🪙 BTC (Bitcoin)": {"symbol": "BTCUSDT", "max_leverage": 100, "default_tp": 100.0, "default_sl": 150.0, "step": 10.0},
         "🔷 ETH (Ethereum)": {"symbol": "ETHUSDT", "max_leverage": 100, "default_tp": 8.0, "default_sl": 15.0, "step": 1.0},
@@ -184,6 +195,7 @@ st.markdown(
     .custom-box-grid { background-color: #141a24; padding: 15px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #1f2c3f; }
     .matrix-neon-text { font-family: 'Courier New', monospace; color: #00e676; text-shadow: 0 0 8px #00e676; font-size: 13px; line-height: 1.6; }
     div[data-testid="stSlider"] div { flex-direction: column !important; align-items: flex-start !important; }
+    code, pre { white-space: pre-wrap !important; word-wrap: break-word !important; max-width: 100% !important; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -192,7 +204,6 @@ st.markdown(
 if 'bot_active' not in st.session_state: st.session_state.bot_active = False
 if 'all_trades_history' not in st.session_state: st.session_state.all_trades_history = []
 if 'logged_in_user' not in st.session_state: st.session_state.logged_in_user = st.query_params.get("session_user", None)
-
 if st.session_state.logged_in_user is None:
     st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
     st.subheader("🔑 Account Identity Gateway Control Panel")
@@ -211,7 +222,6 @@ if st.session_state.logged_in_user is None:
         reg_phone_raw = st.text_input("Mobile Number (Without Country Code):", key="reg_ph_num_raw").strip()
         reg_school = st.text_input("First School Name? (Security Answer Check):", key="reg_sch").strip()
         reg_sponsor = st.text_input("Sponsor Referral Token ID (Username or UID):", key="reg_s").strip()
-        
         if st.button("🚀 Register My Handle", key="reg_submit_btn"):
             st._central_user_creds = db_load("user_creds", {})
             if reg_username == "" or reg_password == "" or reg_email == "" or reg_school == "" or reg_phone_raw == "":
@@ -275,7 +285,6 @@ if st.session_state.logged_in_user is None:
                 st.success(f"Identity Verified! Your Password is: **{st._central_user_creds[f_user]['password']}**")
             else: st.error("Verification parameters failed or mismatch!")
         st.stop()
-        
     elif auth_mode == "Secure Login Profile":
         login_u = st.text_input("Identity Handle Name:", key="log_u").strip()
         login_p = st.text_input("Password Phrase Entry:", type="password", key="log_p").strip()
@@ -294,7 +303,7 @@ allocated_user_id = user_data["uid"]
 my_sponsor_id = user_data["sponsor"]
 my_profile_email = user_data.get("email", "Not Set")
 
-# Persistent Firebase-Synced Trading States (Eradicates the vanishing refresh bug)
+# Persistent Firebase-Synced Trading States
 if 'demo_balance' not in st.session_state: st.session_state.demo_balance = db_load(f"balance_{allocated_user_id}", 5000.0)
 if 'win_count' not in st.session_state: st.session_state.win_count = db_load(f"win_{allocated_user_id}", 0)
 if 'loss_count' not in st.session_state: st.session_state.loss_count = db_load(f"loss_{allocated_user_id}", 0)
@@ -324,7 +333,6 @@ with st.sidebar:
         st.session_state.real_balance = db_load(f"real_balance_{allocated_user_id}", 0.0)
     else:
         st.session_state.demo_balance = db_load(f"balance_{allocated_user_id}", 5000.0)
-
     # --- 🔒 ANTI-DRIFT AUTO COIN RE-SELECTION SYSTEM ---
     mode_prefix = "real" if is_real_live else "demo"
     in_position_state = db_load(f"{mode_prefix}_in_position_{allocated_user_id}", False)
@@ -368,39 +376,26 @@ with st.sidebar:
     else:
         price_jump_target = db_load(f"{mode_prefix}_tp_target_{allocated_user_id}", float(coin_config["default_tp"]))
         stop_loss_gap = db_load(f"{mode_prefix}_sl_gap_{allocated_user_id}", float(coin_config["default_sl"]))
-
 with st.sidebar:
     st.markdown("<hr style='border:1px solid #1e293b; margin:10px 0;'>", unsafe_allow_html=True)
     
-    # 🔒 DYNAMIC CLOUD KEY GATEWAY VALIDATOR: Strict validation loops against Google Mainframe
     saved_gemini_key = db_load(f"gemini_key_{allocated_user_id}", "")
     gemini_api_key = st.text_input("🔑 Google Gemini API Token Key:", value=saved_gemini_key, type="password", key="gemini_key_gateway_sidebar").strip()
     
     gemini_is_valid = False
     if gemini_api_key != "":
-        if gemini_api_key != saved_gemini_key:
-            try:
-                test_url = f"https://googleapis.com{gemini_api_key}"
-                test_res = requests.post(test_url, json={"contents": [{"parts": [{"text": "ping"}]}]}, headers={"Content-Type": "application/json"}, timeout=12).json()
-                
-                # Rigid verification: Checks if Google successfully generated candidates without error dictionaries
-                if "candidates" in test_res and "error" not in test_res:
-                    db_save(f"gemini_key_{allocated_user_id}", gemini_api_key)
-                    gemini_is_valid = True
-                    st.sidebar.success("🟢 Gemini API Connection Active!")
-                else:
-                    db_save(f"gemini_key_{allocated_user_id}", "")
-                    st.sidebar.error("❌ Invalid Gemini Key! Google Rejected.")
-            except:
-                # If network timeout occurs during fresh test, use cache securely
-                if saved_gemini_key != "":
-                    gemini_is_valid = True
-                    st.sidebar.markdown("<span style='color:#ff9900; font-size:12px;'>⚠️ API Timeout: Loaded Cached Key</span>", unsafe_allow_html=True)
-                else:
-                    st.sidebar.error("📡 Google Connection Timeout. Try again.")
-        else:
+        test_prompt = "Respond with 'VALID_KEY_OK' in plain text format only."
+        test_res, success_status = execute_real_gemini_call(gemini_api_key, test_prompt)
+        
+        if success_status and "candidates" in test_res and "error" not in test_res:
+            if gemini_api_key != saved_gemini_key:
+                db_save(f"gemini_key_{allocated_user_id}", gemini_api_key)
             gemini_is_valid = True
-            st.sidebar.markdown("<span style='color:#00e676; font-size:12px;'>🟢 Gemini Link Authenticated</span>", unsafe_allow_html=True)
+            st.sidebar.success("🟢 Gemini API Connection Active!")
+        else:
+            if gemini_api_key == saved_gemini_key:
+                db_save(f"gemini_key_{allocated_user_id}", "")
+            st.sidebar.error("❌ Invalid Gemini Key! Google Rejected Request.")
     else:
         st.sidebar.warning("⚠️ Enter Gemini API Key to enable AI Agent Mode")
 
@@ -450,7 +445,6 @@ if live_price == 0.0:
 
 if fig_candlestick: st.plotly_chart(fig_candlestick, use_container_width=True)
 st.markdown(f"<div class='custom-box-grid' style='background-color:#050a12; border:1px solid #00e676; padding: 22px;'><div class='matrix-neon-text' style='font-size:14px;'>🧬 <b>INTERNATIONAL LIVE MARKET DATA FEED:</b><br>{ai_market_thesis}</div></div>", unsafe_allow_html=True)
-
 # 🦾 DYNAMIC AI THINKING FRAME: Realtime console view logs
 if db_load(f"{mode_prefix}_bot_active_{allocated_user_id}", False) and gemini_is_valid:
     current_ai_analysis_status = db_load(f"gemini_thought_{allocated_user_id}", "📊 QUANT ENGINE: Analyzing real-time order books & macro fundamentals... 📡")
@@ -492,7 +486,6 @@ def fetch_live_crypto_world_news():
         return " | ".join([f"Headline: {n['title']} (Source: {n['source']})" for n in news_data[:4]])
     except: return "Global macro networks operational. Processing order book data."
 
-# --- 🤖 ADVANCED GOOGLE GEMINI REALTIME PRO SCALPER ENGINE LOOP ---
 if st.session_state.bot_active and not st.session_state.user_in_pos and ai_decision and gemini_is_valid:
     try:
         ob_res = public_session.get_orderbook(category="linear", symbol=target_symbol, limit=5)
@@ -504,37 +497,44 @@ if st.session_state.bot_active and not st.session_state.user_in_pos and ai_decis
         - Target Symbol Asset: {target_symbol} | Ticker Live Price: {live_price} | RSI (14): {current_rsi}
         - Live Orderbook Clustered Liquidity: {bids_asks_json}
         - Global Live Crypto Narrative/News & Economic Stream: {global_news_stream}
-        Respond STRICTLY in this JSON format only:
+        Respond STRICTLY in this raw JSON structure format only. Do not wrap inside codeblocks or markdowns:
         {{"Decision": "LONG", "Reason": "..."}} or {{"Decision": "SHORT", "Reason": "..."}} or {{"Decision": "HOLD", "Reason": "..."}}
         """
-        headers_node = { "Content-Type": "application/json" }
-        payload_node = { "contents": [{ "parts": [{ "text": ai_payload_prompt }] }] }
-        gemini_url_endpoint = f"https://googleapis.com{gemini_api_key}"
-        
-        gemini_response = requests.post(gemini_url_endpoint, json=payload_node, headers=headers_node, timeout=12).json()
-        raw_ai_text = gemini_response['candidates'][0]['content']['parts'][0]['text'].strip()
-        
-        if "```json" in raw_ai_text: raw_ai_text = raw_ai_text.split("```json")[-1].split("```")[0].strip()
-        elif "```" in raw_ai_text: raw_ai_text = raw_ai_text.split("```")[-1].split("```")[0].strip()
-            
-        parsed_decision = json.loads(raw_ai_text)
-        ai_verdict = parsed_decision.get("Decision", "HOLD")
-        ai_reason = parsed_decision.get("Reason", "Monitoring orderbook nodes.")
-        
-        # 🦾 CRITICAL FIX: Forces Firestore updates to change with Gemini's raw live thought processing strings
-        db_save(f"gemini_thought_{allocated_user_id}", f"Verdict: [{ai_verdict}] -> Analysis: {ai_reason}")
-        
-        if ai_verdict in ["LONG", "SHORT"]:
-            db_save(f"{mode_prefix}_in_position_{allocated_user_id}", True)
-            db_save(f"{mode_prefix}_buy_price_{allocated_user_id}", live_price)
-            db_save(f"{mode_prefix}_current_side_{allocated_user_id}", ai_verdict)
-            db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", target_symbol)
-            db_save(f"tp_target_{allocated_user_id}", price_jump_target)
-            db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
-            st.toast(f"🤖 Gemini AI Triggered {ai_verdict}! Reason: {ai_reason}", icon="⚡")
-            st.rerun()
+        raw_response, status_ok = execute_real_gemini_call(gemini_api_key, ai_payload_prompt)
+        if status_ok:
+            raw_ai_text = raw_response['candidates']['content']['parts']['text'].strip()
+            if "{" in raw_ai_text:
+                json_match = re.search(r"\{.*\}", raw_ai_text, re.DOTALL)
+                if json_match: raw_ai_text = json_match.group(0)
+            parsed_decision = json.loads(raw_ai_text)
+            ai_verdict = parsed_decision.get("Decision", "HOLD")
+            ai_reason = parsed_decision.get("Reason", "Monitoring orderbook nodes.")
+            db_save(f"gemini_thought_{allocated_user_id}", f"Verdict: [{ai_verdict}] -> Analysis: {ai_reason}")
+            if ai_verdict in ["LONG", "SHORT"]:
+                if is_real_live and api_key and secret_key:
+                    try:
+                        live_private_session = HTTP(testnet=False, api_key=api_key, api_secret=secret_key)
+                        calculated_qty = float(effective_vol / live_price)
+                        live_private_session.place_order(
+                            category="linear", symbol=target_symbol,
+                            side="Buy" if ai_verdict == "LONG" else "Sell",
+                            orderType="Market", qty=str(round(calculated_qty, 3))
+                        )
+                    except Exception as order_error:
+                        db_save(f"gemini_thought_{allocated_user_id}", f"❌ Exchange Execution Aborted: {str(order_error)[:40]}")
+                        st.stop()
+                db_save(f"{mode_prefix}_in_position_{allocated_user_id}", True)
+                db_save(f"{mode_prefix}_buy_price_{allocated_user_id}", live_price)
+                db_save(f"{mode_prefix}_current_side_{allocated_user_id}", ai_verdict)
+                db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", target_symbol)
+                db_save(f"tp_target_{allocated_user_id}", price_jump_target)
+                db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
+                st.toast(f"🤖 Gemini AI Triggered {ai_verdict}! Reason: {ai_reason}", icon="⚡")
+                st.rerun()
+        else:
+            db_save(f"gemini_thought_{allocated_user_id}", f"📡 Core Engine Connected. Gateway Error Response.")
     except Exception as gemini_loop_error:
-        db_save(f"gemini_thought_{allocated_user_id}", f"📡 Core Engine Connected. Processing: {str(gemini_loop_error)[:45]}...")
+        db_save(f"gemini_thought_{allocated_user_id}", f"📡 Core Engine Connected. Processing Error String Cache.")
 if st.session_state.user_in_pos and live_price > 0:
     is_long_pos = "LONG" in st.session_state.user_trade_side
     live_target = (st.session_state.user_buy_price + price_jump_target) if is_long_pos else (st.session_state.user_buy_price - price_jump_target)
@@ -548,6 +548,16 @@ if st.session_state.user_in_pos and live_price > 0:
         elif live_price >= live_sl: triggered_close, won = True, False
     if triggered_close and st.session_state.bot_active:
         local_final_pnl = (price_jump_target if won else -stop_loss_gap) * (effective_vol / st.session_state.user_buy_price) - estimated_fee
+        if is_real_live and api_key and secret_key:
+            try:
+                live_private_session = HTTP(testnet=False, api_key=api_key, api_secret=secret_key)
+                calculated_qty = float(effective_vol / st.session_state.user_buy_price)
+                live_private_session.place_order(
+                    category="linear", symbol=target_symbol,
+                    side="Sell" if is_long_pos else "Buy",
+                    orderType="Market", qty=str(round(calculated_qty, 3))
+                )
+            except: pass
         if won: st.session_state.win_count += 1
         else: st.session_state.loss_count += 1
         db_save(f"win_{allocated_user_id}", st.session_state.win_count)
@@ -572,7 +582,6 @@ if st.session_state.user_in_pos:
     live_target = (st.session_state.user_buy_price + price_jump_target) if is_long_pos else (st.session_state.user_buy_price - price_jump_target)
     live_sl = (st.session_state.user_buy_price - stop_loss_gap) if is_long_pos else (st.session_state.user_buy_price + stop_loss_gap)
     st.markdown(f"""<div style="background-color:#0b0e14; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; border-left: 5px solid #29b6f6;"><span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Active Contract Asset: <b>{target_symbol}</b></span><br><span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Entry Target Metric: {st.session_state.user_buy_price:.6f} | Live Index Ticker: {live_price:.6f}</span><br><span style="font-size:14px; color:#00e676; font-weight:bold; font-family: monospace;">Take Profit Limit: {live_target:.6f}</span><br><span style="font-size:14px; color:#ff1744; font-weight:bold; font-family: monospace;">Stop Loss Boundary Node: {live_sl:.6f}</span></div>""", unsafe_allow_html=True)
-
 if not ai_decision and not st.session_state.user_in_pos:
     st.markdown("<p style='color:#ffcc00; font-weight:bold;'>🕹️ Manual Trading Panel Active</p>", unsafe_allow_html=True)
     m_col1, m_col2 = st.columns(2)
@@ -592,10 +601,19 @@ with c1:
 with c2:
     if st.button("🚨 EMERGENCY LIQUIDATE CLOSE ORDER POSITION", disabled=not st.session_state.user_in_pos, key="force_sell_engine_btn"):
         local_final_pnl = ((live_price - st.session_state.user_buy_price) if "LONG" in st.session_state.user_trade_side else (st.session_state.user_buy_price - live_price)) * (effective_vol / st.session_state.user_buy_price) - estimated_fee
+        if is_real_live and api_key and secret_key:
+            try:
+                live_private_session = HTTP(testnet=False, api_key=api_key, api_secret=secret_key)
+                calculated_qty = float(effective_vol / st.session_state.user_buy_price)
+                live_private_session.place_order(
+                    category="linear", symbol=target_symbol,
+                    side="Sell" if "LONG" in st.session_state.user_trade_side else "Buy",
+                    orderType="Market", qty=str(round(calculated_qty, 3))
+                )
+            except: pass
         db_save(f"real_balance_{allocated_user_id}" if is_real_live else f"balance_{allocated_user_id}", base_wallet_balance + local_final_pnl)
         st._global_user_pnl_history.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "User ID": allocated_user_id, "Coin": target_symbol, "Action": f"CLOSE {st.session_state.user_trade_side}", "Net P&L ($)": f"{local_final_pnl:.2f}", "Type": "REAL" if is_real_live else "DEMO"})
         db_save("pnl_history", st._global_user_pnl_history); db_save(f"{mode_prefix}_in_position_{allocated_user_id}", False); db_save(f"{mode_prefix}_buy_price_{allocated_user_id}", 0.0); db_save(f"{mode_prefix}_current_side_{allocated_user_id}", "NONE"); db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", "NONE"); st.rerun()
-        
 st.markdown("<hr style='border:1px solid #1f2c3f;'>", unsafe_allow_html=True)
 st.markdown(f"<h3 style='color:#f5a623;'>🌿 Network Marketing Matrix Desk</h3>", unsafe_allow_html=True)
 search_uid_input = st.text_input("Enter Target Member UID box input:", value=allocated_user_id, key="custom_uid_search_field_node").strip()
@@ -656,16 +674,15 @@ for g_key, sub_uids in mapped_gens.items():
         if st._global_user_pnl_history:
             for r in st._global_user_pnl_history:
                 if r.get("User ID") == sub_uid:
-                    val = float(r.get("Net P&L ($)", 0))
+                    val = float(r.get("Net P&L (\$)", 0))
                     if r.get("Type") == "REAL": real_pnl += val
                     else: demo_pnl += val
-        sub_tree_records.append({"Hierarchy Level": g_key, "User ID": sub_uid, "Username": st._uid_to_username.get(sub_uid, f"Node-{sub_uid[:4]}"), "Demo Lifetime Profit": f"${demo_pnl:.2f} USDT", "Real Lifetime Profit": f"${real_pnl:.2f} USDT"})
+        sub_tree_records.append({"Hierarchy Level": g_key, "User ID": sub_uid, "Username": st._uid_to_username.get(sub_uid, f"Node-{sub_uid[:4]}"), "Demo Lifetime Profit": f"\${demo_pnl:.2f} USDT", "Real Lifetime Profit": f"\${real_pnl:.2f} USDT"})
 
 if sub_tree_records: st.dataframe(pd.DataFrame(sub_tree_records), use_container_width=True)
 else: st.info("No active downline nodes found.")
 
 st.markdown("""<iframe src="about:blank" style="display:none;" onload="setTimeout(function(){window.location.reload();}, 1500);"></iframe>""", unsafe_allow_html=True)
-
 with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Panel)"):
     master_input = st.text_input("Input Master Security Override Code Password:", type="password", key="supreme_admin_password_node")
     if master_input == YOUR_SECRET_MASTER_CODE:
@@ -676,13 +693,13 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Pane
         if old_ref_sys != st._ref_system_active: db_save("ref_sys_active", st._ref_system_active)
         
         admin_current_ref_payout = float(db_load("admin_fixed_ref_usd", 10.0))
-        admin_new_ref_payout = st.number_input("🚨 Referral Bonus Fixed Amount Settings ($) Input:", min_value=0.0, value=admin_current_ref_payout, step=1.0, key="adm_fixed_ref_amt_box")
+        admin_new_ref_payout = st.number_input("🚨 Referral Bonus Fixed Amount Settings (\$) Input:", min_value=0.0, value=admin_current_ref_payout, step=1.0, key="adm_fixed_ref_amt_box")
         if admin_new_ref_payout != admin_current_ref_payout: db_save("admin_fixed_ref_usd", admin_new_ref_payout); st.rerun()
             
         st.markdown("<h3>✍️ Manual Balance Override Control (Edit User Funds)</h3>", unsafe_allow_html=True)
         target_edit_uid = st.text_input("Enter Target Member UID to Edit:", key="adm_edit_target_uid_field").strip()
         edit_mode_sel = st.selectbox("Select Balance Type to Modify:", ["Demo Simulation Balance", "Real Mainnet Balance"])
-        new_edit_value = st.number_input("Input Absolute New Balance Value Amount ($):", min_value=0.0, value=0.0, step=10.0)
+        new_edit_value = st.number_input("Input Absolute New Balance Value Amount (\$):", min_value=0.0, value=0.0, step=10.0)
         if st.button("🚨 Save Hard Fund Override Changes", key="adm_execute_edit_funds_btn"):
             if target_edit_uid != "":
                 if "Real" in edit_mode_sel: db_save(f"real_balance_{target_edit_uid}", float(new_edit_value))
