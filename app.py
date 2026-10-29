@@ -75,26 +75,32 @@ else:
     st._mlm_deposit_bonus_rate = db_load("dep_rate", 5.18)
     st._mlm_gen_rates = db_load("gen_rates", {1: 5.0, 2: 4.0, 3: 3.0, 4: 2.0, 5: 1.0, 6: 0.5, 7: 0.5})
     st._mlm_id_thresholds = db_load("id_thresh", {1: 10, 2: 20, 3: 40, 4: 80, 5: 160, 6: 320, 7: 640})
-# --- 🚀 SPLASH SCREEN ANIMATION TRIGGER ---
+# --- 🚀 PREMIUM NO-BORDER SPLASH SCREEN ANIMATION TRIGGER ---
 if "splash_done" not in st.session_state:
     st.set_page_config(page_title="Bybit AI Scalper", page_icon="⚡", layout="centered")
     st.markdown(
         """
         <style>
+        /* Exclude any platform specific borders or cards */
+        [data-testid="stAppViewContainer"], html, body {
+            background-color: #06090e !important; margin: 0 !important; padding: 0 !important; border: none !important;
+        }
         .splash-container {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            height: 80vh; background-color: #06090e; color: white; font-family: 'Courier New', monospace;
+            height: 90vh; background-color: #06090e; color: white; font-family: 'Courier New', monospace;
+            border: none !important; box-shadow: none !important;
         }
         .loader-circle {
-            border: 4px solid rgba(255, 255, 255, 0.1); border-radius: 50%;
+            border: 4px solid rgba(255, 255, 255, 0.05); border-radius: 50%;
             border-top: 4px solid #00e676; border-bottom: 4px solid #ffcc00;
-            width: 90px; height: 90px; animation: spin 1.2s linear infinite; margin-bottom: 30px;
+            width: 100px; height: 100px; animation: spin 1.0s linear infinite; margin-bottom: 35px;
+            box-shadow: 0 0 15px rgba(0, 230, 118, 0.2);
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .progress-bar-container { width: 70%; background-color: #141a24; border-radius: 10px; padding: 3px; border: 1px solid #1f2c3f; }
-        .progress-bar-fill { height: 6px; background: linear-gradient(90deg, #ff9900, #00e676); width: 0%; border-radius: 5px; animation: fillProgress 1.4s ease-in-out forwards; }
+        .progress-bar-container { width: 65%; background-color: #141a24; border-radius: 10px; padding: 2px; border: 1px solid #1f2c3f; }
+        .progress-bar-fill { height: 5px; background: linear-gradient(90deg, #ff9900, #00e676); width: 0%; border-radius: 5px; animation: fillProgress 1.3s ease-in-out forwards; }
         @keyframes fillProgress { to { width: 100%; } }
-        .splash-text { font-size: 22px; font-weight: bold; letter-spacing: 3px; margin-bottom: 20px; text-align: center; color: #ffffff; }
+        .splash-text { font-size: 24px; font-weight: 800; letter-spacing: 4px; margin-bottom: 25px; text-align: center; color: #ffffff; text-shadow: 0 0 10px rgba(255,255,255,0.1); }
         </style>
         <div class="splash-container">
             <div class="loader-circle"></div>
@@ -106,7 +112,7 @@ if "splash_done" not in st.session_state:
         """,
         unsafe_allow_html=True
     )
-    time.sleep(1.5)
+    time.sleep(1.4)
     st.session_state.splash_done = True
     st.rerun()
 @st.cache_data(ttl=30)
@@ -242,6 +248,7 @@ if st.session_state.logged_in_user is None:
                 db_save(f"in_position_{new_uid}", False)
                 db_save(f"buy_price_{new_uid}", 0.0)
                 db_save(f"current_side_{new_uid}", "NONE")
+                db_save(f"trade_coin_{new_uid}", "NONE")
                 
                 if resolved_sponsor_uid != "None" and st._ref_system_active:
                     st._global_referral_tree = db_load("referral_tree", {})
@@ -296,6 +303,7 @@ if 'real_balance' not in st.session_state: st.session_state.real_balance = db_lo
 st.session_state.in_position = db_load(f"in_position_{allocated_user_id}", False)
 st.session_state.buy_price = db_load(f"buy_price_{allocated_user_id}", 0.0)
 st.session_state.current_side = db_load(f"current_side_{allocated_user_id}", "NONE")
+st.session_state.trade_coin = db_load(f"trade_coin_{allocated_user_id}", "NONE")
 
 with st.sidebar:
     st.markdown("<h2 style='color:#f5a623; margin-top:0;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
@@ -306,6 +314,7 @@ with st.sidebar:
     
     if st.button("🚪 Logout Active Profile Handle Node", key="logout_sidebar_node_proc"):
         st.session_state.logged_in_user = None
+        st.query_params.clear()
         st.rerun()
 
     bot_mode = st.radio("Trading Account Mode Settings:", ["Demo Simulation (Virtual Funds)", "Live Exchange (Bybit Mainnet API)"])
@@ -318,9 +327,14 @@ with st.sidebar:
 
     selected_display_name = st.selectbox("Select Asset Contract Symbol Dropdown:", list(BYBYT_DATABASE_CORE.keys()), index=0)
     coin_config = BYBYT_DATABASE_CORE[selected_display_name]
-    target_symbol = coin_config["symbol"]
-    ai_decision = st.toggle("AI Smart Crossover Filter Matrix", value=True)
     
+    # Locked Asset Safety Mapping Layer
+    if st.session_state.in_position and st.session_state.trade_coin != "NONE":
+        target_symbol = st.session_state.trade_coin
+    else:
+        target_symbol = coin_config["symbol"]
+        
+    ai_decision = st.toggle("AI Smart Crossover Filter Matrix", value=True)
     max_leverage_bound = int(coin_config.get('max_leverage', 100))
     leverage = st.slider("Leverage Scale Selection Array (1x-100x Override):", min_value=1, max_value=max_leverage_bound, value=20, step=1, key="absolute_leverage_node_slider")
     trade_amount = st.number_input("Margin Requirement Block (\$):", min_value=1, value=20)
@@ -360,7 +374,6 @@ try:
     ticker_list = ticker_res.get('result', {}).get('list', [])
     if ticker_list: live_price = float(ticker_list[0].get('lastPrice', 0))
 except: pass
-
 try:
     response = public_session.get_kline(category="linear", symbol=target_symbol, interval="1", limit=30)
     klines = response.get('result', {}).get('list', [])
@@ -382,7 +395,9 @@ except: pass
 
 if live_price == 0.0: live_price = 66500.0
 if fig_candlestick: st.plotly_chart(fig_candlestick, use_container_width=True)
+
 st.markdown(f"<div class='custom-box-grid' style='background-color:#050a12; border:1px solid #00e676; padding: 22px;'><div class='matrix-neon-text' style='font-size:14px;'>🧬 <b>INTERNATIONAL LIVE MARKET DATA FEED:</b><br>{ai_market_thesis}</div></div>", unsafe_allow_html=True)
+
 local_win = st.session_state.get('win_count', 0)
 local_loss = st.session_state.get('loss_count', 0)
 total_trades = local_win + local_loss
@@ -395,67 +410,6 @@ st.markdown(
     <span style="color:#ffffff; font-weight:bold;">🎯 WIN RATE: <b style="color:#29b6f6;">{win_rate:.1f}%</b></span></div>""", 
     unsafe_allow_html=True
 )
-
-# Automated Scalper Logic: Evaluates trailing TP/SL nodes on the fly (Prevents freeze or lockups)
-if st.session_state.in_position and live_price > 0:
-    is_long_pos = "LONG" in st.session_state.current_side
-    live_target = (st.session_state.buy_price + price_jump_target) if is_long_pos else (st.session_state.buy_price - price_jump_target)
-    live_sl = (st.session_state.buy_price - stop_loss_gap) if is_long_pos else (st.session_state.buy_price + stop_loss_gap)
-    
-    triggered_close = False
-    if is_long_pos:
-        if live_price >= live_target: triggered_close, won = True, True
-        elif live_price <= live_sl: triggered_close, won = True, False
-    else:
-        if live_price <= live_target: triggered_close, won = True, True
-        elif live_price >= live_sl: triggered_close, won = True, False
-        
-    if triggered_close and st.session_state.bot_active:
-        if won:
-            local_final_pnl = (price_jump_target * (effective_vol / st.session_state.buy_price)) - estimated_fee
-            st.session_state.win_count += 1
-            db_save(f"win_{allocated_user_id}", st.session_state.win_count)
-        else:
-            local_final_pnl = (-stop_loss_gap * (effective_vol / st.session_state.buy_price)) - estimated_fee
-            st.session_state.loss_count += 1
-            db_save(f"loss_{allocated_user_id}", st.session_state.loss_count)
-            
-        mode_type = "REAL" if is_real_live else "DEMO"
-        if is_real_live:
-            st.session_state.real_balance += local_final_pnl
-            db_save(f"real_balance_{allocated_user_id}", st.session_state.real_balance)
-        else:
-            st.session_state.demo_balance += local_final_pnl
-            db_save(f"balance_{allocated_user_id}", st.session_state.demo_balance)
-            
-        st._global_user_pnl_history.append({
-            "Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"),
-            "User ID": allocated_user_id, "Coin": target_symbol,
-            "Action": f"AUTO_CLOSE_{st.session_state.current_side}_" + ("WIN" if won else "LOSS"),
-            "Net P&L ($)": f"{local_final_pnl:.2f}", "Type": mode_type
-        })
-        db_save("pnl_history", st._global_user_pnl_history)
-        
-        st.session_state.in_position = False
-        db_save(f"in_position_{allocated_user_id}", False)
-        db_save(f"buy_price_{allocated_user_id}", 0.0)
-        db_save(f"current_side_{allocated_user_id}", "NONE")
-        st.rerun()
-
-floating_pnl = 0.0
-if st.session_state.in_position and live_price > 0:
-    if "LONG" in st.session_state.current_side:
-        floating_pnl = ((live_price - st.session_state.buy_price) * (effective_vol / st.session_state.buy_price))
-    else:
-        floating_pnl = ((st.session_state.buy_price - live_price) * (effective_vol / st.session_state.buy_price))
-
-if is_real_live:
-    balance_usd_text = f"${(st.session_state.get('real_balance', 0.0) + floating_pnl):,.2f} USDT"
-else:
-    balance_usd_text = f"${(st.session_state.get('demo_balance', 5000.0) + floating_pnl):,.2f} USDT"
-
-pnl_color_hex = "#00e676" if floating_pnl >= 0 else "#ff1744"
-st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}):</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:13px; color:{pnl_color_hex}; font-weight:bold;'>Live Floating P&L Indicator: {floating_pnl:+.2f} USDT</p></div>", unsafe_allow_html=True)
 if not is_real_live:
     st.markdown("<b>⚙️ Sandbox Fund Manager Module Panel:</b>", unsafe_allow_html=True)
     cb_col1, cb_col2 = st.columns(2)
@@ -476,6 +430,7 @@ if st.session_state.in_position:
     
     st.markdown(
         f"""<div style="background-color:#0b0e14; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; border-left: 5px solid #29b6f6;">
+        <span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Active Contract Asset: <b>{target_symbol}</b></span><br>
         <span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Entry Target Metric: {st.session_state.buy_price} | Live Index Ticker: {live_price}</span><br>
         <span style="font-size:14px; color:#00e676; font-weight:bold; font-family: monospace;">Take Profit Limit: {live_target} (Estimated Gain: +${est_profit_dollars:.2f} USDT)</span><br>
         <span style="font-size:14px; color:#ff1744; font-weight:bold; font-family: monospace;">Stop Loss Boundary Node: {live_sl} (Estimated Loss: -${est_loss_dollars:.2f} USDT)</span></div>""", 
@@ -487,35 +442,28 @@ if not ai_decision and not st.session_state.in_position:
     m_col1, m_col2 = st.columns(2)
     with m_col1:
         if st.button("🟢 EXECUTE BUY / LONG ENTRY", key="manual_buy_long_btn"):
-            st.session_state.buy_price = live_price
-            st.session_state.in_position = True
-            st.session_state.current_side = "LONG"
             db_save(f"in_position_{allocated_user_id}", True)
             db_save(f"buy_price_{allocated_user_id}", live_price)
             db_save(f"current_side_{allocated_user_id}", "LONG")
+            db_save(f"trade_coin_{allocated_user_id}", target_symbol)
             st.rerun()
     with m_col2:
         if st.button("🔴 EXECUTE SELL / SHORT ENTRY", key="manual_sell_short_btn"):
-            st.session_state.buy_price = live_price
-            st.session_state.in_position = True
-            st.session_state.current_side = "SHORT"
             db_save(f"in_position_{allocated_user_id}", True)
             db_save(f"buy_price_{allocated_user_id}", live_price)
             db_save(f"current_side_{allocated_user_id}", "SHORT")
+            db_save(f"trade_coin_{allocated_user_id}", target_symbol)
             st.rerun()
-
 c1, c2 = st.columns(2)
 with c1:
     if not st.session_state.bot_active:
         if st.button("🟢 START ENGINE SCALPER LOOP SEQUENCE", key="start_engine_bot_btn"):
             st.session_state.bot_active = True
             if not ai_decision and not st.session_state.in_position:
-                st.session_state.buy_price = live_price
-                st.session_state.in_position = True
-                st.session_state.current_side = "LONG"
                 db_save(f"in_position_{allocated_user_id}", True)
                 db_save(f"buy_price_{allocated_user_id}", live_price)
                 db_save(f"current_side_{allocated_user_id}", "LONG")
+                db_save(f"trade_coin_{allocated_user_id}", target_symbol)
             st.rerun()
     else:
         if st.button("🔴 STOP ENGINE SCALPER LOOP SEQUENCE", key="stop_engine_bot_btn"):
@@ -557,15 +505,15 @@ with c2:
                     "Action": f"GEN_COMMISSION_L{gen}", "Net P&L ($)": f"{bonus_payout:.4f}", "Type": mode_type
                 })
                 parent_data = [u for u in st._central_user_creds.values() if u.get("uid") == current_parent]
-                current_parent = parent_data[0].get("sponsor", "None") if parent_data else "None"
+                current_parent = parent_data.get("sponsor", "None") if parent_data else "None"
 
         db_save("pnl_history", st._global_user_pnl_history)
         st.session_state.in_position = False
         db_save(f"in_position_{allocated_user_id}", False)
         db_save(f"buy_price_{allocated_user_id}", 0.0)
         db_save(f"current_side_{allocated_user_id}", "NONE")
+        db_save(f"trade_coin_{allocated_user_id}", "NONE")
         st.rerun()
-
 # --- 🌿 DYNAMIC MARKETING NETWORK MODULE PANEL HUB ---
 st.markdown("<hr style='border:1px solid #1f2c3f;'>", unsafe_allow_html=True)
 st.markdown(f"<h3 style='color:#f5a623;'>🌿 Network Marketing Matrix Desk ({dashboard_mode_title})</h3>", unsafe_allow_html=True)
@@ -613,52 +561,51 @@ if search_uid_input:
                     st.dataframe(child_demo_df.iloc[::-1], use_container_width=True)
                 else: st.info("No sandbox simulation records synced yet.")
         else: st.info("Ledger registry is empty.")
-# 100% FIXED SECURE MATRIX: Clean index mapping that starts properly at Gen 1 (Resolves counting bug)
+# FIXED MATRIX HIERARCHY: Outputs explicit dictionary text maps starting directly from Gen 1
 def calculate_sub_generations(r_uid, tree):
-    g_map = {1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: []}
+    g_map = {"Gen 1": [], "Gen 2": [], "Gen 3": [], "Gen 4": [], "Gen 5": [], "Gen 6": [], "Gen 7": []}
     actual_search_uid = r_uid
     for uname, data in st._central_user_creds.items():
         if uname == r_uid or data.get("uid") == r_uid:
             actual_search_uid = data.get("uid"); break
             
     if actual_search_uid in tree: 
-        g_map[1] = list(tree[actual_search_uid])
+        g_map["Gen 1"] = list(tree[actual_search_uid])
         
-    for g in range(2, 8):
-        p_layer = g_map.get(g-1, [])
+    for idx, g_name in enumerate(["Gen 2", "Gen 3", "Gen 4", "Gen 5", "Gen 6", "Gen 7"], start=2):
+        prev_name = f"Gen {idx-1}"
+        p_layer = g_map.get(prev_name, [])
         c_accum = []
         for p_uid in p_layer:
             if p_uid in tree:
                 for c_uid in tree[p_uid]:
-                    if c_uid not in c_accum and c_uid not in g_map.get(g-1, []): 
+                    if c_uid not in c_accum and c_uid not in g_map.get(prev_name, []): 
                         c_accum.append(c_uid)
-        g_map[g] = c_accum
+        g_map[g_name] = c_accum
     return g_map
 
 st.markdown("<br><b style='color:#f5a623;'>📊 Sub-Downline Network Members Status Grid Management Node:</b>", unsafe_allow_html=True)
 mapped_gens = calculate_sub_generations(search_uid_input, st._global_referral_tree)
 sub_tree_records = []
-for g_idx in range(1, 8):
-    if g_idx in mapped_gens:
-        for sub_uid in mapped_gens[g_idx]:
-            demo_pnl, real_pnl = 0.0, 0.0
-            if st._global_user_pnl_history:
-                for r in st._global_user_pnl_history:
-                    if r.get("User ID") == sub_uid:
-                        val = float(r.get("Net P&L ($)", 0))
-                        if r.get("Type") == "REAL": real_pnl += val
-                        else: demo_pnl += val
-            
-            sub_tree_records.append({
-                "Hierarchy Level": f"Gen Layer {g_idx}", "User ID": sub_uid,
-                "Username": st._uid_to_username.get(sub_uid, f"Node-{sub_uid[:4]}"), 
-                "Demo Lifetime Profit": f"${demo_pnl:.2f} USDT", "Real Lifetime Profit": f"${real_pnl:.2f} USDT"
-            })
+for g_key, sub_uids in mapped_gens.items():
+    for sub_uid in sub_uids:
+        demo_pnl, real_pnl = 0.0, 0.0
+        if st._global_user_pnl_history:
+            for r in st._global_user_pnl_history:
+                if r.get("User ID") == sub_uid:
+                    val = float(r.get("Net P&L ($)", 0))
+                    if r.get("Type") == "REAL": real_pnl += val
+                    else: demo_pnl += val
+        
+        sub_tree_records.append({
+            "Hierarchy Level": g_key, "User ID": sub_uid,
+            "Username": st._uid_to_username.get(sub_uid, f"Node-{sub_uid[:4]}"), 
+            "Demo Lifetime Profit": f"${demo_pnl:.2f} USDT", "Real Lifetime Profit": f"${real_pnl:.2f} USDT"
+        })
 
 if sub_tree_records: st.dataframe(pd.DataFrame(sub_tree_records), use_container_width=True)
 else: st.info("No active downline nodes found.")
 
-# High speed javascript loader loop for live data feeds (Runs safely without tearing down live positions)
 st.markdown("""<iframe src="about:blank" style="display:none;" onload="setTimeout(function(){window.location.reload();}, 1500);"></iframe>""", unsafe_allow_html=True)
 
 with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Panel)"):
@@ -675,7 +622,7 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Pane
         admin_new_ref_payout = st.number_input("🚨 Referral Bonus Fixed Amount Settings ($) Input:", min_value=0.0, value=admin_current_ref_payout, step=1.0, key="adm_fixed_ref_amt_box")
         if admin_new_ref_payout != admin_current_ref_payout:
             db_save("admin_fixed_ref_usd", admin_new_ref_payout); st.rerun()
-        
+            
         st.markdown("<h3>✍️ Manual Balance Override Control (Edit User Funds)</h3>", unsafe_allow_html=True)
         target_edit_uid = st.text_input("Enter Target Member UID to Edit:", key="adm_edit_target_uid_field").strip()
         edit_mode_sel = st.selectbox("Select Balance Type to Modify:", ["Demo Simulation Balance", "Real Mainnet Balance"])
@@ -687,7 +634,10 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Pane
                 st.success("User configuration funds updated inside database successfully!"); st.rerun()
         
         st.markdown("<h3>🌿 Global User Registry Network Map:</h3>", unsafe_allow_html=True)
-        st.json(st._global_referral_tree)
+        formatted_tree_dict = {}
+        for parent_id, children in st._global_referral_tree.items():
+            formatted_tree_dict[parent_id] = {f"Gen 1 - [Member ID {idx+1}]": child for idx, child in enumerate(children)}
+        st.json(formatted_tree_dict)
         
         st.markdown("<h3>📊 Global Live Trade Ledger (All Users Tracking):</h3>", unsafe_allow_html=True)
         if st._global_user_pnl_history:
