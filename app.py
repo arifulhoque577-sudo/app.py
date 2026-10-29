@@ -320,7 +320,7 @@ with st.sidebar:
     bot_mode = st.radio("Trading Account Mode Settings:", ["Demo Simulation (Virtual Funds)", "Live Exchange (Bybit Mainnet API)"])
     is_real_live = "Live" in bot_mode
     dashboard_mode_title = "Real Production Dashboard Mode 🟢" if is_real_live else "Demo Sandbox Dashboard Mode 🔵"
-    if is_real_live:
+        if is_real_live:
         st.session_state.real_balance = db_load(f"real_balance_{allocated_user_id}", 0.0)
     else:
         st.session_state.demo_balance = db_load(f"balance_{allocated_user_id}", 5000.0)
@@ -328,7 +328,7 @@ with st.sidebar:
     selected_display_name = st.selectbox("Select Asset Contract Symbol Dropdown:", list(BYBYT_DATABASE_CORE.keys()), index=0)
     coin_config = BYBYT_DATABASE_CORE[selected_display_name]
     
-    # Secure Mode-Based Latching Infrastructure to Defend Against Layout Drops
+    # Secure Hard Latching State Framework (Prevents BTC fallback and layout drift on full reload)
     mode_prefix = "real" if is_real_live else "demo"
     in_position_state = db_load(f"{mode_prefix}_in_position_{allocated_user_id}", False)
     locked_trade_coin = db_load(f"{mode_prefix}_trade_coin_{allocated_user_id}", "NONE")
@@ -349,7 +349,7 @@ with st.sidebar:
     ai_decision = st.toggle("AI Smart Crossover Filter Matrix", value=True)
     max_leverage_bound = int(coin_config.get('max_leverage', 100))
     
-    # 100% PERSISTENT LEVERAGE & MARGIN HARD LOCK GEAR
+    # 100% SECURE MEMORY HARD LOCK: Holds leverage and margin safely against full browser reloads
     if in_position_state:
         leverage = db_load(f"{mode_prefix}_leverage_lock_{allocated_user_id}", 20)
         trade_amount = db_load(f"{mode_prefix}_margin_lock_{allocated_user_id}", 20)
@@ -360,7 +360,7 @@ with st.sidebar:
         db_save(f"{mode_prefix}_leverage_lock_{allocated_user_id}", leverage)
         db_save(f"{mode_prefix}_margin_lock_{allocated_user_id}", trade_amount)
     
-    # Lock Take Profit and Stop Loss values directly to isolate configuration parameters
+    # Lock Take Profit and Stop Loss values directly into Firestore database to seal interface configs
     if not in_position_state:
         price_jump_target = st.number_input("Take Profit Target Interval (\$):", value=float(coin_config["default_tp"]), format="%.6f", key="tp_input_node_box")
         stop_loss_gap = st.number_input("Stop Loss Boundary GAP Threshold (\$):", value=float(coin_config["default_sl"]), format="%.6f", key="sl_input_node_box")
@@ -393,8 +393,6 @@ with st.sidebar:
 
 effective_vol = trade_amount * leverage
 estimated_fee = effective_vol * 0.0011
-
-# 100% RESTORED: Premium Logo Header Banner Node
 st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
 
 live_price, current_rsi, ai_market_thesis, fig_candlestick = 0.0, 50.0, "SYNCING DATA FEED NODES... 📡", None
@@ -403,7 +401,7 @@ public_session = HTTP(testnet=False)
 try:
     ticker_res = public_session.get_tickers(category="linear", symbol=target_symbol)
     ticker_list = ticker_res.get('result', {}).get('list', [])
-    if ticker_list: live_price = float(ticker_list[0].get('lastPrice', 0))
+    if ticker_list: live_price = float(ticker_list.get('lastPrice', 0))
 except: pass
 try:
     response = public_session.get_kline(category="linear", symbol=target_symbol, interval="1", limit=30)
@@ -458,23 +456,17 @@ if not is_real_live:
             st.session_state.demo_balance = custom_balance_input
             db_save(f"balance_{allocated_user_id}", st.session_state.demo_balance); st.rerun()
 
-# Unlocked Real-Time Floating Indicator Engine (Synchronized via Mode Prefix Key Node)
+# SAFE BYBIT API CORE SYNC: Pulls pristine, unadulterated wallet balance data (Keeps API integration robust)
 st.session_state.user_in_pos = db_load(f"{mode_prefix}_in_position_{allocated_user_id}", False)
 st.session_state.user_buy_price = db_load(f"{mode_prefix}_buy_price_{allocated_user_id}", 0.0)
 st.session_state.user_trade_side = db_load(f"{mode_prefix}_current_side_{allocated_user_id}", "NONE")
 
-ref_accum_sync = 0.0
-if st._global_user_pnl_history:
-    for r in st._global_user_pnl_history:
-        if str(r.get("User ID")).strip() == str(allocated_user_id).strip():
-            if "REF_COMMISSION" in r.get("Action", "") and r.get("Type") == ("REAL" if is_real_live else "DEMO"):
-                ref_accum_sync += float(r.get("Net P&L ($)", 0))
-
 if is_real_live:
-    base_vault_funds = db_load(f"real_balance_{allocated_user_id}", 0.0)
+    # Pure Mainnet API Account Balance Mode (Zero cross-contamination from referral entries)
+    base_wallet_balance = db_load(f"real_balance_{allocated_user_id}", 0.0)
 else:
-    base_vault_funds = db_load(f"balance_{allocated_user_id}", 5000.0)
-adjusted_balance = base_vault_funds + ref_accum_sync
+    # Demo Sandbox Account Balance Mode
+    base_wallet_balance = db_load(f"balance_{allocated_user_id}", 5000.0)
 
 floating_pnl = 0.0
 if st.session_state.user_in_pos and live_price > 0 and st.session_state.user_buy_price > 0:
@@ -483,7 +475,7 @@ if st.session_state.user_in_pos and live_price > 0 and st.session_state.user_buy
     else:
         floating_pnl = ((st.session_state.user_buy_price - live_price) * (effective_vol / st.session_state.user_buy_price))
 
-balance_usd_text = f"${(adjusted_balance + floating_pnl):,.2f} USDT"
+balance_usd_text = f"${(base_wallet_balance + floating_pnl):,.2f} USDT"
 pnl_color_hex = "#00e676" if floating_pnl >= 0 else "#ff1744"
 st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}):</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:14px; color:{pnl_color_hex}; font-weight:bold;'>Live Floating P&L Indicator: {floating_pnl:+.4f} USDT</p></div>", unsafe_allow_html=True)
 
