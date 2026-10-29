@@ -49,6 +49,7 @@ def db_save(key, val):
         pass
 # Initialize Sync Control Registries Persistent Global Cache System
 # Initialize Sync Control Registries Persistent Global Cache System
+# Initialize Sync Control Registries Persistent Global Cache System
 if "init_sync" not in st.session_state:
     st._central_user_creds = db_load("user_creds", {})
     st._central_key_registry = db_load("key_registry", {})
@@ -79,19 +80,40 @@ else:
 
 # --- FIXED GOOGLE GEMINI REAL NETWORK INTERACTION FUNCTION ---
 def execute_real_gemini_call(api_key, context_prompt):
-    url = f"https://googleapis.com{api_key}"
-    headers = {"Content-Type": "application/json"}
+    cleaned_key = str(api_key).strip().strip("'").strip('"')
+    url = f"https://googleapis.com"
+    
+    # Official payload specification architecture design mapping layout standard rules
+    headers = {
+        "Content-Type": "application/json",
+        "x-goog-api-key": cleaned_key
+    }
+    
     payload = {
         "contents": [{
-            "parts": [{"text": context_prompt}]
-        }]
+            "role": "user",
+            "parts": [{"text": str(context_prompt)}]
+        }],
+        "generationConfig": {
+            "temperature": 0.4,
+            "topP": 0.95,
+            "maxOutputTokens": 1024
+        }
     }
     try:
         response = requests.post(url, json=payload, headers=headers, timeout=15)
         if response.status_code == 200:
-            return response.json(), True
+            res_json = response.json()
+            # Double safe routing array verification checker checks layout content mapping nodes safely
+            if "candidates" in res_json and len(res_json["candidates"]) > 0:
+                return res_json, True
+            return {"error": {"message": "Empty response body structure packets"}}, False
         else:
-            return response.json(), False
+            try:
+                err_data = response.json()
+            except:
+                err_data = {"error": {"message": f"Server status response error code token: {response.status_code}"}}
+            return err_data, False
     except Exception as e:
         return {"error": {"message": str(e)}}, False
 # --- 🚀 PREMIUM NO-BORDER SPLASH SCREEN ANIMATION TRIGGER ---
