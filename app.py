@@ -48,6 +48,7 @@ def db_save(key, val):
     except:
         pass
 # Initialize Sync Control Registries Persistent Global Cache System
+# Initialize Sync Control Registries Persistent Global Cache System
 if "init_sync" not in st.session_state:
     st._central_user_creds = db_load("user_creds", {})
     st._central_key_registry = db_load("key_registry", {})
@@ -80,14 +81,19 @@ else:
 def execute_real_gemini_call(api_key, context_prompt):
     url = f"https://googleapis.com{api_key}"
     headers = {"Content-Type": "application/json"}
-    payload = {"contents": [{"parts": [{"text": context_prompt}]}]}
+    payload = {
+        "contents": [{
+            "parts": [{"text": context_prompt}]
+        }]
+    }
     try:
-        response = requests.post(url, json=payload, headers=headers, timeout=12)
+        response = requests.post(url, json=payload, headers=headers, timeout=15)
         if response.status_code == 200:
             return response.json(), True
-        return response.json(), False
+        else:
+            return response.json(), False
     except Exception as e:
-        return str(e), False
+        return {"error": {"message": str(e)}}, False
 # --- 🚀 PREMIUM NO-BORDER SPLASH SCREEN ANIMATION TRIGGER ---
 if "splash_done" not in st.session_state:
     st.set_page_config(page_title="Bybit AI Scalper", page_icon="⚡", layout="centered")
