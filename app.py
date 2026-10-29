@@ -420,6 +420,22 @@ if not is_real_live:
             st.session_state.demo_balance = custom_balance_input
             db_save(f"balance_{allocated_user_id}", st.session_state.demo_balance); st.rerun()
 
+# RESTORED CORES: Real-time Live Floating Balance Panel Matrix Box Indicator
+floating_pnl = 0.0
+if st.session_state.in_position and live_price > 0:
+    if "LONG" in st.session_state.current_side:
+        floating_pnl = ((live_price - st.session_state.buy_price) * (effective_vol / st.session_state.buy_price))
+    else:
+        floating_pnl = ((st.session_state.buy_price - live_price) * (effective_vol / st.session_state.buy_price))
+
+if is_real_live:
+    balance_usd_text = f"${(st.session_state.get('real_balance', 0.0) + floating_pnl):,.2f} USDT"
+else:
+    balance_usd_text = f"${(st.session_state.get('demo_balance', 5000.0) + floating_pnl):,.2f} USDT"
+
+pnl_color_hex = "#00e676" if floating_pnl >= 0 else "#ff1744"
+st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}):</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:13px; color:{pnl_color_hex}; font-weight:bold;'>Live Floating P&L Indicator: {floating_pnl:+.2f} USDT</p></div>", unsafe_allow_html=True)
+
 if st.session_state.in_position:
     is_long_pos = "LONG" in st.session_state.current_side
     live_target = (st.session_state.buy_price + price_jump_target) if is_long_pos else (st.session_state.buy_price - price_jump_target)
@@ -432,8 +448,8 @@ if st.session_state.in_position:
         f"""<div style="background-color:#0b0e14; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; border-left: 5px solid #29b6f6;">
         <span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Active Contract Asset: <b>{target_symbol}</b></span><br>
         <span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Entry Target Metric: {st.session_state.buy_price} | Live Index Ticker: {live_price}</span><br>
-        <span style="font-size:14px; color:#00e676; font-weight:bold; font-family: monospace;">Take Profit Limit: {live_target} (Estimated Gain: +${est_profit_dollars:.2f} USDT)</span><br>
-        <span style="font-size:14px; color:#ff1744; font-weight:bold; font-family: monospace;">Stop Loss Boundary Node: {live_sl} (Estimated Loss: -${est_loss_dollars:.2f} USDT)</span></div>""", 
+        <span style="font-size:14px; color:#00e676; font-weight:bold; font-family: monospace;">Take Profit Limit: {live_target:.6f} (Estimated Gain: +${est_profit_dollars:.2f} USDT)</span><br>
+        <span style="font-size:14px; color:#ff1744; font-weight:bold; font-family: monospace;">Stop Loss Boundary Node: {live_sl:.6f} (Estimated Loss: -${est_loss_dollars:.2f} USDT)</span></div>""", 
         unsafe_allow_html=True
     )
 
@@ -446,6 +462,8 @@ if not ai_decision and not st.session_state.in_position:
             db_save(f"buy_price_{allocated_user_id}", live_price)
             db_save(f"current_side_{allocated_user_id}", "LONG")
             db_save(f"trade_coin_{allocated_user_id}", target_symbol)
+            db_save(f"tp_target_{allocated_user_id}", price_jump_target)
+            db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
             st.rerun()
     with m_col2:
         if st.button("🔴 EXECUTE SELL / SHORT ENTRY", key="manual_sell_short_btn"):
@@ -453,6 +471,8 @@ if not ai_decision and not st.session_state.in_position:
             db_save(f"buy_price_{allocated_user_id}", live_price)
             db_save(f"current_side_{allocated_user_id}", "SHORT")
             db_save(f"trade_coin_{allocated_user_id}", target_symbol)
+            db_save(f"tp_target_{allocated_user_id}", price_jump_target)
+            db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
             st.rerun()
 c1, c2 = st.columns(2)
 with c1:
@@ -464,6 +484,8 @@ with c1:
                 db_save(f"buy_price_{allocated_user_id}", live_price)
                 db_save(f"current_side_{allocated_user_id}", "LONG")
                 db_save(f"trade_coin_{allocated_user_id}", target_symbol)
+                db_save(f"tp_target_{allocated_user_id}", price_jump_target)
+                db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
             st.rerun()
     else:
         if st.button("🔴 STOP ENGINE SCALPER LOOP SEQUENCE", key="stop_engine_bot_btn"):
@@ -497,7 +519,7 @@ with c2:
             current_parent = my_sponsor_id
             for gen in range(1, 8):
                 if current_parent == "None" or current_parent == "" or current_parent is None: break
-                share_rate = float(st._mlm_gen_rates.get(gen, 5.0)) / 100
+                share_rate = float(st._mlm_gen_rates.get(str(gen), 5.0)) / 100
                 bonus_payout = net_pnl * share_rate
                 st._global_user_pnl_history.append({
                     "Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"),
@@ -561,27 +583,29 @@ if search_uid_input:
                     st.dataframe(child_demo_df.iloc[::-1], use_container_width=True)
                 else: st.info("No sandbox simulation records synced yet.")
         else: st.info("Ledger registry is empty.")
-# FIXED MATRIX HIERARCHY: Outputs explicit dictionary text maps starting directly from Gen 1
+# SECURE MULTI-GENERATION DEEP TREE TRACKING LOOPS (Fixes 1st, 2nd, 3rd Gen Missing Map Bug)
 def calculate_sub_generations(r_uid, tree):
     g_map = {"Gen 1": [], "Gen 2": [], "Gen 3": [], "Gen 4": [], "Gen 5": [], "Gen 6": [], "Gen 7": []}
     actual_search_uid = r_uid
     for uname, data in st._central_user_creds.items():
         if uname == r_uid or data.get("uid") == r_uid:
-            actual_search_uid = data.get("uid"); break
+            actual_search_uid = data.get("uid")
+            break
             
     if actual_search_uid in tree: 
         g_map["Gen 1"] = list(tree[actual_search_uid])
         
-    for idx, g_name in enumerate(["Gen 2", "Gen 3", "Gen 4", "Gen 5", "Gen 6", "Gen 7"], start=2):
+    for idx in range(2, 8):
         prev_name = f"Gen {idx-1}"
+        current_name = f"Gen {idx}"
         p_layer = g_map.get(prev_name, [])
         c_accum = []
         for p_uid in p_layer:
             if p_uid in tree:
                 for c_uid in tree[p_uid]:
-                    if c_uid not in c_accum and c_uid not in g_map.get(prev_name, []): 
+                    if c_uid not in c_accum:
                         c_accum.append(c_uid)
-        g_map[g_name] = c_accum
+        g_map[current_name] = c_accum
     return g_map
 
 st.markdown("<br><b style='color:#f5a623;'>📊 Sub-Downline Network Members Status Grid Management Node:</b>", unsafe_allow_html=True)
@@ -634,10 +658,18 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Pane
                 st.success("User configuration funds updated inside database successfully!"); st.rerun()
         
         st.markdown("<h3>🌿 Global User Registry Network Map:</h3>", unsafe_allow_html=True)
-        formatted_tree_dict = {}
-        for parent_id, children in st._global_referral_tree.items():
-            formatted_tree_dict[parent_id] = {f"Gen 1 - [Member ID {idx+1}]": child for idx, child in enumerate(children)}
-        st.json(formatted_tree_dict)
+        # 100% DEEP GENERATION MATRIX BUILDER: Explicitly lists total number of members across all generations
+        full_mapped_tree = {}
+        for parent_uid in list(st._global_referral_tree.keys()):
+            deep_tree = calculate_sub_generations(parent_uid, st._global_referral_tree)
+            summary_node = {}
+            for gen_name, uid_list in deep_tree.items():
+                if uid_list:
+                    summary_node[f"{gen_name} (Total: {len(uid_list)} Active IDs)"] = [f"{st._uid_to_username.get(uid, 'Unknown')} -> {uid}" for uid in uid_list]
+            if summary_node:
+                user_label = st._uid_to_username.get(parent_uid, parent_uid)
+                full_mapped_tree[f"👤 Sponsor Handle: {user_label} [{parent_uid}]"] = summary_node
+        st.json(full_mapped_tree)
         
         st.markdown("<h3>📊 Global Live Trade Ledger (All Users Tracking):</h3>", unsafe_allow_html=True)
         if st._global_user_pnl_history:
@@ -658,8 +690,8 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Pane
         c_cols = st.columns(2)
         for g in range(1, 8):
             with c_cols[(g-1)%2]:
-                st._mlm_gen_rates[g] = st.number_input(f"Gen {g} Share (%):", min_value=0.0, max_value=100.0, value=st._mlm_gen_rates.get(g, 5.0), key=f"adm_rates_generation_input_g_{g}")
-                st._mlm_id_thresholds[g] = st.number_input(f"Gen {g} Cap:", min_value=1, value=st._mlm_id_thresholds.get(g, 10), key=f"adm_thresholds_generation_input_g_{g}")
+                st._mlm_gen_rates[str(g)] = st.number_input(f"Gen {g} Share (%):", min_value=0.0, max_value=100.0, value=st._mlm_gen_rates.get(str(g), st._mlm_gen_rates.get(g, 5.0)), key=f"adm_rates_generation_input_g_{g}")
+                st._mlm_id_thresholds[str(g)] = st.number_input(f"Gen {g} Cap:", min_value=1, value=st._mlm_id_thresholds.get(str(g), st._mlm_id_thresholds.get(g, 10)), key=f"adm_thresholds_generation_input_g_{g}")
         db_save("gen_rates", st._mlm_gen_rates); db_save("id_thresh", st._mlm_id_thresholds)
         
         if st.button("Mint New Randomized License Token Key", key="adm_mint_token_trigger_btn"):
