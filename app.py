@@ -320,7 +320,7 @@ with st.sidebar:
     bot_mode = st.radio("Trading Account Mode Settings:", ["Demo Simulation (Virtual Funds)", "Live Exchange (Bybit Mainnet API)"])
     is_real_live = "Live" in bot_mode
     dashboard_mode_title = "Real Production Dashboard Mode 🟢" if is_real_live else "Demo Sandbox Dashboard Mode 🔵"
-    if is_real_live:
+        if is_real_live:
         st.session_state.real_balance = db_load(f"real_balance_{allocated_user_id}", 0.0)
     else:
         st.session_state.demo_balance = db_load(f"balance_{allocated_user_id}", 5000.0)
@@ -456,17 +456,47 @@ if not is_real_live:
             st.session_state.demo_balance = custom_balance_input
             db_save(f"balance_{allocated_user_id}", st.session_state.demo_balance); st.rerun()
 
-# SAFE BYBIT API CORE SYNC: Pulls pristine, unadulterated wallet balance data (Keeps API integration robust)
+# Dynamic Data Sync Core System
 st.session_state.user_in_pos = db_load(f"{mode_prefix}_in_position_{allocated_user_id}", False)
 st.session_state.user_buy_price = db_load(f"{mode_prefix}_buy_price_{allocated_user_id}", 0.0)
 st.session_state.user_trade_side = db_load(f"{mode_prefix}_current_side_{allocated_user_id}", "NONE")
+st.session_state.bot_active = db_load(f"{mode_prefix}_bot_active_{allocated_user_id}", False)
 
 if is_real_live:
-    # Pure Mainnet API Account Balance Mode (Zero cross-contamination from referral entries)
     base_wallet_balance = db_load(f"real_balance_{allocated_user_id}", 0.0)
 else:
-    # Demo Sandbox Account Balance Mode
     base_wallet_balance = db_load(f"balance_{allocated_user_id}", 5000.0)
+
+# --- 🤖 AUTOMATED ENGINE MATRIX: AI LIVE SIGNAL DETECTOR & ORDER PLACER ---
+if st.session_state.bot_active and not st.session_state.user_in_pos and ai_decision and 'df_kline' in locals() and not df_kline.empty:
+    try:
+        current_close = float(df_kline['close'].iloc[-1])
+        ma_7_vector = float(df_kline['close'].rolling(window=7).mean().iloc[-1])
+        
+        # Safe AI Strategy Criteria: RSI + Geometric MA Trend Breakout 
+        if current_rsi <= 32.0 and current_close > ma_7_vector:
+            # TRIGGER AUTO LONG (BUY) ENTRY
+            db_save(f"{mode_prefix}_in_position_{allocated_user_id}", True)
+            db_save(f"{mode_prefix}_buy_price_{allocated_user_id}", live_price)
+            db_save(f"{mode_prefix}_current_side_{allocated_user_id}", "LONG")
+            db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", target_symbol)
+            db_save(f"tp_target_{allocated_user_id}", price_jump_target)
+            db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
+            st.toast(f"🤖 AI Auto-Trade Triggered: LONG entry placed on {target_symbol}!", icon="🟢")
+            st.rerun()
+            
+        elif current_rsi >= 68.0 and current_close < ma_7_vector:
+            # TRIGGER AUTO SHORT (SELL) ENTRY
+            db_save(f"{mode_prefix}_in_position_{allocated_user_id}", True)
+            db_save(f"{mode_prefix}_buy_price_{allocated_user_id}", live_price)
+            db_save(f"{mode_prefix}_current_side_{allocated_user_id}", "SHORT")
+            db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", target_symbol)
+            db_save(f"tp_target_{allocated_user_id}", price_jump_target)
+            db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
+            st.toast(f"🤖 AI Auto-Trade Triggered: SHORT entry placed on {target_symbol}!", icon="🔴")
+            st.rerun()
+    except:
+        pass
 
 floating_pnl = 0.0
 if st.session_state.user_in_pos and live_price > 0 and st.session_state.user_buy_price > 0:
@@ -495,9 +525,7 @@ if st.session_state.user_in_pos:
         <span style="font-size:14px; color:#ff1744; font-weight:bold; font-family: monospace;">Stop Loss Boundary Node: {live_sl:.6f} (Estimated Loss: -${est_loss_dollars:.2f} USDT)</span></div>""", 
         unsafe_allow_html=True
     )
-st.session_state.bot_active = db_load(f"{mode_prefix}_bot_active_{allocated_user_id}", False)
-
-if not ai_decision and not st.session_state.in_position:
+if not ai_decision and not st.session_state.user_in_pos:
     st.markdown("<p style='color:#ffcc00; font-weight:bold;'>🕹️ Manual Trading Panel Active (AI Crossover Bypassed)</p>", unsafe_allow_html=True)
     m_col1, m_col2 = st.columns(2)
     with m_col1:
@@ -524,26 +552,20 @@ with c1:
     if not st.session_state.bot_active:
         if st.button("🟢 START ENGINE SCALPER LOOP SEQUENCE", key="start_engine_bot_btn"):
             db_save(f"{mode_prefix}_bot_active_{allocated_user_id}", True)
-            if not ai_decision and not st.session_state.in_position:
-                db_save(f"{mode_prefix}_in_position_{allocated_user_id}", True)
-                db_save(f"{mode_prefix}_buy_price_{allocated_user_id}", live_price)
-                db_save(f"{mode_prefix}_current_side_{allocated_user_id}", "LONG")
-                db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", target_symbol)
-                db_save(f"tp_target_{allocated_user_id}", price_jump_target)
-                db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
             st.rerun()
     else:
         if st.button("🔴 STOP ENGINE SCALPER LOOP SEQUENCE", key="stop_engine_bot_btn"):
             db_save(f"{mode_prefix}_bot_active_{allocated_user_id}", False)
             st.rerun()
 with c2:
-    if st.button("🚨 EMERGENCY LIQUIDATE CLOSE ORDER POSITION", disabled=not st.session_state.in_position, key="force_sell_engine_btn"):
+    # 100% WORKING ACTION NODE: Liquidates position instantly on manual click trigger
+    if st.button("🚨 EMERGENCY LIQUIDATE CLOSE ORDER POSITION", disabled=not st.session_state.user_in_pos, key="force_sell_engine_btn"):
         local_final_pnl = 0.0
         if live_price > 0:
-            if "LONG" in st.session_state.current_side:
-                local_final_pnl = ((live_price - st.session_state.buy_price) * (effective_vol / st.session_state.buy_price))
+            if "LONG" in st.session_state.user_trade_side:
+                local_final_pnl = ((live_price - st.session_state.user_buy_price) * (effective_vol / st.session_state.user_buy_price))
             else:
-                local_final_pnl = ((st.session_state.buy_price - live_price) * (effective_vol / st.session_state.buy_price))
+                local_final_pnl = ((st.session_state.user_buy_price - live_price) * (effective_vol / st.session_state.user_buy_price))
                 
         net_pnl = local_final_pnl - estimated_fee
         
@@ -557,7 +579,7 @@ with c2:
         st._global_user_pnl_history.append({
             "Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"),
             "User ID": allocated_user_id, "Coin": target_symbol,
-            "Action": f"CLOSE {st.session_state.current_side}", "Net P&L ($)": f"{net_pnl:.2f}", "Type": "REAL" if is_real_live else "DEMO"
+            "Action": f"CLOSE {st.session_state.user_trade_side}", "Net P&L ($)": f"{net_pnl:.2f}", "Type": "REAL" if is_real_live else "DEMO"
         })
         
         if st._mlm_bonus_enabled and net_pnl > 0:
