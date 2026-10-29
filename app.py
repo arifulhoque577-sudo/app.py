@@ -328,9 +328,12 @@ with st.sidebar:
     selected_display_name = st.selectbox("Select Asset Contract Symbol Dropdown:", list(BYBYT_DATABASE_CORE.keys()), index=0)
     coin_config = BYBYT_DATABASE_CORE[selected_display_name]
     
-    # Secure Active Asset Safety Mapping Layer (Anti-Vanish & Anti-Reset System)
-    if db_load(f"in_position_{allocated_user_id}", False) and db_load(f"trade_coin_{allocated_user_id}", "NONE") != "NONE":
-        target_symbol = db_load(f"trade_coin_{allocated_user_id}", coin_config["symbol"])
+    # Secure Hard Latching State Framework (Prevents BTC fallback and layout drift on full reload)
+    in_position_state = db_load(f"in_position_{allocated_user_id}", False)
+    locked_trade_coin = db_load(f"trade_coin_{allocated_user_id}", "NONE")
+    
+    if in_position_state and locked_trade_coin != "NONE":
+        target_symbol = locked_trade_coin
         found_config = None
         for k, v in BYBYT_DATABASE_CORE.items():
             if v["symbol"] == target_symbol:
@@ -347,16 +350,16 @@ with st.sidebar:
     leverage = st.slider("Leverage Scale Selection Array (1x-100x Override):", min_value=1, max_value=max_leverage_bound, value=20, step=1, key="absolute_leverage_node_slider")
     trade_amount = st.number_input("Margin Requirement Block (\$):", min_value=1, value=20)
     
-    # 100% RESTORED SIDEBAR INPUTS: Active TP and SL parameter control arrays
-    saved_tp = db_load(f"tp_target_{allocated_user_id}", float(coin_config["default_tp"]))
-    saved_sl = db_load(f"sl_gap_{allocated_user_id}", float(coin_config["default_sl"]))
-    
-    price_jump_target = st.number_input("Take Profit Target Interval (\$):", value=float(saved_tp), format="%.6f", key="tp_input_node_box")
-    stop_loss_gap = st.number_input("Stop Loss Boundary GAP Threshold (\$):", value=float(saved_sl), format="%.6f", key="sl_input_node_box")
-    
-    if not db_load(f"in_position_{allocated_user_id}", False):
+    # Lock Take Profit and Stop Loss values directly into Firestore database to seal against interface drops
+    if not in_position_state:
+        price_jump_target = st.number_input("Take Profit Target Interval (\$):", value=float(coin_config["default_tp"]), format="%.6f", key="tp_input_node_box")
+        stop_loss_gap = st.number_input("Stop Loss Boundary GAP Threshold (\$):", value=float(coin_config["default_sl"]), format="%.6f", key="sl_input_node_box")
         db_save(f"tp_target_{allocated_user_id}", price_jump_target)
         db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
+    else:
+        price_jump_target = db_load(f"tp_target_{allocated_user_id}", float(coin_config["default_tp"]))
+        stop_loss_gap = db_load(f"sl_gap_{allocated_user_id}", float(coin_config["default_sl"]))
+        st.markdown(f"<p style='color:#00e676; font-size:12px; margin:0;'>🔒 Position Parameters Locked Successfully</p>", unsafe_allow_html=True)
 
 with st.sidebar:
     api_key, secret_key = "", ""
@@ -391,50 +394,6 @@ try:
     ticker_list = ticker_res.get('result', {}).get('list', [])
     if ticker_list: live_price = float(ticker_list[0].get('lastPrice', 0))
 except: pass
-try:
-    response = public_session.get_kline(category="linear", symbol=target_symbol, interval="1", limit=30)
-    klines = response.get('result', {}).get('list', [])
-    if klines:
-        df_kline = pd.DataFrame(klines, columns=['time', 'open', 'high', 'low', 'close', 'volume', 'turnover']).iloc[::-1].reset_index(drop=True)
-        for c in ['open', 'high', 'low', 'close', 'volume']: df_kline[c] = pd.to_numeric(df_kline[c])
-        if live_price == 0.0: live_price = df_kline['close'].iloc[-1]
-        
-        delta = df_kline['close'].diff()
-        gain = delta.where(delta > 0, 0).rolling(window=14).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-        current_rsi = (100 - (100 / (1 + (gain / (loss + 1e-10))))).iloc[-1]
-        
-        ai_market_thesis = f"🔮 AI LIGHTNING MATRIX SCANNER ({target_symbol}) -> Orderbook clusters matching support breakout line vectors."
-        fig_candlestick = go.Figure(data=[go.Candlestick(x=df_kline.index, open=df_kline['open'], high=df_kline['high'], low=df_kline['low'], close=df_kline['close'])])
-        fig_candlestick.add_trace(go.Scatter(x=df_kline.index, y=df_kline['close'].rolling(window=7).mean(), name="AI Geometric Tracking Vector", line=dict(color='#00e676', width=2, dash='dot')))
-        fig_candlestick.update_layout(template="plotly_dark", margin=dict(l=6, r=6, t=6, b=6), height=250, xaxis_rangeslider_visible=False, paper_bgcolor='#06090e', plot_bgcolor='#06090e')
-except: pass
-
-# Anti-Hang Pricing Reset Matrix Guard Layer (Resolves the 4.0 freeze price bug completely)
-if live_price == 0.0:
-    try:
-        live_price = float(df_kline['close'].iloc[-1]) if 'df_kline' in locals() else float(coin_config["default_tp"]) * 50.0
-    except:
-        live_price = 1.5
-
-# 100% FIXED & RESTORED: Dynamic layout placement of candle chart vector
-if fig_candlestick: 
-    st.plotly_chart(fig_candlestick, use_container_width=True)
-
-st.markdown(f"<div class='custom-box-grid' style='background-color:#050a12; border:1px solid #00e676; padding: 22px;'><div class='matrix-neon-text' style='font-size:14px;'>🧬 <b>INTERNATIONAL LIVE MARKET DATA FEED:</b><br>{ai_market_thesis}</div></div>", unsafe_allow_html=True)
-
-local_win = st.session_state.get('win_count', 0)
-local_loss = st.session_state.get('loss_count', 0)
-total_trades = local_win + local_loss
-win_rate = (local_win / total_trades * 100) if total_trades > 0 else 0.0
-
-st.markdown(
-    f"""<div style="background-color:#141a24; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; display: flex; justify-content: space-between;">
-    <span style="color:#ffffff; font-weight:bold;">🏆 WON: <b style="color:#00e676;">{local_win}</b></span>
-    <span style="color:#ffffff; font-weight:bold;">❌ LOST: <b style="color:#ff1744;">{local_loss}</b></span>
-    <span style="color:#ffffff; font-weight:bold;">🎯 WIN RATE: <b style="color:#29b6f6;">{win_rate:.1f}%</b></span></div>""", 
-    unsafe_allow_html=True
-)
 if not is_real_live:
     st.markdown("<b>⚙️ Sandbox Fund Manager Module Panel:</b>", unsafe_allow_html=True)
     cb_col1, cb_col2 = st.columns(2)
@@ -445,12 +404,12 @@ if not is_real_live:
             st.session_state.demo_balance = custom_balance_input
             db_save(f"balance_{allocated_user_id}", st.session_state.demo_balance); st.rerun()
 
-# Real-time Live Floating Balance Panel Matrix Box Indicator
-floating_pnl = 0.0
+# 100% UNLOCKED REAL-TIME FLOATING INDICATOR ENGINE: Reads latest tickers to force raw P&L recalculations instantly
 st.session_state.in_position = db_load(f"in_position_{allocated_user_id}", False)
 st.session_state.buy_price = db_load(f"buy_price_{allocated_user_id}", 0.0)
 st.session_state.current_side = db_load(f"current_side_{allocated_user_id}", "NONE")
 
+floating_pnl = 0.0
 if st.session_state.in_position and live_price > 0 and st.session_state.buy_price > 0:
     if "LONG" in st.session_state.current_side:
         floating_pnl = ((live_price - st.session_state.buy_price) * (effective_vol / st.session_state.buy_price))
@@ -463,7 +422,7 @@ else:
     balance_usd_text = f"${(st.session_state.get('demo_balance', 5000.0) + floating_pnl):,.2f} USDT"
 
 pnl_color_hex = "#00e676" if floating_pnl >= 0 else "#ff1744"
-st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}):</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:13px; color:{pnl_color_hex}; font-weight:bold;'>Live Floating P&L Indicator: {floating_pnl:+.2f} USDT</p></div>", unsafe_allow_html=True)
+st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}):</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:14px; color:{pnl_color_hex}; font-weight:bold;'>Live Floating P&L Indicator: {floating_pnl:+.4f} USDT</p></div>", unsafe_allow_html=True)
 
 if st.session_state.in_position:
     is_long_pos = "LONG" in st.session_state.current_side
