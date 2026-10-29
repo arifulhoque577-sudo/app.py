@@ -265,7 +265,7 @@ if st.session_state.logged_in_user is None:
                     db_save("pnl_history", st._global_user_pnl_history)
                 st.success(f"Bound Identity Successful! UID Generated: {new_uid}")
         st.stop()
-    elif auth_mode == "Forget Password Profile":
+        elif auth_mode == "Forget Password Profile":
         st.markdown("<h3>🔒 Recover Password Profile System Node</h3>", unsafe_allow_html=True)
         f_user = st.text_input("Enter Username Handle to Recover:", key="forget_u_field").strip()
         f_school = st.text_input("Verification: First School Name?", key="forget_sch_field").strip()
@@ -309,8 +309,6 @@ with st.sidebar:
     st.markdown("<h2 style='color:#f5a623; margin-top:0;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#ffffff; font-size:13px; margin:0;'>👤 Handle Profile: <b>{st.session_state.logged_in_user}</b></p>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#38bdf8; font-size:13px; margin:4px 0;'>🆔 My Referral ID: <b>{allocated_user_id}</b></p>", unsafe_allow_html=True)
-    st.markdown(f"<p style='color:#00e676; font-size:12px; margin:0 0 4px 0;'>📧 Account Email: <b>{my_profile_email}</b></p>", unsafe_allow_html=True)
-    st.markdown(f"<p style='color:#94a3b8; font-size:12px; margin:0 0 12px 0;'>🔗 Sponsor UID Node: <b>{my_sponsor_id}</b></p>", unsafe_allow_html=True)
     
     if st.button("🚪 Logout Active Profile Handle Node", key="logout_sidebar_node_proc"):
         st.session_state.logged_in_user = None
@@ -334,7 +332,6 @@ with st.sidebar:
     coin_options_list = list(BYBYT_DATABASE_CORE.keys())
     default_coin_index = 0
     
-    # If bot is active or position is open, automatically lock and pull the precise index
     if (in_position_state or bot_active_state) and locked_trade_coin != "NONE":
         for idx, k in enumerate(coin_options_list):
             if BYBYT_DATABASE_CORE[k]["symbol"] == locked_trade_coin:
@@ -351,18 +348,16 @@ with st.sidebar:
     ai_decision = st.toggle("AI Smart Crossover Filter Matrix", value=True)
     max_leverage_bound = int(coin_config.get('max_leverage', 100))
     
-    # 100% PERSISTENT LEVERAGE & MARGIN HARD LOCK GEAR
     if in_position_state:
         leverage = db_load(f"{mode_prefix}_leverage_lock_{allocated_user_id}", 20)
         trade_amount = db_load(f"{mode_prefix}_margin_lock_{allocated_user_id}", 20)
-        st.sidebar.markdown(f"<div style='background-color:#0b111e; padding:12px; border-radius:8px; border:1px solid #1e293b; margin-bottom:10px;'><b style='color:#00e676; font-size:14px;'>🔒 Position Active</b><br><span style='font-size:13px; color:#94a3b8;'>Leverage: <b>{leverage}x</b> | Margin: <b>${trade_amount}</b></span><p style='color:#00e676; font-size:11px; margin:4px 0 0 0;'>🔒 Position Parameters Locked Successfully</p></div>", unsafe_allow_html=True)
+        st.sidebar.markdown(f"<div style='background-color:#0b111e; padding:12px; border-radius:8px; border:1px solid #1e293b; margin-bottom:10px;'><b style='color:#00e676; font-size:14px;'>🔒 Position Active</b><br><span style='font-size:13px; color:#94a3b8;'>Leverage: <b>{leverage}x</b> | Margin: <b>${trade_amount}</b></span></div>", unsafe_allow_html=True)
     else:
         leverage = st.slider("Leverage Scale Selection Array (1x-100x Override):", min_value=1, max_value=max_leverage_bound, value=20, step=1, key="absolute_leverage_node_slider")
         trade_amount = st.number_input("Margin Requirement Block (\$):", min_value=1, value=20)
         db_save(f"{mode_prefix}_leverage_lock_{allocated_user_id}", leverage)
         db_save(f"{mode_prefix}_margin_lock_{allocated_user_id}", trade_amount)
     
-    # Lock Take Profit and Stop Loss values directly into Firestore database
     if not in_position_state:
         price_jump_target = st.number_input("Take Profit Target Interval (\$):", value=float(coin_config["default_tp"]), format="%.6f", key="tp_input_node_box")
         stop_loss_gap = st.number_input("Stop Loss Boundary GAP Threshold (\$):", value=float(coin_config["default_sl"]), format="%.6f", key="sl_input_node_box")
@@ -373,30 +368,19 @@ with st.sidebar:
         stop_loss_gap = db_load(f"{mode_prefix}_sl_gap_{allocated_user_id}", float(coin_config["default_sl"]))
 
 with st.sidebar:
+    # 🚨 100% HARD INTIGRATION: Secure Gemini Intelligence Key Node Configuration Array
+    st.markdown("<hr style='border:1px solid #1e293b; margin:10px 0;'>", unsafe_allow_html=True)
+    gemini_api_key = st.text_input("🔑 Google Gemini API Token Key:", type="password", key="gemini_key_gateway_sidebar").strip()
     api_key, secret_key = "", ""
     if is_real_live:
-        st.markdown("<hr style='border:1px solid #1e293b; margin:10px 0;'><div style='background-color:#ff1744; padding:6px; border-radius:5px; text-align:center; margin-bottom:6px;'><b style='color:#ffffff; font-size:11px;'>🚨 LICENSE GATE ACTIVE</b></div>", unsafe_allow_html=True)
+        st.markdown("<div style='background-color:#ff1744; padding:6px; border-radius:5px; text-align:center; margin-bottom:6px;'><b style='color:#ffffff; font-size:11px;'>🚨 LICENSE GATE ACTIVE</b></div>", unsafe_allow_html=True)
         input_license = st.text_input("License Password:", type="password", key="lic_field_sidebar", label_visibility="collapsed").strip()
-        
         if input_license in st._central_key_registry:
-            if not user_data.get("license_activated_before", False) and my_sponsor_id != "None" and st._ref_system_active:
-                st._central_user_creds[st.session_state.logged_in_user]["license_activated_before"] = True
-                db_save("user_creds", st._central_user_creds)
-                
-                admin_fixed_bonus = float(db_load("admin_fixed_ref_usd", 10.0))
-                st._global_user_pnl_history.append({
-                    "Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"),
-                    "User ID": my_sponsor_id, "Coin": "REAL_LICENSE_ACTIVATION",
-                    "Action": "REF_COMMISSION_DIRECT", "Net P&L ($)": f"{admin_fixed_bonus:.2f}", "Type": "REAL"
-                })
-                db_save("pnl_history", st._global_user_pnl_history)
             api_key = st.text_input("Bybit API Key Node Token:", type="password", key="api_field_sidebar")
             secret_key = st.text_input("Bybit Secret Key Node Token:", type="password", key="sec_field_sidebar")
 
 effective_vol = trade_amount * leverage
 estimated_fee = effective_vol * 0.0011
-
-# Premium Logo Header Banner Node
 st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
 
 live_price, current_rsi, ai_market_thesis, fig_candlestick = 0.0, 50.0, "SYNCING DATA FEED NODES... 📡", None
@@ -407,7 +391,6 @@ try:
     ticker_list = ticker_res.get('result', {}).get('list', [])
     if ticker_list: live_price = float(ticker_list.get('lastPrice', 0))
 except: pass
-
 try:
     response = public_session.get_kline(category="linear", symbol=target_symbol, interval="1", limit=30)
     klines = response.get('result', {}).get('list', [])
@@ -461,46 +444,67 @@ if not is_real_live:
             st.session_state.demo_balance = custom_balance_input
             db_save(f"balance_{allocated_user_id}", st.session_state.demo_balance); st.rerun()
 
-# Dynamic Data Sync Core System
 st.session_state.user_in_pos = db_load(f"{mode_prefix}_in_position_{allocated_user_id}", False)
 st.session_state.user_buy_price = db_load(f"{mode_prefix}_buy_price_{allocated_user_id}", 0.0)
 st.session_state.user_trade_side = db_load(f"{mode_prefix}_current_side_{allocated_user_id}", "NONE")
 st.session_state.bot_active = db_load(f"{mode_prefix}_bot_active_{allocated_user_id}", False)
 
-if is_real_live:
-    base_wallet_balance = db_load(f"real_balance_{allocated_user_id}", 0.0)
-else:
-    base_wallet_balance = db_load(f"balance_{allocated_user_id}", 5000.0)
+base_wallet_balance = db_load(f"real_balance_{allocated_user_id}" if is_real_live else f"balance_{allocated_user_id}", 5000.0 if not is_real_live else 0.0)
 
-# --- 🤖 AUTOMATED ENGINE MATRIX: AI LIVE SIGNAL DETECTOR & ORDER PLACER ---
-if st.session_state.bot_active and not st.session_state.user_in_pos and ai_decision and 'df_kline' in locals() and not df_kline.empty:
+# --- 🛰️ LIVE GLOBAL CRYPTO NEWS INTEL SCRAPER ENGINE ---
+def fetch_live_crypto_world_news():
     try:
-        current_close = float(df_kline['close'].iloc[-1])
-        ma_7_vector = float(df_kline['close'].rolling(window=7).mean().iloc[-1])
-        
-        # Safe AI Strategy Criteria: RSI + Geometric MA Trend Breakout 
-        if current_rsi <= 32.0 and current_close > ma_7_vector:
-            # TRIGGER AUTO LONG (BUY) ENTRY
-            db_save(f"{mode_prefix}_in_position_{allocated_user_id}", True)
-            db_save(f"{mode_prefix}_buy_price_{allocated_user_id}", live_price)
-            db_save(f"{mode_prefix}_current_side_{allocated_user_id}", "LONG")
-            db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", target_symbol)
-            db_save(f"tp_target_{allocated_user_id}", price_jump_target)
-            db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
-            st.toast(f"🤖 AI Auto-Trade Triggered: LONG entry placed on {target_symbol}!", icon="🟢")
-            st.rerun()
-            
-        elif current_rsi >= 68.0 and current_close < ma_7_vector:
-            # TRIGGER AUTO SHORT (SELL) ENTRY
-            db_save(f"{mode_prefix}_in_position_{allocated_user_id}", True)
-            db_save(f"{mode_prefix}_buy_price_{allocated_user_id}", live_price)
-            db_save(f"{mode_prefix}_current_side_{allocated_user_id}", "SHORT")
-            db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", target_symbol)
-            db_save(f"tp_target_{allocated_user_id}", price_jump_target)
-            db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
-            st.toast(f"🤖 AI Auto-Trade Triggered: SHORT entry placed on {target_symbol}!", icon="🔴")
-            st.rerun()
+        feed_url = "https://cryptocompare.com"
+        news_data = requests.get(feed_url, timeout=5).json().get("Data", [])
+        news_string = " | ".join([f"Headline: {n['title']} (Source: {n['source']})" for n in news_data[:4]])
+        return news_string if news_string else "No high-impact narrative events decoded on tracking nodes."
     except:
+        return "Global macro networks operational. Scanning primary order channels."
+
+# --- 🤖 ADVANCED GOOGLE GEMINI REALTIME PRO SCALPER SEQUENCE ---
+if st.session_state.bot_active and not st.session_state.user_in_pos and ai_decision and gemini_api_key != "":
+    try:
+        # Fetch Live Orderbook Clusters
+        ob_res = public_session.get_orderbook(category="linear", symbol=target_symbol, limit=5)
+        bids_asks_json = json.dumps(ob_res.get("result", {}))
+        global_news_stream = fetch_live_crypto_world_news()
+        
+        # Structure the ultimate multi-dimensional AI payload packet
+        ai_payload_prompt = f"""
+        You are an advanced high-frequency AI Quantitative Trading Agent running on Bybit Futures.
+        Analyze this live package and determine if an instant scalp entry should be executed:
+        - Target Symbol Asset: {target_symbol}
+        - Ticker Live Price: {live_price}
+        - Calculated Technical RSI (14): {current_rsi}
+        - Live Orderbook Clustered Liquidity: {bids_asks_json}
+        - Global Live Crypto Narrative/News Stream: {global_news_stream}
+        
+        Respond STRICTLY in this JSON format only, with no other text or explanation markdown wrappers:
+        {{"Decision": "LONG", "Reason": "Brief text explaining strategy match"}} or {{"Decision": "SHORT", "Reason": "..."}} or {{"Decision": "HOLD", "Reason": "..."}}
+        """
+        # Execute Live Google GenAI SDK Multi-Modal Stream Node Call Request
+        headers_node = { "Content-Type": "application/json" }
+        payload_node = { "contents": [{ "parts": [{ "text": ai_payload_prompt }] }] }
+        gemini_url_endpoint = f"https://googleapis.com{gemini_api_key}"
+        
+        gemini_response = requests.post(gemini_url_endpoint, json=payload_node, headers=headers_node, timeout=8).json()
+        raw_ai_text = gemini_response['candidates'][0]['content']['parts'][0]['text'].strip()
+        
+        # Clean text wrap if Gemini includes markdown decorators accidentally
+        if "```json" in raw_ai_text: raw_ai_text = raw_ai_text.split("```json")[1].split("```")[0].strip()
+        parsed_decision = json.loads(raw_ai_text)
+        ai_verdict = parsed_decision.get("Decision", "HOLD")
+        
+        if ai_verdict in ["LONG", "SHORT"]:
+            db_save(f"{mode_prefix}_in_position_{allocated_user_id}", True)
+            db_save(f"{mode_prefix}_buy_price_{allocated_user_id}", live_price)
+            db_save(f"{mode_prefix}_current_side_{allocated_user_id}", ai_verdict)
+            db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", target_symbol)
+            db_save(f"tp_target_{allocated_user_id}", price_jump_target)
+            db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
+            st.toast(f"🤖 Gemini AI Agent Triggered {ai_verdict}! Reason: {parsed_decision.get('Reason')}", icon="⚡")
+            st.rerun()
+    except Exception as e:
         pass
 
 floating_pnl = 0.0
@@ -563,7 +567,6 @@ with c1:
             db_save(f"{mode_prefix}_bot_active_{allocated_user_id}", False)
             st.rerun()
 with c2:
-    # 100% WORKING ACTION NODE: Liquidates position instantly on manual click trigger
     if st.button("🚨 EMERGENCY LIQUIDATE CLOSE ORDER POSITION", disabled=not st.session_state.user_in_pos, key="force_sell_engine_btn"):
         local_final_pnl = 0.0
         if live_price > 0:
