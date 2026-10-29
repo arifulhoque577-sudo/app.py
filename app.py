@@ -457,10 +457,28 @@ if not is_real_live:
             st.session_state.demo_balance = custom_balance_input
             db_save(f"balance_{allocated_user_id}", st.session_state.demo_balance); st.rerun()
 
-# 100% UNLOCKED REAL-TIME FLOATING INDICATOR ENGINE: Reads latest tickers to force raw P&L recalculations instantly
-st.session_state.in_position = db_load(f"in_position_{allocated_user_id}", False)
-st.session_state.buy_price = db_load(f"buy_price_{allocated_user_id}", 0.0)
-st.session_state.current_side = db_load(f"current_side_{allocated_user_id}", "NONE")
+# Mode Separated Tracking States to Stop Cross-Contamination between Demo and Real Mode
+mode_prefix = "real" if is_real_live else "demo"
+st.session_state.in_position = db_load(f"{mode_prefix}_in_position_{allocated_user_id}", False)
+st.session_state.buy_price = db_load(f"{mode_prefix}_buy_price_{allocated_user_id}", 0.0)
+st.session_state.current_side = db_load(f"{mode_prefix}_current_side_{allocated_user_id}", "NONE")
+target_symbol = db_load(f"{mode_prefix}_trade_coin_{allocated_user_id}", target_symbol)
+
+# Sync Referrals Direct Hard Earnings Instantly to Balance Node
+ref_accum_sync = 0.0
+if st._global_user_pnl_history:
+    for r in st._global_user_pnl_history:
+        if str(r.get("User ID")).strip() == str(allocated_user_id).strip():
+            if "REF_COMMISSION" in r.get("Action", "") and r.get("Type") == ("REAL" if is_real_live else "DEMO"):
+                ref_accum_sync += float(r.get("Net P&L ($)", 0))
+
+# Recalculate Base Vault Funds directly to eliminate frozen ledger drops
+if is_real_live:
+    base_vault_funds = db_load(f"real_balance_{allocated_user_id}", 0.0)
+    adjusted_balance = base_vault_funds + ref_accum_sync
+else:
+    base_vault_funds = db_load(f"balance_{allocated_user_id}", 5000.0)
+    adjusted_balance = base_vault_funds + ref_accum_sync
 
 floating_pnl = 0.0
 if st.session_state.in_position and live_price > 0 and st.session_state.buy_price > 0:
@@ -469,11 +487,7 @@ if st.session_state.in_position and live_price > 0 and st.session_state.buy_pric
     else:
         floating_pnl = ((st.session_state.buy_price - live_price) * (effective_vol / st.session_state.buy_price))
 
-if is_real_live:
-    balance_usd_text = f"${(st.session_state.get('real_balance', 0.0) + floating_pnl):,.2f} USDT"
-else:
-    balance_usd_text = f"${(st.session_state.get('demo_balance', 5000.0) + floating_pnl):,.2f} USDT"
-
+balance_usd_text = f"${(adjusted_balance + floating_pnl):,.2f} USDT"
 pnl_color_hex = "#00e676" if floating_pnl >= 0 else "#ff1744"
 st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}):</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:14px; color:{pnl_color_hex}; font-weight:bold;'>Live Floating P&L Indicator: {floating_pnl:+.4f} USDT</p></div>", unsafe_allow_html=True)
 
@@ -493,27 +507,26 @@ if st.session_state.in_position:
         <span style="font-size:14px; color:#ff1744; font-weight:bold; font-family: monospace;">Stop Loss Boundary Node: {live_sl:.6f} (Estimated Loss: -${est_loss_dollars:.2f} USDT)</span></div>""", 
         unsafe_allow_html=True
     )
-# Force synchronized bot activation lookup status from database layer
-st.session_state.bot_active = db_load(f"bot_active_{allocated_user_id}", False)
+st.session_state.bot_active = db_load(f"{mode_prefix}_bot_active_{allocated_user_id}", False)
 
 if not ai_decision and not st.session_state.in_position:
     st.markdown("<p style='color:#ffcc00; font-weight:bold;'>🕹️ Manual Trading Panel Active (AI Crossover Bypassed)</p>", unsafe_allow_html=True)
     m_col1, m_col2 = st.columns(2)
     with m_col1:
         if st.button("🟢 EXECUTE BUY / LONG ENTRY", key="manual_buy_long_btn"):
-            db_save(f"in_position_{allocated_user_id}", True)
-            db_save(f"buy_price_{allocated_user_id}", live_price)
-            db_save(f"current_side_{allocated_user_id}", "LONG")
-            db_save(f"trade_coin_{allocated_user_id}", target_symbol)
+            db_save(f"{mode_prefix}_in_position_{allocated_user_id}", True)
+            db_save(f"{mode_prefix}_buy_price_{allocated_user_id}", live_price)
+            db_save(f"{mode_prefix}_current_side_{allocated_user_id}", "LONG")
+            db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", target_symbol)
             db_save(f"tp_target_{allocated_user_id}", price_jump_target)
             db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
             st.rerun()
     with m_col2:
         if st.button("🔴 EXECUTE SELL / SHORT ENTRY", key="manual_sell_short_btn"):
-            db_save(f"in_position_{allocated_user_id}", True)
-            db_save(f"buy_price_{allocated_user_id}", live_price)
-            db_save(f"current_side_{allocated_user_id}", "SHORT")
-            db_save(f"trade_coin_{allocated_user_id}", target_symbol)
+            db_save(f"{mode_prefix}_in_position_{allocated_user_id}", True)
+            db_save(f"{mode_prefix}_buy_price_{allocated_user_id}", live_price)
+            db_save(f"{mode_prefix}_current_side_{allocated_user_id}", "SHORT")
+            db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", target_symbol)
             db_save(f"tp_target_{allocated_user_id}", price_jump_target)
             db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
             st.rerun()
@@ -522,20 +535,18 @@ c1, c2 = st.columns(2)
 with c1:
     if not st.session_state.bot_active:
         if st.button("🟢 START ENGINE SCALPER LOOP SEQUENCE", key="start_engine_bot_btn"):
-            db_save(f"bot_active_{allocated_user_id}", True)
-            st.session_state.bot_active = True
+            db_save(f"{mode_prefix}_bot_active_{allocated_user_id}", True)
             if not ai_decision and not st.session_state.in_position:
-                db_save(f"in_position_{allocated_user_id}", True)
-                db_save(f"buy_price_{allocated_user_id}", live_price)
-                db_save(f"current_side_{allocated_user_id}", "LONG")
-                db_save(f"trade_coin_{allocated_user_id}", target_symbol)
+                db_save(f"{mode_prefix}_in_position_{allocated_user_id}", True)
+                db_save(f"{mode_prefix}_buy_price_{allocated_user_id}", live_price)
+                db_save(f"{mode_prefix}_current_side_{allocated_user_id}", "LONG")
+                db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", target_symbol)
                 db_save(f"tp_target_{allocated_user_id}", price_jump_target)
                 db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
             st.rerun()
     else:
         if st.button("🔴 STOP ENGINE SCALPER LOOP SEQUENCE", key="stop_engine_bot_btn"):
-            db_save(f"bot_active_{allocated_user_id}", False)
-            st.session_state.bot_active = False
+            db_save(f"{mode_prefix}_bot_active_{allocated_user_id}", False)
             st.rerun()
 with c2:
     if st.button("🚨 EMERGENCY LIQUIDATE CLOSE ORDER POSITION", disabled=not st.session_state.in_position, key="force_sell_engine_btn"):
@@ -547,19 +558,18 @@ with c2:
                 local_final_pnl = ((st.session_state.buy_price - live_price) * (effective_vol / st.session_state.buy_price))
                 
         net_pnl = local_final_pnl - estimated_fee
-        mode_type = "REAL" if is_real_live else "DEMO"
         
         if is_real_live:
-            st.session_state.real_balance += net_pnl
-            db_save(f"real_balance_{allocated_user_id}", st.session_state.real_balance)
+            current_bal = db_load(f"real_balance_{allocated_user_id}", 0.0)
+            db_save(f"real_balance_{allocated_user_id}", current_bal + net_pnl)
         else:
-            st.session_state.demo_balance += net_pnl
-            db_save(f"balance_{allocated_user_id}", st.session_state.demo_balance)
+            current_bal = db_load(f"balance_{allocated_user_id}", 5000.0)
+            db_save(f"balance_{allocated_user_id}", current_bal + net_pnl)
         
         st._global_user_pnl_history.append({
             "Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"),
             "User ID": allocated_user_id, "Coin": target_symbol,
-            "Action": f"CLOSE {st.session_state.current_side}", "Net P&L ($)": f"{net_pnl:.2f}", "Type": mode_type
+            "Action": f"CLOSE {st.session_state.current_side}", "Net P&L ($)": f"{net_pnl:.2f}", "Type": "REAL" if is_real_live else "DEMO"
         })
         
         if st._mlm_bonus_enabled and net_pnl > 0:
@@ -571,17 +581,16 @@ with c2:
                 st._global_user_pnl_history.append({
                     "Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"),
                     "User ID": current_parent, "Coin": target_symbol,
-                    "Action": f"GEN_COMMISSION_L{gen}", "Net P&L ($)": f"{bonus_payout:.4f}", "Type": mode_type
+                    "Action": f"GEN_COMMISSION_L{gen}", "Net P&L ($)": f"{bonus_payout:.4f}", "Type": "REAL" if is_real_live else "DEMO"
                 })
                 parent_data = [u for u in st._central_user_creds.values() if u.get("uid") == current_parent]
                 current_parent = parent_data.get("sponsor", "None") if parent_data else "None"
 
         db_save("pnl_history", st._global_user_pnl_history)
-        db_save(f"in_position_{allocated_user_id}", False)
-        db_save(f"buy_price_{allocated_user_id}", 0.0)
-        db_save(f"current_side_{allocated_user_id}", "NONE")
-        db_save(f"trade_coin_{allocated_user_id}", "NONE")
-        st.session_state.in_position = False
+        db_save(f"{mode_prefix}_in_position_{allocated_user_id}", False)
+        db_save(f"{mode_prefix}_buy_price_{allocated_user_id}", 0.0)
+        db_save(f"{mode_prefix}_current_side_{allocated_user_id}", "NONE")
+        db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", "NONE")
         st.rerun()
 # --- 🌿 DYNAMIC MARKETING NETWORK MODULE PANEL HUB ---
 st.markdown("<hr style='border:1px solid #1f2c3f;'>", unsafe_allow_html=True)
