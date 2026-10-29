@@ -328,9 +328,10 @@ with st.sidebar:
     selected_display_name = st.selectbox("Select Asset Contract Symbol Dropdown:", list(BYBYT_DATABASE_CORE.keys()), index=0)
     coin_config = BYBYT_DATABASE_CORE[selected_display_name]
     
-    # Secure Hard Latching State Framework (Prevents BTC fallback and layout drift on full reload)
-    in_position_state = db_load(f"in_position_{allocated_user_id}", False)
-    locked_trade_coin = db_load(f"trade_coin_{allocated_user_id}", "NONE")
+    # Secure Mode-Based Latching Infrastructure to Defend Against Layout Drops
+    mode_prefix = "real" if is_real_live else "demo"
+    in_position_state = db_load(f"{mode_prefix}_in_position_{allocated_user_id}", False)
+    locked_trade_coin = db_load(f"{mode_prefix}_trade_coin_{allocated_user_id}", "NONE")
     
     if in_position_state and locked_trade_coin != "NONE":
         target_symbol = locked_trade_coin
@@ -343,32 +344,31 @@ with st.sidebar:
             coin_config = found_config
     else:
         target_symbol = coin_config["symbol"]
-        db_save(f"trade_coin_{allocated_user_id}", target_symbol)
+        db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", target_symbol)
         
     ai_decision = st.toggle("AI Smart Crossover Filter Matrix", value=True)
     max_leverage_bound = int(coin_config.get('max_leverage', 100))
     
-    # 100% PERSISTENT LEVERAGE & MARGIN LOCK: Restores entered inputs safely on refresh
+    # 100% PERSISTENT LEVERAGE & MARGIN HARD LOCK GEAR
     if in_position_state:
-        leverage = db_load(f"leverage_lock_{allocated_user_id}", 20)
-        trade_amount = db_load(f"margin_lock_{allocated_user_id}", 20)
-        st.sidebar.markdown(f"<div style='background-color:#1e293b; padding:8px; border-radius:5px;'><b style='color:#00e676;'>🔒 Position Active</b><br><span style='font-size:12px;color:#fff;'>Leverage: {leverage}x | Margin: ${trade_amount}</span></div>", unsafe_allow_html=True)
+        leverage = db_load(f"{mode_prefix}_leverage_lock_{allocated_user_id}", 20)
+        trade_amount = db_load(f"{mode_prefix}_margin_lock_{allocated_user_id}", 20)
+        st.sidebar.markdown(f"<div style='background-color:#0b111e; padding:12px; border-radius:8px; border:1px solid #1e293b; margin-bottom:10px;'><b style='color:#00e676; font-size:14px;'>🔒 Position Active</b><br><span style='font-size:13px; color:#94a3b8;'>Leverage: <b>{leverage}x</b> | Margin: <b>${trade_amount}</b></span><p style='color:#00e676; font-size:11px; margin:4px 0 0 0;'>🔒 Position Parameters Locked Successfully</p></div>", unsafe_allow_html=True)
     else:
         leverage = st.slider("Leverage Scale Selection Array (1x-100x Override):", min_value=1, max_value=max_leverage_bound, value=20, step=1, key="absolute_leverage_node_slider")
         trade_amount = st.number_input("Margin Requirement Block (\$):", min_value=1, value=20)
-        db_save(f"leverage_lock_{allocated_user_id}", leverage)
-        db_save(f"margin_lock_{allocated_user_id}", trade_amount)
+        db_save(f"{mode_prefix}_leverage_lock_{allocated_user_id}", leverage)
+        db_save(f"{mode_prefix}_margin_lock_{allocated_user_id}", trade_amount)
     
-    # Lock Take Profit and Stop Loss values directly into Firestore database to seal against interface drops
+    # Lock Take Profit and Stop Loss values directly to isolate configuration parameters
     if not in_position_state:
         price_jump_target = st.number_input("Take Profit Target Interval (\$):", value=float(coin_config["default_tp"]), format="%.6f", key="tp_input_node_box")
         stop_loss_gap = st.number_input("Stop Loss Boundary GAP Threshold (\$):", value=float(coin_config["default_sl"]), format="%.6f", key="sl_input_node_box")
-        db_save(f"tp_target_{allocated_user_id}", price_jump_target)
-        db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
+        db_save(f"{mode_prefix}_tp_target_{allocated_user_id}", price_jump_target)
+        db_save(f"{mode_prefix}_sl_gap_{allocated_user_id}", stop_loss_gap)
     else:
-        price_jump_target = db_load(f"tp_target_{allocated_user_id}", float(coin_config["default_tp"]))
-        stop_loss_gap = db_load(f"sl_gap_{allocated_user_id}", float(coin_config["default_sl"]))
-        st.markdown(f"<p style='color:#00e676; font-size:12px; margin:0;'>🔒 Position Parameters Locked Successfully</p>", unsafe_allow_html=True)
+        price_jump_target = db_load(f"{mode_prefix}_tp_target_{allocated_user_id}", float(coin_config["default_tp"]))
+        stop_loss_gap = db_load(f"{mode_prefix}_sl_gap_{allocated_user_id}", float(coin_config["default_sl"]))
 
 with st.sidebar:
     api_key, secret_key = "", ""
@@ -394,6 +394,9 @@ with st.sidebar:
 effective_vol = trade_amount * leverage
 estimated_fee = effective_vol * 0.0011
 
+# 100% RESTORED: Premium Logo Header Banner Node
+st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
+
 live_price, current_rsi, ai_market_thesis, fig_candlestick = 0.0, 50.0, "SYNCING DATA FEED NODES... 📡", None
 public_session = HTTP(testnet=False)
 
@@ -408,7 +411,7 @@ try:
     if klines:
         df_kline = pd.DataFrame(klines, columns=['time', 'open', 'high', 'low', 'close', 'volume', 'turnover']).iloc[::-1].reset_index(drop=True)
         for c in ['open', 'high', 'low', 'close', 'volume']: df_kline[c] = pd.to_numeric(df_kline[c])
-        if live_price == 0.0: live_price = df_kline['close'].iloc[-1]
+        if live_price == 0.0: live_price = float(df_kline['close'].iloc[-1])
         
         delta = df_kline['close'].diff()
         gain = delta.where(delta > 0, 0).rolling(window=14).mean()
@@ -421,18 +424,16 @@ try:
         fig_candlestick.update_layout(template="plotly_dark", margin=dict(l=6, r=6, t=6, b=6), height=250, xaxis_rangeslider_visible=False, paper_bgcolor='#06090e', plot_bgcolor='#06090e')
 except: pass
 
-# Anti-Hang Pricing Reset Matrix Guard Layer
-if live_price == 0.0:
-    try:
-        live_price = float(df_kline['close'].iloc[-1]) if 'df_kline' in locals() else float(coin_config["default_tp"]) * 50.0
-    except:
-        live_price = 1.5
+# Hard Pricing Safe Fallback Matrix to Defend Against Overwriting the Active Entry Price
+if live_price == 0.0 or live_price > (float(coin_config.get("default_tp", 1.0)) * 5000.0):
+    if 'df_kline' in locals() and not df_kline.empty:
+        live_price = float(df_kline['close'].iloc[-1])
+    else:
+        live_price = float(db_load(f"{mode_prefix}_buy_price_{allocated_user_id}", 1.5))
 
-# 100% RESTORED: Dynamic layout placement of candle chart vector right under title block
 if fig_candlestick: 
     st.plotly_chart(fig_candlestick, use_container_width=True)
 
-# 100% RESTORED: Green border international live market data status feed panel
 st.markdown(f"<div class='custom-box-grid' style='background-color:#050a12; border:1px solid #00e676; padding: 22px;'><div class='matrix-neon-text' style='font-size:14px;'>🧬 <b>INTERNATIONAL LIVE MARKET DATA FEED:</b><br>{ai_market_thesis}</div></div>", unsafe_allow_html=True)
 
 local_win = st.session_state.get('win_count', 0)
@@ -457,14 +458,11 @@ if not is_real_live:
             st.session_state.demo_balance = custom_balance_input
             db_save(f"balance_{allocated_user_id}", st.session_state.demo_balance); st.rerun()
 
-# Mode Separated Tracking States to Stop Cross-Contamination between Demo and Real Mode
-mode_prefix = "real" if is_real_live else "demo"
-st.session_state.in_position = db_load(f"{mode_prefix}_in_position_{allocated_user_id}", False)
-st.session_state.buy_price = db_load(f"{mode_prefix}_buy_price_{allocated_user_id}", 0.0)
-st.session_state.current_side = db_load(f"{mode_prefix}_current_side_{allocated_user_id}", "NONE")
-target_symbol = db_load(f"{mode_prefix}_trade_coin_{allocated_user_id}", target_symbol)
+# Unlocked Real-Time Floating Indicator Engine (Synchronized via Mode Prefix Key Node)
+st.session_state.user_in_pos = db_load(f"{mode_prefix}_in_position_{allocated_user_id}", False)
+st.session_state.user_buy_price = db_load(f"{mode_prefix}_buy_price_{allocated_user_id}", 0.0)
+st.session_state.user_trade_side = db_load(f"{mode_prefix}_current_side_{allocated_user_id}", "NONE")
 
-# Sync Referrals Direct Hard Earnings Instantly to Balance Node
 ref_accum_sync = 0.0
 if st._global_user_pnl_history:
     for r in st._global_user_pnl_history:
@@ -472,37 +470,35 @@ if st._global_user_pnl_history:
             if "REF_COMMISSION" in r.get("Action", "") and r.get("Type") == ("REAL" if is_real_live else "DEMO"):
                 ref_accum_sync += float(r.get("Net P&L ($)", 0))
 
-# Recalculate Base Vault Funds directly to eliminate frozen ledger drops
 if is_real_live:
     base_vault_funds = db_load(f"real_balance_{allocated_user_id}", 0.0)
-    adjusted_balance = base_vault_funds + ref_accum_sync
 else:
     base_vault_funds = db_load(f"balance_{allocated_user_id}", 5000.0)
-    adjusted_balance = base_vault_funds + ref_accum_sync
+adjusted_balance = base_vault_funds + ref_accum_sync
 
 floating_pnl = 0.0
-if st.session_state.in_position and live_price > 0 and st.session_state.buy_price > 0:
-    if "LONG" in st.session_state.current_side:
-        floating_pnl = ((live_price - st.session_state.buy_price) * (effective_vol / st.session_state.buy_price))
+if st.session_state.user_in_pos and live_price > 0 and st.session_state.user_buy_price > 0:
+    if "LONG" in st.session_state.user_trade_side:
+        floating_pnl = ((live_price - st.session_state.user_buy_price) * (effective_vol / st.session_state.user_buy_price))
     else:
-        floating_pnl = ((st.session_state.buy_price - live_price) * (effective_vol / st.session_state.buy_price))
+        floating_pnl = ((st.session_state.user_buy_price - live_price) * (effective_vol / st.session_state.user_buy_price))
 
 balance_usd_text = f"${(adjusted_balance + floating_pnl):,.2f} USDT"
 pnl_color_hex = "#00e676" if floating_pnl >= 0 else "#ff1744"
 st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}):</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:14px; color:{pnl_color_hex}; font-weight:bold;'>Live Floating P&L Indicator: {floating_pnl:+.4f} USDT</p></div>", unsafe_allow_html=True)
 
-if st.session_state.in_position:
-    is_long_pos = "LONG" in st.session_state.current_side
-    live_target = (st.session_state.buy_price + price_jump_target) if is_long_pos else (st.session_state.buy_price - price_jump_target)
-    live_sl = (st.session_state.buy_price - stop_loss_gap) if is_long_pos else (st.session_state.buy_price + stop_loss_gap)
+if st.session_state.user_in_pos:
+    is_long_pos = "LONG" in st.session_state.user_trade_side
+    live_target = (st.session_state.user_buy_price + price_jump_target) if is_long_pos else (st.session_state.user_buy_price - price_jump_target)
+    live_sl = (st.session_state.user_buy_price - stop_loss_gap) if is_long_pos else (st.session_state.user_buy_price + stop_loss_gap)
     
-    est_profit_dollars = (price_jump_target * (effective_vol / st.session_state.buy_price))
-    est_loss_dollars = (stop_loss_gap * (effective_vol / st.session_state.buy_price))
+    est_profit_dollars = (price_jump_target * (effective_vol / st.session_state.user_buy_price))
+    est_loss_dollars = (stop_loss_gap * (effective_vol / st.session_state.user_buy_price))
     
     st.markdown(
         f"""<div style="background-color:#0b0e14; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; border-left: 5px solid #29b6f6;">
         <span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Active Contract Asset: <b>{target_symbol}</b></span><br>
-        <span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Entry Target Metric: {st.session_state.buy_price:.6f} | Live Index Ticker: {live_price:.6f}</span><br>
+        <span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Entry Target Metric: {st.session_state.user_buy_price:.6f} | Live Index Ticker: {live_price:.6f}</span><br>
         <span style="font-size:14px; color:#00e676; font-weight:bold; font-family: monospace;">Take Profit Limit: {live_target:.6f} (Estimated Gain: +${est_profit_dollars:.2f} USDT)</span><br>
         <span style="font-size:14px; color:#ff1744; font-weight:bold; font-family: monospace;">Stop Loss Boundary Node: {live_sl:.6f} (Estimated Loss: -${est_loss_dollars:.2f} USDT)</span></div>""", 
         unsafe_allow_html=True
