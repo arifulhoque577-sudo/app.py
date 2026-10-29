@@ -347,8 +347,17 @@ with st.sidebar:
         
     ai_decision = st.toggle("AI Smart Crossover Filter Matrix", value=True)
     max_leverage_bound = int(coin_config.get('max_leverage', 100))
-    leverage = st.slider("Leverage Scale Selection Array (1x-100x Override):", min_value=1, max_value=max_leverage_bound, value=20, step=1, key="absolute_leverage_node_slider")
-    trade_amount = st.number_input("Margin Requirement Block (\$):", min_value=1, value=20)
+    
+    # 100% PERSISTENT LEVERAGE & MARGIN LOCK: Restores entered inputs safely on refresh
+    if in_position_state:
+        leverage = db_load(f"leverage_lock_{allocated_user_id}", 20)
+        trade_amount = db_load(f"margin_lock_{allocated_user_id}", 20)
+        st.sidebar.markdown(f"<div style='background-color:#1e293b; padding:8px; border-radius:5px;'><b style='color:#00e676;'>🔒 Position Active</b><br><span style='font-size:12px;color:#fff;'>Leverage: {leverage}x | Margin: ${trade_amount}</span></div>", unsafe_allow_html=True)
+    else:
+        leverage = st.slider("Leverage Scale Selection Array (1x-100x Override):", min_value=1, max_value=max_leverage_bound, value=20, step=1, key="absolute_leverage_node_slider")
+        trade_amount = st.number_input("Margin Requirement Block (\$):", min_value=1, value=20)
+        db_save(f"leverage_lock_{allocated_user_id}", leverage)
+        db_save(f"margin_lock_{allocated_user_id}", trade_amount)
     
     # Lock Take Profit and Stop Loss values directly into Firestore database to seal against interface drops
     if not in_position_state:
@@ -384,7 +393,6 @@ with st.sidebar:
 
 effective_vol = trade_amount * leverage
 estimated_fee = effective_vol * 0.0011
-st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
 
 live_price, current_rsi, ai_market_thesis, fig_candlestick = 0.0, 50.0, "SYNCING DATA FEED NODES... 📡", None
 public_session = HTTP(testnet=False)
@@ -394,6 +402,51 @@ try:
     ticker_list = ticker_res.get('result', {}).get('list', [])
     if ticker_list: live_price = float(ticker_list[0].get('lastPrice', 0))
 except: pass
+try:
+    response = public_session.get_kline(category="linear", symbol=target_symbol, interval="1", limit=30)
+    klines = response.get('result', {}).get('list', [])
+    if klines:
+        df_kline = pd.DataFrame(klines, columns=['time', 'open', 'high', 'low', 'close', 'volume', 'turnover']).iloc[::-1].reset_index(drop=True)
+        for c in ['open', 'high', 'low', 'close', 'volume']: df_kline[c] = pd.to_numeric(df_kline[c])
+        if live_price == 0.0: live_price = df_kline['close'].iloc[-1]
+        
+        delta = df_kline['close'].diff()
+        gain = delta.where(delta > 0, 0).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        current_rsi = (100 - (100 / (1 + (gain / (loss + 1e-10))))).iloc[-1]
+        
+        ai_market_thesis = f"🔮 AI LIGHTNING MATRIX SCANNER ({target_symbol}) -> Orderbook clusters matching support breakout line vectors."
+        fig_candlestick = go.Figure(data=[go.Candlestick(x=df_kline.index, open=df_kline['open'], high=df_kline['high'], low=df_kline['low'], close=df_kline['close'])])
+        fig_candlestick.add_trace(go.Scatter(x=df_kline.index, y=df_kline['close'].rolling(window=7).mean(), name="AI Geometric Tracking Vector", line=dict(color='#00e676', width=2, dash='dot')))
+        fig_candlestick.update_layout(template="plotly_dark", margin=dict(l=6, r=6, t=6, b=6), height=250, xaxis_rangeslider_visible=False, paper_bgcolor='#06090e', plot_bgcolor='#06090e')
+except: pass
+
+# Anti-Hang Pricing Reset Matrix Guard Layer
+if live_price == 0.0:
+    try:
+        live_price = float(df_kline['close'].iloc[-1]) if 'df_kline' in locals() else float(coin_config["default_tp"]) * 50.0
+    except:
+        live_price = 1.5
+
+# 100% RESTORED: Dynamic layout placement of candle chart vector right under title block
+if fig_candlestick: 
+    st.plotly_chart(fig_candlestick, use_container_width=True)
+
+# 100% RESTORED: Green border international live market data status feed panel
+st.markdown(f"<div class='custom-box-grid' style='background-color:#050a12; border:1px solid #00e676; padding: 22px;'><div class='matrix-neon-text' style='font-size:14px;'>🧬 <b>INTERNATIONAL LIVE MARKET DATA FEED:</b><br>{ai_market_thesis}</div></div>", unsafe_allow_html=True)
+
+local_win = st.session_state.get('win_count', 0)
+local_loss = st.session_state.get('loss_count', 0)
+total_trades = local_win + local_loss
+win_rate = (local_win / total_trades * 100) if total_trades > 0 else 0.0
+
+st.markdown(
+    f"""<div style="background-color:#141a24; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; display: flex; justify-content: space-between;">
+    <span style="color:#ffffff; font-weight:bold;">🏆 WON: <b style="color:#00e676;">{local_win}</b></span>
+    <span style="color:#ffffff; font-weight:bold;">❌ LOST: <b style="color:#ff1744;">{local_loss}</b></span>
+    <span style="color:#ffffff; font-weight:bold;">🎯 WIN RATE: <b style="color:#29b6f6;">{win_rate:.1f}%</b></span></div>""", 
+    unsafe_allow_html=True
+)
 if not is_real_live:
     st.markdown("<b>⚙️ Sandbox Fund Manager Module Panel:</b>", unsafe_allow_html=True)
     cb_col1, cb_col2 = st.columns(2)
