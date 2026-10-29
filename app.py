@@ -320,7 +320,7 @@ with st.sidebar:
     bot_mode = st.radio("Trading Account Mode Settings:", ["Demo Simulation (Virtual Funds)", "Live Exchange (Bybit Mainnet API)"])
     is_real_live = "Live" in bot_mode
     dashboard_mode_title = "Real Production Dashboard Mode 🟢" if is_real_live else "Demo Sandbox Dashboard Mode 🔵"
-        if is_real_live:
+    if is_real_live:
         st.session_state.real_balance = db_load(f"real_balance_{allocated_user_id}", 0.0)
     else:
         st.session_state.demo_balance = db_load(f"balance_{allocated_user_id}", 5000.0)
