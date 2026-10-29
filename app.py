@@ -178,33 +178,135 @@ def fetch_bybit_future_coins():
 
 BYBYT_DATABASE_CORE = fetch_bybit_future_coins()
 YOUR_SECRET_MASTER_CODE = "ADMIN1234"
-st.markdown(
-    """
-    <style>
-    html, body, [data-testid="stAppViewContainer"] {
-        background: #06090e !important;
-        background-image: radial-gradient(circle at 50% 20%, #0d1527 0%, #06090e 80%) !important;
-        overflow-y: auto !important; overflow-x: hidden !important; box-sizing: border-box !important;
-    }
-    div[data-testid="stSidebar"] { background-color: #0c1017 !important; border-right: 1px solid #1e293b; }
-    div.stButton > button:first-child { width: 100%; border-radius: 8px; font-weight: bold; font-size: 16px; height: 46px; }
-    .stDataFrame, .stTable, div[data-testid="stDataFrame"] { max-width: 100% !important; overflow-x: auto !important; display: block !important; }
-    div[data-testid="stMarkdownContainer"] p, span, label, h1, h2, h3, b, code { 
-        word-wrap: break-word !important; white-space: normal !important; word-break: break-word !important; max-width: 100% !important;
-    }
-    .custom-box-grid { background-color: #141a24; padding: 15px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #1f2c3f; }
-    .matrix-neon-text { font-family: 'Courier New', monospace; color: #00e676; text-shadow: 0 0 8px #00e676; font-size: 13px; line-height: 1.6; }
-    div[data-testid="stSlider"] div { flex-direction: column !important; align-items: flex-start !important; }
-    code, pre { white-space: pre-wrap !important; word-wrap: break-word !important; max-width: 100% !important; }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+user_data = st._central_user_creds[st.session_state.logged_in_user]
+allocated_user_id = user_data["uid"]
+my_sponsor_id = user_data["sponsor"]
+my_profile_email = user_data.get("email", "Not Set")
 
-if 'bot_active' not in st.session_state: st.session_state.bot_active = False
-if 'all_trades_history' not in st.session_state: st.session_state.all_trades_history = []
-if 'logged_in_user' not in st.session_state: st.session_state.logged_in_user = st.query_params.get("session_user", None)
-if st.session_state.logged_in_user is None:
+if 'demo_balance' not in st.session_state: st.session_state.demo_balance = db_load(f"balance_{allocated_user_id}", 5000.0)
+if 'win_count' not in st.session_state: st.session_state.win_count = db_load(f"win_{allocated_user_id}", 0)
+if 'loss_count' not in st.session_state: st.session_state.loss_count = db_load(f"loss_{allocated_user_id}", 0)
+if 'real_balance' not in st.session_state: st.session_state.real_balance = db_load(f"real_balance_{allocated_user_id}", 0.0)
+
+bot_mode = st.sidebar.radio("Trading Account Mode Settings:", ["Demo Simulation (Virtual Funds)", "Live Exchange (Bybit Mainnet API)"])
+is_real_live = "Live" in bot_mode
+mode_prefix = "real" if is_real_live else "demo"
+
+coin_options_list = list(BYBYT_DATABASE_CORE.keys())
+selected_display_name = st.sidebar.selectbox("Select Asset Contract Symbol Dropdown:", coin_options_list, index=0)
+coin_config = BYBYT_DATABASE_CORE[selected_display_name]
+target_symbol = coin_config["symbol"]
+
+leverage = st.sidebar.slider("Leverage Scale:", min_value=1, max_value=int(coin_config.get('max_leverage', 100)), value=20)
+trade_amount = st.sidebar.number_input("Margin Block ($):", min_value=1, value=20)
+price_jump_target = st.sidebar.number_input("Take Profit Target ($):", value=float(coin_config["default_tp"]), format="%.6f")
+stop_loss_gap = st.sidebar.number_input("Stop Loss Target ($):", value=float(coin_config["default_sl"]), format="%.6f")
+
+saved_gemini_key = db_load(f"gemini_key_{allocated_user_id}", "")
+gemini_api_key = st.sidebar.text_input("🔑 Google Gemini API Key:", value=saved_gemini_key, type="password").strip()
+
+gemini_is_valid = False
+if gemini_api_key != "":
+    test_prompt = "Ping test payload response template validation structural verification format."
+    test_res, success_status = execute_real_gemini_call(gemini_api_key, test_prompt)
+    # Flexible validation: Checks structural authentication response directly from Google Mainframe without value constraints
+    if success_status and "candidates" in test_res and "error" not in test_res:
+        if gemini_api_key != saved_gemini_key: 
+            db_save(f"gemini_key_{allocated_user_id}", gemini_api_key)
+        gemini_is_valid = True
+        st.sidebar.success("🟢 Gemini API Connected!")
+    else:
+        st.sidebar.error("❌ Invalid Gemini Key! Google Rejected Request.")
+
+api_key, secret_key = "", ""
+if is_real_live:
+    input_license = st.sidebar.text_input("License Password:", type="password").strip()
+    if input_license in db_load("key_registry", {}):
+        api_key = st.sidebar.text_input("Bybit API Key:", type="password")
+        secret_key = st.sidebar.text_input("Bybit Secret Key:", type="password")
+
+effective_vol = trade_amount * leverage
+estimated_fee = effective_vol * 0.0011
+
+live_price, current_rsi, ai_market_thesis = 0.0, 50.0, "SYNCING DATA FEED NODES... 📡"
+public_session = HTTP(testnet=False)
+
+try:
+    ticker_res = public_session.get_tickers(category="linear", symbol=target_symbol)
+    ticker_list = ticker_res.get('result', {}).get('list', [])
+    if ticker_list: 
+        live_price = float(ticker_list[0].get('lastPrice', 0))
+except: 
+    pass
+
+st.session_state.user_in_pos = db_load(f"{mode_prefix}_in_position_{allocated_user_id}", False)
+st.session_state.user_buy_price = db_load(f"{mode_prefix}_buy_price_{allocated_user_id}", 0.0)
+st.session_state.user_trade_side = db_load(f"{mode_prefix}_current_side_{allocated_user_id}", "NONE")
+st.session_state.bot_active = db_load(f"{mode_prefix}_bot_active_{allocated_user_id}", False)
+
+# --- 🦾 ADVANCED MASTER LIVE INTELLIGENCE PROMPT LOOP ENGINE ---
+if st.session_state.bot_active and not st.session_state.user_in_pos and gemini_is_valid:
+    try:
+        ob_res = public_session.get_orderbook(category="linear", symbol=target_symbol, limit=5)
+        bids_asks_json = json.dumps(ob_res.get("result", {}))
+        global_news_stream = fetch_live_crypto_world_news()
+        
+        # Hardcoded Comprehensive Industrial Analytics Blueprint Command Prompt
+        ai_payload_prompt = f"""
+        Act as an Expert Quant High-Frequency Algorithmic Scalper Trading System Core Agent Framework Node.
+        Perform real-time multi-dimensional quantitative asset contract analytics using the following context array package packets:
+        
+        - CURRENT CONTRACT ASSET TARGET: {target_symbol}
+        - SYNCED REAL-TIME TICKER PRICE: {live_price}
+        - STANDARDIZED RSI (14-PERIOD MEASUREMENT): {current_rsi}
+        - BYBIT LIVE POSITION ORDERBOOK SPREAD CLUSTERS LIQUIDITY LOGS: {bids_asks_json}
+        - GLOBAL MACRO NARRATIVES / REALTIME ECONOMIC FUNDAMENTALS STREAM: {global_news_stream}
+        
+        SYSTEM RULES:
+        1. Deeply check and cross-compare current market macro volumes against indicator breakouts line vectors.
+        2. Evaluate RSI boundaries for immediate local oversold/overbought support and resistance levels.
+        3. Make an instant processing decision for short-interval rapid order target placement execution.
+        4. Respond STRICTLY inside the raw JSON blueprint format provided below without any surrounding text or markdown blocks:
+        {{"Decision": "LONG", "Reason": "..."}} or {{"Decision": "SHORT", "Reason": "..."}} or {{"Decision": "HOLD", "Reason": "Monitoring orderbook clusters node metadata vector pipelines."}}
+        """
+        
+        raw_response, status_ok = execute_real_gemini_call(gemini_api_key, ai_payload_prompt)
+        
+        if status_ok:
+            raw_ai_text = raw_response['candidates'][0]['content']['parts'][0]['text'].strip()
+            if "{" in raw_ai_text:
+                json_match = re.search(r"\{.*\}", raw_ai_text, re.DOTALL)
+                if json_match: 
+                    raw_ai_text = json_match.group(0)
+            
+            parsed_decision = json.loads(raw_ai_text)
+            ai_verdict = parsed_decision.get("Decision", "HOLD")
+            ai_reason = parsed_decision.get("Reason", "Processing network order streams.")
+            
+            db_save(f"gemini_thought_{allocated_user_id}", f"Verdict: [{ai_verdict}] -> Analysis: {ai_reason}")
+            
+            if ai_verdict in ["LONG", "SHORT"]:
+                if is_real_live and api_key and secret_key:
+                    live_private_session = HTTP(testnet=False, api_key=api_key, api_secret=secret_key)
+                    calculated_qty = float(effective_vol / live_price)
+                    live_private_session.place_order(
+                        category="linear", symbol=target_symbol, 
+                        side="Buy" if ai_verdict == "LONG" else "Sell", 
+                        orderType="Market", qty=str(round(calculated_qty, 3))
+                    )
+                
+                db_save(f"{mode_prefix}_in_position_{allocated_user_id}", True)
+                db_save(f"{mode_prefix}_buy_price_{allocated_user_id}", live_price)
+                db_save(f"{mode_prefix}_current_side_{allocated_user_id}", ai_verdict)
+                db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", target_symbol)
+                db_save(f"tp_target_{allocated_user_id}", price_jump_target)
+                db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
+                st.toast(f"🤖 Gemini AI Triggered {ai_verdict}! Reason: {ai_reason}", icon="⚡")
+                st.rerun()
+        else:
+            db_save(f"gemini_thought_{allocated_user_id}", f"📡 Core Engine Connected. Gateway Error Response.")
+    except Exception as e:
+        db_save(f"gemini_thought_{allocated_user_id}", f"Error Stream Core Processing Cache: {str(e)[:45]}")
     st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
     st.subheader("🔑 Account Identity Gateway Control Panel")
     auth_mode = st.radio("Choose Layer:", ["Secure Login Profile", "Mint New Account ID", "Forget Password Profile"])
