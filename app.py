@@ -320,36 +320,38 @@ with st.sidebar:
     bot_mode = st.radio("Trading Account Mode Settings:", ["Demo Simulation (Virtual Funds)", "Live Exchange (Bybit Mainnet API)"])
     is_real_live = "Live" in bot_mode
     dashboard_mode_title = "Real Production Dashboard Mode 🟢" if is_real_live else "Demo Sandbox Dashboard Mode 🔵"
-    if is_real_live:
+        if is_real_live:
         st.session_state.real_balance = db_load(f"real_balance_{allocated_user_id}", 0.0)
     else:
         st.session_state.demo_balance = db_load(f"balance_{allocated_user_id}", 5000.0)
 
-    selected_display_name = st.selectbox("Select Asset Contract Symbol Dropdown:", list(BYBYT_DATABASE_CORE.keys()), index=0)
-    coin_config = BYBYT_DATABASE_CORE[selected_display_name]
-    
-    # Secure Hard Latching State Framework (Prevents BTC fallback and layout drift on full reload)
+    # --- 🔒 ANTI-DRIFT AUTO COIN RE-SELECTION SYSTEM ---
     mode_prefix = "real" if is_real_live else "demo"
     in_position_state = db_load(f"{mode_prefix}_in_position_{allocated_user_id}", False)
+    bot_active_state = db_load(f"{mode_prefix}_bot_active_{allocated_user_id}", False)
     locked_trade_coin = db_load(f"{mode_prefix}_trade_coin_{allocated_user_id}", "NONE")
     
-    if in_position_state and locked_trade_coin != "NONE":
-        target_symbol = locked_trade_coin
-        found_config = None
-        for k, v in BYBYT_DATABASE_CORE.items():
-            if v["symbol"] == target_symbol:
-                found_config = v
+    coin_options_list = list(BYBYT_DATABASE_CORE.keys())
+    default_coin_index = 0
+    
+    # If bot is active or position is open, automatically lock and pull the precise index
+    if (in_position_state or bot_active_state) and locked_trade_coin != "NONE":
+        for idx, k in enumerate(coin_options_list):
+            if BYBYT_DATABASE_CORE[k]["symbol"] == locked_trade_coin:
+                default_coin_index = idx
                 break
-        if found_config:
-            coin_config = found_config
-    else:
-        target_symbol = coin_config["symbol"]
+
+    selected_display_name = st.selectbox("Select Asset Contract Symbol Dropdown:", coin_options_list, index=default_coin_index, key="main_coin_selector_widget")
+    coin_config = BYBYT_DATABASE_CORE[selected_display_name]
+    target_symbol = coin_config["symbol"]
+    
+    if not (in_position_state or bot_active_state):
         db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", target_symbol)
         
     ai_decision = st.toggle("AI Smart Crossover Filter Matrix", value=True)
     max_leverage_bound = int(coin_config.get('max_leverage', 100))
     
-    # 100% SECURE MEMORY HARD LOCK: Holds leverage and margin safely against full browser reloads
+    # 100% PERSISTENT LEVERAGE & MARGIN HARD LOCK GEAR
     if in_position_state:
         leverage = db_load(f"{mode_prefix}_leverage_lock_{allocated_user_id}", 20)
         trade_amount = db_load(f"{mode_prefix}_margin_lock_{allocated_user_id}", 20)
@@ -360,7 +362,7 @@ with st.sidebar:
         db_save(f"{mode_prefix}_leverage_lock_{allocated_user_id}", leverage)
         db_save(f"{mode_prefix}_margin_lock_{allocated_user_id}", trade_amount)
     
-    # Lock Take Profit and Stop Loss values directly into Firestore database to seal interface configs
+    # Lock Take Profit and Stop Loss values directly into Firestore database
     if not in_position_state:
         price_jump_target = st.number_input("Take Profit Target Interval (\$):", value=float(coin_config["default_tp"]), format="%.6f", key="tp_input_node_box")
         stop_loss_gap = st.number_input("Stop Loss Boundary GAP Threshold (\$):", value=float(coin_config["default_sl"]), format="%.6f", key="sl_input_node_box")
@@ -393,6 +395,8 @@ with st.sidebar:
 
 effective_vol = trade_amount * leverage
 estimated_fee = effective_vol * 0.0011
+
+# Premium Logo Header Banner Node
 st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
 
 live_price, current_rsi, ai_market_thesis, fig_candlestick = 0.0, 50.0, "SYNCING DATA FEED NODES... 📡", None
@@ -403,6 +407,7 @@ try:
     ticker_list = ticker_res.get('result', {}).get('list', [])
     if ticker_list: live_price = float(ticker_list.get('lastPrice', 0))
 except: pass
+
 try:
     response = public_session.get_kline(category="linear", symbol=target_symbol, interval="1", limit=30)
     klines = response.get('result', {}).get('list', [])
