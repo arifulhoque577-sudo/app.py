@@ -328,18 +328,32 @@ with st.sidebar:
     selected_display_name = st.selectbox("Select Asset Contract Symbol Dropdown:", list(BYBYT_DATABASE_CORE.keys()), index=0)
     coin_config = BYBYT_DATABASE_CORE[selected_display_name]
     
-    # Locked Asset Safety Mapping Layer
+    # Secure Active Asset Safety Mapping Layer (Anti-Vanish & Anti-Reset System)
     if st.session_state.in_position and st.session_state.trade_coin != "NONE":
         target_symbol = st.session_state.trade_coin
+        found_config = None
+        for k, v in BYBYT_DATABASE_CORE.items():
+            if v["symbol"] == target_symbol:
+                found_config = v
+                break
+        if found_config:
+            coin_config = found_config
     else:
         target_symbol = coin_config["symbol"]
+        st.session_state.trade_coin = target_symbol
         
     ai_decision = st.toggle("AI Smart Crossover Filter Matrix", value=True)
     max_leverage_bound = int(coin_config.get('max_leverage', 100))
     leverage = st.slider("Leverage Scale Selection Array (1x-100x Override):", min_value=1, max_value=max_leverage_bound, value=20, step=1, key="absolute_leverage_node_slider")
     trade_amount = st.number_input("Margin Requirement Block (\$):", min_value=1, value=20)
-    price_jump_target = st.number_input("Take Profit Target Interval (\$):", value=coin_config["default_tp"], format="%.6f")
-    stop_loss_gap = st.number_input("Stop Loss Boundary GAP Threshold (\$):", value=coin_config["default_sl"], format="%.6f")
+    
+    # Save parameters to database state to protect against full page refresh tearing down bounds
+    price_jump_target = db_load(f"tp_target_{allocated_user_id}", float(coin_config["default_tp"]))
+    stop_loss_gap = db_load(f"sl_gap_{allocated_user_id}", float(coin_config["default_sl"]))
+    
+    if not st.session_state.in_position:
+        price_jump_target = st.number_input("Take Profit Target Interval (\$):", value=float(coin_config["default_tp"]), format="%.6f")
+        stop_loss_gap = st.number_input("Stop Loss Boundary GAP Threshold (\$):", value=float(coin_config["default_sl"]), format="%.6f")
 
 with st.sidebar:
     api_key, secret_key = "", ""
@@ -372,7 +386,7 @@ public_session = HTTP(testnet=False)
 try:
     ticker_res = public_session.get_tickers(category="linear", symbol=target_symbol)
     ticker_list = ticker_res.get('result', {}).get('list', [])
-    if ticker_list: live_price = float(ticker_list[0].get('lastPrice', 0))
+    if ticker_list: live_price = float(ticker_list.get('lastPrice', 0))
 except: pass
 try:
     response = public_session.get_kline(category="linear", symbol=target_symbol, interval="1", limit=30)
@@ -393,8 +407,13 @@ try:
         fig_candlestick.update_layout(template="plotly_dark", margin=dict(l=6, r=6, t=6, b=6), height=250, xaxis_rangeslider_visible=False, paper_bgcolor='#06090e', plot_bgcolor='#06090e')
 except: pass
 
-if live_price == 0.0: live_price = 66500.0
-if fig_candlestick: st.plotly_chart(fig_candlestick, use_container_width=True)
+# Anti-Hang Pricing Reset Matrix Guard Layer
+if live_price == 0.0: 
+    live_price = float(coin_config.get("default_tp", 1.0)) * 20.0
+
+# 100% RESTORED: Renders the active live charting block right here
+if fig_candlestick: 
+    st.plotly_chart(fig_candlestick, use_container_width=True)
 
 st.markdown(f"<div class='custom-box-grid' style='background-color:#050a12; border:1px solid #00e676; padding: 22px;'><div class='matrix-neon-text' style='font-size:14px;'>🧬 <b>INTERNATIONAL LIVE MARKET DATA FEED:</b><br>{ai_market_thesis}</div></div>", unsafe_allow_html=True)
 
@@ -420,7 +439,7 @@ if not is_real_live:
             st.session_state.demo_balance = custom_balance_input
             db_save(f"balance_{allocated_user_id}", st.session_state.demo_balance); st.rerun()
 
-# RESTORED CORES: Real-time Live Floating Balance Panel Matrix Box Indicator
+# Real-time Live Floating Balance Panel Matrix Box Indicator
 floating_pnl = 0.0
 if st.session_state.in_position and live_price > 0:
     if "LONG" in st.session_state.current_side:
@@ -452,7 +471,6 @@ if st.session_state.in_position:
         <span style="font-size:14px; color:#ff1744; font-weight:bold; font-family: monospace;">Stop Loss Boundary Node: {live_sl:.6f} (Estimated Loss: -${est_loss_dollars:.2f} USDT)</span></div>""", 
         unsafe_allow_html=True
     )
-
 if not ai_decision and not st.session_state.in_position:
     st.markdown("<p style='color:#ffcc00; font-weight:bold;'>🕹️ Manual Trading Panel Active (AI Crossover Bypassed)</p>", unsafe_allow_html=True)
     m_col1, m_col2 = st.columns(2)
@@ -474,6 +492,7 @@ if not ai_decision and not st.session_state.in_position:
             db_save(f"tp_target_{allocated_user_id}", price_jump_target)
             db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
             st.rerun()
+
 c1, c2 = st.columns(2)
 with c1:
     if not st.session_state.bot_active:
@@ -658,7 +677,6 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Pane
                 st.success("User configuration funds updated inside database successfully!"); st.rerun()
         
         st.markdown("<h3>🌿 Global User Registry Network Map:</h3>", unsafe_allow_html=True)
-        # 100% DEEP GENERATION MATRIX BUILDER: Explicitly lists total number of members across all generations
         full_mapped_tree = {}
         for parent_uid in list(st._global_referral_tree.keys()):
             deep_tree = calculate_sub_generations(parent_uid, st._global_referral_tree)
