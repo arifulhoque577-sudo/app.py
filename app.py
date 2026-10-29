@@ -397,7 +397,7 @@ try:
     if klines:
         df_kline = pd.DataFrame(klines, columns=['time', 'open', 'high', 'low', 'close', 'volume', 'turnover']).iloc[::-1].reset_index(drop=True)
         for c in ['open', 'high', 'low', 'close', 'volume']: df_kline[c] = pd.to_numeric(df_kline[c])
-        if live_price == 0.0: live_price = float(df_kline['close'].iloc[-1])
+        if live_price == 0.0: live_price = df_kline['close'].iloc[-1]
         
         delta = df_kline['close'].diff()
         gain = delta.where(delta > 0, 0).rolling(window=14).mean()
@@ -410,17 +410,17 @@ try:
         fig_candlestick.update_layout(template="plotly_dark", margin=dict(l=6, r=6, t=6, b=6), height=250, xaxis_rangeslider_visible=False, paper_bgcolor='#06090e', plot_bgcolor='#06090e')
 except: pass
 
-# Hard Pricing Safe Fallback Matrix to Defend Against Overwriting the Active Entry Price
-if live_price == 0.0 or live_price > (float(coin_config.get("default_tp", 1.0)) * 5000.0):
-    if 'df_kline' in locals() and not df_kline.empty:
-        live_price = float(df_kline['close'].iloc[-1])
-    else:
-        live_price = float(db_load(f"{mode_prefix}_buy_price_{allocated_user_id}", 1.5))
+if live_price == 0.0:
+    try: live_price = float(df_kline['close'].iloc[-1]) if 'df_kline' in locals() else 1.5
+    except: live_price = 1.5
 
-if fig_candlestick: 
-    st.plotly_chart(fig_candlestick, use_container_width=True)
-
+if fig_candlestick: st.plotly_chart(fig_candlestick, use_container_width=True)
 st.markdown(f"<div class='custom-box-grid' style='background-color:#050a12; border:1px solid #00e676; padding: 22px;'><div class='matrix-neon-text' style='font-size:14px;'>🧬 <b>INTERNATIONAL LIVE MARKET DATA FEED:</b><br>{ai_market_thesis}</div></div>", unsafe_allow_html=True)
+
+# 🦾 100% VISUAL RESTORE: Renders the absolute dynamic live AI Thinking console frame
+if db_load(f"{mode_prefix}_bot_active_{allocated_user_id}", False) and gemini_api_key != "":
+    current_ai_analysis_status = db_load(f"gemini_thought_{allocated_user_id}", "📊 QUANT ENGINE: Scanning Orderbooks & Global Narrative News Streams... 📡")
+    st.markdown(f"<div class='custom-box-grid' style='background-color:#09121f; border-left:5px solid #ff9900; padding:15px;'><b style='color:#ff9900; font-size:13px; font-family:monospace;'>🤖 GEMINI AI INTELLIGENCE CORE LOG:</b><br><p style='color:#94a3b8; font-size:12px; font-family:monospace; margin:5px 0 0 0;'>{current_ai_analysis_status}</p></div>", unsafe_allow_html=True)
 
 local_win = st.session_state.get('win_count', 0)
 local_loss = st.session_state.get('loss_count', 0)
@@ -437,7 +437,7 @@ st.markdown(
 if not is_real_live:
     st.markdown("<b>⚙️ Sandbox Fund Manager Module Panel:</b>", unsafe_allow_html=True)
     cb_col1, cb_col2 = st.columns(2)
-    with cb_col1: custom_balance_input = st.number_input("Input Target Amount to Load:", min_value=1.0, value=float(st.session_state.get('demo_balance', 5000.0)), key="sandbox_balance_changer")
+    with cb_col1: custom_balance_input = st.number_input("Input Target Amount Amount:", min_value=1.0, value=float(st.session_state.get('demo_balance', 5000.0)), key="sandbox_balance_changer")
     with cb_col2:
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("Set Balance Amount", key="submit_custom_balance_btn"):
@@ -451,49 +451,41 @@ st.session_state.bot_active = db_load(f"{mode_prefix}_bot_active_{allocated_user
 
 base_wallet_balance = db_load(f"real_balance_{allocated_user_id}" if is_real_live else f"balance_{allocated_user_id}", 5000.0 if not is_real_live else 0.0)
 
-# --- 🛰️ LIVE GLOBAL CRYPTO NEWS INTEL SCRAPER ENGINE ---
 def fetch_live_crypto_world_news():
     try:
         feed_url = "https://cryptocompare.com"
         news_data = requests.get(feed_url, timeout=5).json().get("Data", [])
-        news_string = " | ".join([f"Headline: {n['title']} (Source: {n['source']})" for n in news_data[:4]])
-        return news_string if news_string else "No high-impact narrative events decoded on tracking nodes."
-    except:
-        return "Global macro networks operational. Scanning primary order channels."
+        return " | ".join([f"Headline: {n['title']} (Source: {n['source']})" for n in news_data[:4]])
+    except: return "Global macro networks operational."
 
-# --- 🤖 ADVANCED GOOGLE GEMINI REALTIME PRO SCALPER SEQUENCE ---
+# --- 🤖 ADVANCED GOOGLE GEMINI REALTIME PRO SCALPER ENGINE LOOP ---
 if st.session_state.bot_active and not st.session_state.user_in_pos and ai_decision and gemini_api_key != "":
     try:
-        # Fetch Live Orderbook Clusters
         ob_res = public_session.get_orderbook(category="linear", symbol=target_symbol, limit=5)
         bids_asks_json = json.dumps(ob_res.get("result", {}))
         global_news_stream = fetch_live_crypto_world_news()
         
-        # Structure the ultimate multi-dimensional AI payload packet
         ai_payload_prompt = f"""
-        You are an advanced high-frequency AI Quantitative Trading Agent running on Bybit Futures.
-        Analyze this live package and determine if an instant scalp entry should be executed:
-        - Target Symbol Asset: {target_symbol}
-        - Ticker Live Price: {live_price}
-        - Calculated Technical RSI (14): {current_rsi}
+        Analyze this live package and determine if an instant scalp entry should be executed on Bybit Futures:
+        - Target Symbol Asset: {target_symbol} | Ticker Live Price: {live_price} | RSI (14): {current_rsi}
         - Live Orderbook Clustered Liquidity: {bids_asks_json}
         - Global Live Crypto Narrative/News Stream: {global_news_stream}
-        
-        Respond STRICTLY in this JSON format only, with no other text or explanation markdown wrappers:
-        {{"Decision": "LONG", "Reason": "Brief text explaining strategy match"}} or {{"Decision": "SHORT", "Reason": "..."}} or {{"Decision": "HOLD", "Reason": "..."}}
+        Respond STRICTLY in this JSON format only:
+        {{"Decision": "LONG", "Reason": "..."}} or {{"Decision": "SHORT", "Reason": "..."}} or {{"Decision": "HOLD", "Reason": "..."}}
         """
-        # Execute Live Google GenAI SDK Multi-Modal Stream Node Call Request
         headers_node = { "Content-Type": "application/json" }
         payload_node = { "contents": [{ "parts": [{ "text": ai_payload_prompt }] }] }
         gemini_url_endpoint = f"https://googleapis.com{gemini_api_key}"
         
         gemini_response = requests.post(gemini_url_endpoint, json=payload_node, headers=headers_node, timeout=8).json()
-        raw_ai_text = gemini_response['candidates'][0]['content']['parts'][0]['text'].strip()
-        
-        # Clean text wrap if Gemini includes markdown decorators accidentally
-        if "```json" in raw_ai_text: raw_ai_text = raw_ai_text.split("```json")[1].split("```")[0].strip()
+        raw_ai_text = gemini_response['candidates']['content']['parts']['text'].strip()
+        if "```json" in raw_ai_text: raw_ai_text = raw_ai_text.split("```json").split("```").strip()
         parsed_decision = json.loads(raw_ai_text)
         ai_verdict = parsed_decision.get("Decision", "HOLD")
+        ai_reason = parsed_decision.get("Reason", "Monitoring liquidity bands.")
+        
+        # Save current thought string state directly to show inside live log console
+        db_save(f"gemini_thought_{allocated_user_id}", f"Trend Analysis Verdict: [{ai_verdict}] -> Reason: {ai_reason}")
         
         if ai_verdict in ["LONG", "SHORT"]:
             db_save(f"{mode_prefix}_in_position_{allocated_user_id}", True)
@@ -502,17 +494,38 @@ if st.session_state.bot_active and not st.session_state.user_in_pos and ai_decis
             db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", target_symbol)
             db_save(f"tp_target_{allocated_user_id}", price_jump_target)
             db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
-            st.toast(f"🤖 Gemini AI Agent Triggered {ai_verdict}! Reason: {parsed_decision.get('Reason')}", icon="⚡")
+            st.toast(f"🤖 Gemini AI Triggered {ai_verdict}! Reason: {ai_reason}", icon="⚡")
             st.rerun()
-    except Exception as e:
-        pass
+    except: pass
+
+# Trailing TP/SL Checker Loop Sequence
+if st.session_state.user_in_pos and live_price > 0:
+    is_long_pos = "LONG" in st.session_state.user_trade_side
+    live_target = (st.session_state.user_buy_price + price_jump_target) if is_long_pos else (st.session_state.user_buy_price - price_jump_target)
+    live_sl = (st.session_state.user_buy_price - stop_loss_gap) if is_long_pos else (st.session_state.user_buy_price + stop_loss_gap)
+    triggered_close = False
+    if is_long_pos:
+        if live_price >= live_target: triggered_close, won = True, True
+        elif live_price <= live_sl: triggered_close, won = True, False
+    else:
+        if live_price <= live_target: triggered_close, won = True, True
+        elif live_price >= live_sl: triggered_close, won = True, False
+    if triggered_close and st.session_state.bot_active:
+        local_final_pnl = (price_jump_target if won else -stop_loss_gap) * (effective_vol / st.session_state.user_buy_price) - estimated_fee
+        if won: st.session_state.win_count += 1
+        else: st.session_state.loss_count += 1
+        db_save(f"win_{allocated_user_id}", st.session_state.win_count)
+        db_save(f"loss_{allocated_user_id}", st.session_state.loss_count)
+        db_save(f"real_balance_{allocated_user_id}" if is_real_live else f"balance_{allocated_user_id}", base_wallet_balance + local_final_pnl)
+        st._global_user_pnl_history.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "User ID": allocated_user_id, "Coin": target_symbol, "Action": "AUTO_CLOSE", "Net P&L ($)": f"{local_final_pnl:.2f}", "Type": "REAL" if is_real_live else "DEMO"})
+        db_save("pnl_history", st._global_user_pnl_history)
+        db_save(f"{mode_prefix}_in_position_{allocated_user_id}", False)
+        st.rerun()
 
 floating_pnl = 0.0
 if st.session_state.user_in_pos and live_price > 0 and st.session_state.user_buy_price > 0:
-    if "LONG" in st.session_state.user_trade_side:
-        floating_pnl = ((live_price - st.session_state.user_buy_price) * (effective_vol / st.session_state.user_buy_price))
-    else:
-        floating_pnl = ((st.session_state.user_buy_price - live_price) * (effective_vol / st.session_state.user_buy_price))
+    if "LONG" in st.session_state.user_trade_side: floating_pnl = ((live_price - st.session_state.user_buy_price) * (effective_vol / st.session_state.user_buy_price))
+    else: floating_pnl = ((st.session_state.user_buy_price - live_price) * (effective_vol / st.session_state.user_buy_price))
 
 balance_usd_text = f"${(base_wallet_balance + floating_pnl):,.2f} USDT"
 pnl_color_hex = "#00e676" if floating_pnl >= 0 else "#ff1744"
@@ -522,18 +535,7 @@ if st.session_state.user_in_pos:
     is_long_pos = "LONG" in st.session_state.user_trade_side
     live_target = (st.session_state.user_buy_price + price_jump_target) if is_long_pos else (st.session_state.user_buy_price - price_jump_target)
     live_sl = (st.session_state.user_buy_price - stop_loss_gap) if is_long_pos else (st.session_state.user_buy_price + stop_loss_gap)
-    
-    est_profit_dollars = (price_jump_target * (effective_vol / st.session_state.user_buy_price))
-    est_loss_dollars = (stop_loss_gap * (effective_vol / st.session_state.user_buy_price))
-    
-    st.markdown(
-        f"""<div style="background-color:#0b0e14; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; border-left: 5px solid #29b6f6;">
-        <span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Active Contract Asset: <b>{target_symbol}</b></span><br>
-        <span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Entry Target Metric: {st.session_state.user_buy_price:.6f} | Live Index Ticker: {live_price:.6f}</span><br>
-        <span style="font-size:14px; color:#00e676; font-weight:bold; font-family: monospace;">Take Profit Limit: {live_target:.6f} (Estimated Gain: +${est_profit_dollars:.2f} USDT)</span><br>
-        <span style="font-size:14px; color:#ff1744; font-weight:bold; font-family: monospace;">Stop Loss Boundary Node: {live_sl:.6f} (Estimated Loss: -${est_loss_dollars:.2f} USDT)</span></div>""", 
-        unsafe_allow_html=True
-    )
+    st.markdown(f"""<div style="background-color:#0b0e14; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; border-left: 5px solid #29b6f6;"><span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Active Contract Asset: <b>{target_symbol}</b></span><br><span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Entry Target Metric: {st.session_state.user_buy_price:.6f} | Live Index Ticker: {live_price:.6f}</span><br><span style="font-size:14px; color:#00e676; font-weight:bold; font-family: monospace;">Take Profit Limit: {live_target:.6f}</span><br><span style="font-size:14px; color:#ff1744; font-weight:bold; font-family: monospace;">Stop Loss Boundary Node: {live_sl:.6f}</span></div>""", unsafe_allow_html=True)
 if not ai_decision and not st.session_state.user_in_pos:
     st.markdown("<p style='color:#ffcc00; font-weight:bold;'>🕹️ Manual Trading Panel Active (AI Crossover Bypassed)</p>", unsafe_allow_html=True)
     m_col1, m_col2 = st.columns(2)
