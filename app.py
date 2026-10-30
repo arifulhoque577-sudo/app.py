@@ -54,6 +54,7 @@ def db_save(key, val):
 # Initialize Sync Control Registries Persistent Global Cache System
 # Initialize Sync Control Registries Persistent Global Cache System
 # Initialize Sync Control Registries Persistent Global Cache System
+# Initialize Sync Control Registries Persistent Global Cache System
 if "init_sync" not in st.session_state:
     st._central_user_creds = db_load("user_creds", {})
     st._central_key_registry = db_load("key_registry", {})
@@ -82,18 +83,16 @@ else:
     st._mlm_gen_rates = db_load("gen_rates", {1: 5.0, 2: 4.0, 3: 3.0, 4: 2.0, 5: 1.0, 6: 0.5, 7: 0.5})
     st._mlm_id_thresholds = db_load("id_thresh", {1: 10, 2: 20, 3: 40, 4: 80, 5: 160, 6: 320, 7: 640})
 
-# --- FIXED FREE OPENROUTER API INTERACTION FUNCTION ---
+# --- FIXED REAL TIME OPENAI ENDPOINT CALL FUNCTION ---
 def execute_real_gemini_call(api_key, context_prompt):
     cleaned_key = str(api_key).strip().strip("'").strip('"')
-    url = "https://openrouter.ai"
+    url = "https://openai.com"
     headers = {
         "Authorization": f"Bearer {cleaned_key}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://render.com",
-        "X-Title": "Bybit AI Scalper"
+        "Content-Type": "application/json"
     }
     payload = {
-        "model": "meta-llama/llama-3-8b-instruct:free",
+        "model": "gpt-4o-mini", # Extremely fast, reliable and optimized for free usage limits
         "messages": [
             {"role": "user", "content": str(context_prompt)}
         ],
@@ -103,14 +102,14 @@ def execute_real_gemini_call(api_key, context_prompt):
         response = requests.post(url, json=payload, headers=headers, timeout=15)
         if response.status_code == 200:
             res_json = response.json()
-            # [0] ইনপুটটি এখানে সঠিকভাবে ম্যাপ করা হয়েছে
             if "choices" in res_json and len(res_json["choices"]) > 0:
                 generated_text = res_json["choices"][0]["message"]["content"].strip()
+                # Seamless format conversion maps OpenAI response directly into your Box 9 trade engine
                 mock_response = {"candidates": [{"content": {"parts": [{"text": generated_text}]}}]}
                 return mock_response, True
-            return {"error": "Invalid choices dynamic mapping response format"}, False
+            return {"error": "Invalid structure response"}, False
         else:
-            return {"error": f"API Error Code: {response.status_code} - {response.text}"}, False
+            return {"error": f"OpenAI Error {response.status_code}: {response.text}"}, False
     except Exception as e:
         return {"error": str(e)}, False
 # --- 🚀 PREMIUM NO-BORDER SPLASH SCREEN ANIMATION TRIGGER ---
@@ -408,24 +407,24 @@ with st.sidebar:
     st.markdown("<hr style='border:1px solid #1e293b; margin:10px 0;'>", unsafe_allow_html=True)
     
     saved_gemini_key = db_load(f"gemini_key_{allocated_user_id}", "")
-    gemini_api_key = st.text_input("🔑 Free OpenRouter API Token Key:", value=saved_gemini_key, type="password", key="gemini_key_gateway_sidebar").strip()
+    gemini_api_key = st.text_input("🔑 OpenAI API Token Key (sk-proj):", value=saved_gemini_key, type="password", key="gemini_key_gateway_sidebar").strip()
     
     gemini_is_valid = False
     if gemini_api_key != "":
-        with st.spinner("Handshaking with OpenRouter server..."):
-            test_prompt = "Return text: OK"
+        with st.spinner("Authenticating with OpenAI Mainframe..."):
+            test_prompt = "Return raw text: OK"
             test_res, success_status = execute_real_gemini_call(gemini_api_key, test_prompt)
             
             if success_status and "error" not in test_res:
                 if gemini_api_key != saved_gemini_key:
                     db_save(f"gemini_key_{allocated_user_id}", gemini_api_key)
                 gemini_is_valid = True
-                st.sidebar.success("🟢 Free AI Mainframe Active!")
+                st.sidebar.success("🟢 OpenAI Engine Connected Live!")
             else:
-                error_body = test_res.get("error", "Rejected authentication standard") if isinstance(test_res, dict) else str(test_res)
+                error_body = test_res.get("error", "Rejected authentication parameters.") if isinstance(test_res, dict) else str(test_res)
                 st.sidebar.error(f"❌ Connection Refused: {str(error_body)[:60]}")
     else:
-        st.sidebar.warning("⚠️ Enter OpenRouter Key to enable Free AI Mode")
+        st.sidebar.warning("⚠️ Enter OpenAI API Key to enable Trading Mode")
 
     api_key, secret_key = "", ""
     if is_real_live:
