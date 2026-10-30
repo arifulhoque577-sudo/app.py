@@ -11,7 +11,6 @@ import pandas as pd
 from pybit.unified_trading import HTTP
 import requests
 import streamlit as st
-
 # Secure Cloud Firebase Gateway Authentication Layer
 if not firebase_admin._apps:
     fb_json = os.environ.get("firebase_json", None)
@@ -30,7 +29,6 @@ if not firebase_admin._apps:
         else:
             st.error("Missing Config Database Keys Node Property!")
             st.stop()
-
 db = firestore.client()
 def db_load(key, default_val):
     try:
@@ -46,7 +44,6 @@ def db_save(key, val):
         db.collection("scalper_system").document(key).set({"data": val})
     except:
         pass
-
 # Initialize Sync Control Registries Persistent Global Cache System
 if "init_sync" not in st.session_state:
     st._central_user_creds = db_load("user_creds", {})
@@ -81,21 +78,9 @@ if "splash_done" not in st.session_state:
     st.markdown(
         """
         <style>
-        /* Exclude any platform specific borders or cards */
-        [data-testid="stAppViewContainer"], html, body {
-            background-color: #06090e !important; margin: 0 !important; padding: 0 !important; border: none !important;
-        }
-        .splash-container {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            height: 90vh; background-color: #06090e; color: white; font-family: 'Courier New', monospace;
-            border: none !important; box-shadow: none !important;
-        }
-        .loader-circle {
-            border: 4px solid rgba(255, 255, 255, 0.05); border-radius: 50%;
-            border-top: 4px solid #00e676; border-bottom: 4px solid #ffcc00;
-            width: 100px; height: 100px; animation: spin 1.0s linear infinite; margin-bottom: 35px;
-            box-shadow: 0 0 15px rgba(0, 230, 118, 0.2);
-        }
+        [data-testid="stAppViewContainer"], html, body { background-color: #06090e !important; margin: 0 !important; padding: 0 !important; border: none !important; }
+        .splash-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 90vh; background-color: #06090e; color: white; font-family: 'Courier New', monospace; }
+        .loader-circle { border: 4px solid rgba(255, 255, 255, 0.05); border-radius: 50%; border-top: 4px solid #00e676; border-bottom: 4px solid #ffcc00; width: 100px; height: 100px; animation: spin 1.0s linear infinite; margin-bottom: 35px; box-shadow: 0 0 15px rgba(0, 230, 118, 0.2); }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .progress-bar-container { width: 65%; background-color: #141a24; border-radius: 10px; padding: 2px; border: 1px solid #1f2c3f; }
         .progress-bar-fill { height: 5px; background: linear-gradient(90deg, #ff9900, #00e676); width: 0%; border-radius: 5px; animation: fillProgress 1.3s ease-in-out forwards; }
@@ -105,9 +90,7 @@ if "splash_done" not in st.session_state:
         <div class="splash-container">
             <div class="loader-circle"></div>
             <div class="splash-text">BYBIT AI PRO SCALPER</div>
-            <div class="progress-bar-container">
-                <div class="progress-bar-fill"></div>
-            </div>
+            <div class="progress-bar-container"><div class="progress-bar-fill"></div></div>
         </div>
         """,
         unsafe_allow_html=True
@@ -117,7 +100,6 @@ if "splash_done" not in st.session_state:
     st.rerun()
 @st.cache_data(ttl=30)
 def fetch_bybit_future_coins():
-    # 25+ Comprehensive Future Coin Database List Mapping
     backup_database = {
         "🪙 BTC (Bitcoin)": {"symbol": "BTCUSDT", "max_leverage": 100, "default_tp": 100.0, "default_sl": 150.0, "step": 10.0},
         "🔷 ETH (Ethereum)": {"symbol": "ETHUSDT", "max_leverage": 100, "default_tp": 8.0, "default_sl": 15.0, "step": 1.0},
@@ -131,19 +113,7 @@ def fetch_bybit_future_coins():
         "🚀 SHIB (Shiba Inu)": {"symbol": "SHIBUSDT", "max_leverage": 50, "default_tp": 0.0000005, "default_sl": 0.000001, "step": 0.00000001},
         "⚡ LTC (Litecoin)": {"symbol": "LTCUSDT", "max_leverage": 75, "default_tp": 1.5, "default_sl": 3.0, "step": 0.05},
         "🔺 AVAX (Avalanche)": {"symbol": "AVAXUSDT", "max_leverage": 50, "default_tp": 0.80, "default_sl": 1.50, "step": 0.01},
-        "🔴 TRX (TRON)": {"symbol": "TRXUSDT", "max_leverage": 50, "default_tp": 0.002, "default_sl": 0.005, "step": 0.0001},
-        "💵 BCH (Bitcoin Cash)": {"symbol": "BCHUSDT", "max_leverage": 75, "default_tp": 5.0, "default_sl": 10.0, "step": 0.1},
-        "🪐 XLM (Stellar)": {"symbol": "XLMUSDT", "max_leverage": 50, "default_tp": 0.005, "default_sl": 0.01, "step": 0.0001},
-        "💧 SUI (Sui Network)": {"symbol": "SUIUSDT", "max_leverage": 50, "default_tp": 0.05, "default_sl": 0.10, "step": 0.001},
-        "🌿 NEAR (Near Protocol)": {"symbol": "NEARUSDT", "max_leverage": 50, "default_tp": 0.10, "default_sl": 0.20, "step": 0.001},
-        "🧪 APT (Aptos)": {"symbol": "APTUSDT", "max_leverage": 50, "default_tp": 0.15, "default_sl": 0.30, "step": 0.001},
-        "🔴 OP (Optimism)": {"symbol": "OPUSDT", "max_leverage": 50, "default_tp": 0.05, "default_sl": 0.10, "step": 0.001},
-        "🔷 ARB (Arbitrum)": {"symbol": "ARBUSDT", "max_leverage": 50, "default_tp": 0.03, "default_sl": 0.06, "step": 0.001},
-        "🎛️ INJ (Injective)": {"symbol": "INJUSDT", "max_leverage": 50, "default_tp": 0.40, "default_sl": 0.80, "step": 0.01},
-        "🟢 RNDR (Render)": {"symbol": "RNDRUSDT", "max_leverage": 50, "default_tp": 0.20, "default_sl": 0.40, "step": 0.001},
-        "🤖 FET (Artificial Superintelligence)": {"symbol": "FETUSDT", "max_leverage": 50, "default_tp": 0.04, "default_sl": 0.08, "step": 0.001},
-        "🧱 TIA (Celestia)": {"symbol": "TIAUSDT", "max_leverage": 50, "default_tp": 0.12, "default_sl": 0.25, "step": 0.001},
-        "🎮 GALA (Gala Games)": {"symbol": "GALAUSDT", "max_leverage": 50, "default_tp": 0.001, "default_sl": 0.003, "step": 0.0001}
+        "🔴 TRX (TRON)": {"symbol": "TRXUSDT", "max_leverage": 50, "default_tp": 0.002, "default_sl": 0.005, "step": 0.0001}
     }
     try:
         url = "https://bybit.com"
@@ -170,17 +140,11 @@ YOUR_SECRET_MASTER_CODE = "ADMIN1234"
 st.markdown(
     """
     <style>
-    html, body, [data-testid="stAppViewContainer"] {
-        background: #06090e !important;
-        background-image: radial-gradient(circle at 50% 20%, #0d1527 0%, #06090e 80%) !important;
-        overflow-y: auto !important; overflow-x: hidden !important; box-sizing: border-box !important;
-    }
+    html, body, [data-testid="stAppViewContainer"] { background: #06090e !important; background-image: radial-gradient(circle at 50% 20%, #0d1527 0%, #06090e 80%) !important; overflow-y: auto !important; overflow-x: hidden !important; box-sizing: border-box !important; }
     div[data-testid="stSidebar"] { background-color: #0c1017 !important; border-right: 1px solid #1e293b; }
     div.stButton > button:first-child { width: 100%; border-radius: 8px; font-weight: bold; font-size: 16px; height: 46px; }
     .stDataFrame, .stTable, div[data-testid="stDataFrame"] { max-width: 100% !important; overflow-x: auto !important; display: block !important; }
-    div[data-testid="stMarkdownContainer"] p, span, label, h1, h2, h3, b, code { 
-        word-wrap: break-word !important; white-space: normal !important; word-break: break-word !important; max-width: 100% !important;
-    }
+    div[data-testid="stMarkdownContainer"] p, span, label, h1, h2, h3, b, code { word-wrap: break-word !important; white-space: normal !important; word-break: break-word !important; max-width: 100% !important; }
     .custom-box-grid { background-color: #141a24; padding: 15px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #1f2c3f; }
     .matrix-neon-text { font-family: 'Courier New', monospace; color: #00e676; text-shadow: 0 0 8px #00e676; font-size: 13px; line-height: 1.6; }
     div[data-testid="stSlider"] div { flex-direction: column !important; align-items: flex-start !important; }
@@ -188,11 +152,6 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-
-if 'bot_active' not in st.session_state: st.session_state.bot_active = False
-if 'all_trades_history' not in st.session_state: st.session_state.all_trades_history = []
-if 'logged_in_user' not in st.session_state: st.session_state.logged_in_user = st.query_params.get("session_user", None)
-
 if st.session_state.logged_in_user is None:
     st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
     st.subheader("🔑 Account Identity Gateway Control Panel")
@@ -202,16 +161,13 @@ if st.session_state.logged_in_user is None:
         reg_username = st.text_input("Username Handle:", key="reg_u").strip()
         reg_password = st.text_input("Password Phrase:", type="password", key="reg_p").strip()
         reg_email = st.text_input("Google Mail (Gmail ID):", key="reg_e").strip()
-        
         global_country_list = ["Bangladesh", "United States", "United Kingdom", "United Arab Emirates", "Saudi Arabia", "Malaysia", "India", "Pakistan", "Kuwait", "Qatar", "Oman", "Singapore", "Canada", "Australia", "Germany"]
         reg_country = st.selectbox("Select Profile Country (Mandatory):", global_country_list, index=0)
-        
         global_phone_flags = ["🇧🇩 +880 (Bangladesh)", "🇺🇸 +1 (United States)", "🇬🇧 +44 (United Kingdom)", "🇦🇪 +971 (UAE)", "🇸🇦 +966 (Saudi Arabia)", "🇲🇾 +60 (Malaysia)", "🇮🇳 +91 (India)", "🇵🇰 +92 (Pakistan)"]
         reg_flag_code = st.selectbox("Select Phone Flag Country Code:", global_phone_flags, index=0)
         reg_phone_raw = st.text_input("Mobile Number (Without Country Code):", key="reg_ph_num_raw").strip()
         reg_school = st.text_input("First School Name? (Security Answer Check):", key="reg_sch").strip()
         reg_sponsor = st.text_input("Sponsor Referral Token ID (Username or UID):", key="reg_s").strip()
-        
         if st.button("🚀 Register My Handle", key="reg_submit_btn"):
             st._central_user_creds = db_load("user_creds", {})
             if reg_username == "" or reg_password == "" or reg_email == "" or reg_school == "" or reg_phone_raw == "":
@@ -222,25 +178,13 @@ if st.session_state.logged_in_user is None:
                 resolved_sponsor_uid = "None"
                 if reg_sponsor != "":
                     resolved_sponsor_uid = reg_sponsor
-                    if reg_sponsor in st._central_user_creds:
-                        resolved_sponsor_uid = st._central_user_creds[reg_sponsor].get("uid", reg_sponsor)
-                    else:
-                        for u_name, data in st._central_user_creds.items():
-                            if data.get("uid") == reg_sponsor or u_name == reg_sponsor:
-                                resolved_sponsor_uid = data.get("uid", reg_sponsor)
-                                break
-                
+                    if reg_sponsor in st._central_user_creds: resolved_sponsor_uid = st._central_user_creds[reg_sponsor].get("uid", reg_sponsor)
                 full_mobile = f"{reg_flag_code.split(' ')} {reg_phone_raw}"
                 admin_fixed_bonus = float(db_load("admin_fixed_ref_usd", 10.0))
-                
-                st._central_user_creds[reg_username] = {
-                    "password": reg_password, "uid": new_uid, "email": reg_email, "country": reg_country, "phone": full_mobile,
-                    "school_answer": reg_school.lower(), "sponsor": resolved_sponsor_uid, "license_activated_before": False
-                }
+                st._central_user_creds[reg_username] = {"password": reg_password, "uid": new_uid, "email": reg_email, "country": reg_country, "phone": full_mobile, "school_answer": reg_school.lower(), "sponsor": resolved_sponsor_uid, "license_activated_before": False}
                 st._uid_to_username[new_uid] = reg_username
                 db_save("user_creds", st._central_user_creds)
                 db_save("uid_to_user", st._uid_to_username)
-                
                 db_save(f"balance_{new_uid}", 5000.0)
                 db_save(f"real_balance_{new_uid}", 0.0)
                 db_save(f"win_{new_uid}", 0)
@@ -249,19 +193,12 @@ if st.session_state.logged_in_user is None:
                 db_save(f"buy_price_{new_uid}", 0.0)
                 db_save(f"current_side_{new_uid}", "NONE")
                 db_save(f"trade_coin_{new_uid}", "NONE")
-                
                 if resolved_sponsor_uid != "None" and st._ref_system_active:
                     st._global_referral_tree = db_load("referral_tree", {})
                     if resolved_sponsor_uid not in st._global_referral_tree: st._global_referral_tree[resolved_sponsor_uid] = []
-                    if new_uid not in st._global_referral_tree[resolved_sponsor_uid]:
-                        st._global_referral_tree[resolved_sponsor_uid].append(new_uid)
+                    st._global_referral_tree[resolved_sponsor_uid].append(new_uid)
                     db_save("referral_tree", st._global_referral_tree)
-                    
-                    st._global_user_pnl_history.append({
-                        "Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"),
-                        "User ID": resolved_sponsor_uid, "Coin": "REGISTRATION",
-                        "Action": "REF_COMMISSION_DIRECT", "Net P&L ($)": f"{admin_fixed_bonus:.2f}", "Type": "DEMO"
-                    })
+                    st._global_user_pnl_history.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "User ID": resolved_sponsor_uid, "Coin": "REGISTRATION", "Action": "REF_COMMISSION_DIRECT", "Net P&L ($)": f"{admin_fixed_bonus:.2f}", "Type": "DEMO"})
                     db_save("pnl_history", st._global_user_pnl_history)
                 st.success(f"Bound Identity Successful! UID Generated: {new_uid}")
         st.stop()
@@ -288,30 +225,20 @@ if st.session_state.logged_in_user is None:
                 st.rerun()
             else: st.error("Mismatch credentials input parameters!")
         st.stop()
-
 user_data = st._central_user_creds[st.session_state.logged_in_user]
 allocated_user_id = user_data["uid"]
 my_sponsor_id = user_data["sponsor"]
 my_profile_email = user_data.get("email", "Not Set")
 
-# Persistent Firebase-Synced Trading States (Eradicates the vanishing refresh bug)
 if 'demo_balance' not in st.session_state: st.session_state.demo_balance = db_load(f"balance_{allocated_user_id}", 5000.0)
 if 'win_count' not in st.session_state: st.session_state.win_count = db_load(f"win_{allocated_user_id}", 0)
 if 'loss_count' not in st.session_state: st.session_state.loss_count = db_load(f"loss_{allocated_user_id}", 0)
 if 'real_balance' not in st.session_state: st.session_state.real_balance = db_load(f"real_balance_{allocated_user_id}", 0.0)
 
-st.session_state.in_position = db_load(f"in_position_{allocated_user_id}", False)
-st.session_state.buy_price = db_load(f"buy_price_{allocated_user_id}", 0.0)
-st.session_state.current_side = db_load(f"current_side_{allocated_user_id}", "NONE")
-st.session_state.trade_coin = db_load(f"trade_coin_{allocated_user_id}", "NONE")
-
 with st.sidebar:
     st.markdown("<h2 style='color:#f5a623; margin-top:0;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#ffffff; font-size:13px; margin:0;'>👤 Handle Profile: <b>{st.session_state.logged_in_user}</b></p>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#38bdf8; font-size:13px; margin:4px 0;'>🆔 My Referral ID: <b>{allocated_user_id}</b></p>", unsafe_allow_html=True)
-    st.markdown(f"<p style='color:#00e676; font-size:12px; margin:0 0 4px 0;'>📧 Account Email: <b>{my_profile_email}</b></p>", unsafe_allow_html=True)
-    st.markdown(f"<p style='color:#94a3b8; font-size:12px; margin:0 0 12px 0;'>🔗 Sponsor UID Node: <b>{my_sponsor_id}</b></p>", unsafe_allow_html=True)
-    
     if st.button("🚪 Logout Active Profile Handle Node", key="logout_sidebar_node_proc"):
         st.session_state.logged_in_user = None
         st.query_params.clear()
@@ -320,88 +247,68 @@ with st.sidebar:
     bot_mode = st.radio("Trading Account Mode Settings:", ["Demo Simulation (Virtual Funds)", "Live Exchange (Bybit Mainnet API)"])
     is_real_live = "Live" in bot_mode
     dashboard_mode_title = "Real Production Dashboard Mode 🟢" if is_real_live else "Demo Sandbox Dashboard Mode 🔵"
-    if is_real_live:
-        st.session_state.real_balance = db_load(f"real_balance_{allocated_user_id}", 0.0)
-    else:
-        st.session_state.demo_balance = db_load(f"balance_{allocated_user_id}", 5000.0)
-
     selected_display_name = st.selectbox("Select Asset Contract Symbol Dropdown:", list(BYBYT_DATABASE_CORE.keys()), index=0)
     coin_config = BYBYT_DATABASE_CORE[selected_display_name]
-    
-    # Secure Hard Latching State Framework (Prevents BTC fallback and layout drift on full reload)
-    mode_prefix = "real" if is_real_live else "demo"
-    in_position_state = db_load(f"{mode_prefix}_in_position_{allocated_user_id}", False)
-    locked_trade_coin = db_load(f"{mode_prefix}_trade_coin_{allocated_user_id}", "NONE")
-    
+    in_position_state = db_load(f"in_position_{allocated_user_id}", False)
+    locked_trade_coin = db_load(f"trade_coin_{allocated_user_id}", "NONE")
     if in_position_state and locked_trade_coin != "NONE":
-        target_symbol = locked_trade_coin
-        found_config = None
         for k, v in BYBYT_DATABASE_CORE.items():
-            if v["symbol"] == target_symbol:
-                found_config = v
-                break
-        if found_config:
-            coin_config = found_config
+            if v["symbol"] == locked_trade_coin: coin_config = v; break
     else:
         target_symbol = coin_config["symbol"]
-        db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", target_symbol)
-        
+        db_save(f"trade_coin_{allocated_user_id}", target_symbol)
+    target_symbol = coin_config["symbol"]
     ai_decision = st.toggle("AI Smart Crossover Filter Matrix", value=True)
+    
+    st.markdown("<b style='color:#38bdf8;'>🤖 OpenRouter AI Router Configuration:</b>", unsafe_allow_html=True)
+    or_api_key = st.text_input("OpenRouter API Key:", type="password", value=db_load(f"or_key_{allocated_user_id}", ""), key="openrouter_api_key_field")
+    or_model_id = st.text_input("Model ID:", value=db_load(f"or_model_{allocated_user_id}", "openrouter/free"), key="openrouter_model_id_field")
+    if st.button("Save AI Router Node Config"):
+        db_save(f"or_key_{allocated_user_id}", or_api_key)
+        db_save(f"or_model_{allocated_user_id}", or_model_id)
+        st.toast("OpenRouter configuration saved safely!", icon="💾")
+        
     max_leverage_bound = int(coin_config.get('max_leverage', 100))
-    
-    # 100% SECURE MEMORY HARD LOCK: Holds leverage and margin safely against full browser reloads
     if in_position_state:
-        leverage = db_load(f"{mode_prefix}_leverage_lock_{allocated_user_id}", 20)
-        trade_amount = db_load(f"{mode_prefix}_margin_lock_{allocated_user_id}", 20)
-        st.sidebar.markdown(f"<div style='background-color:#0b111e; padding:12px; border-radius:8px; border:1px solid #1e293b; margin-bottom:10px;'><b style='color:#00e676; font-size:14px;'>🔒 Position Active</b><br><span style='font-size:13px; color:#94a3b8;'>Leverage: <b>{leverage}x</b> | Margin: <b>${trade_amount}</b></span><p style='color:#00e676; font-size:11px; margin:4px 0 0 0;'>🔒 Position Parameters Locked Successfully</p></div>", unsafe_allow_html=True)
+        leverage = db_load(f"leverage_lock_{allocated_user_id}", 20)
+        trade_amount = db_load(f"margin_lock_{allocated_user_id}", 20)
     else:
-        leverage = st.slider("Leverage Scale Selection Array (1x-100x Override):", min_value=1, max_value=max_leverage_bound, value=20, step=1, key="absolute_leverage_node_slider")
+        leverage = st.slider("Leverage Scale Selection Array:", min_value=1, max_value=max_leverage_bound, value=20)
         trade_amount = st.number_input("Margin Requirement Block (\$):", min_value=1, value=20)
-        db_save(f"{mode_prefix}_leverage_lock_{allocated_user_id}", leverage)
-        db_save(f"{mode_prefix}_margin_lock_{allocated_user_id}", trade_amount)
-    
-    # Lock Take Profit and Stop Loss values directly into Firestore database to seal interface configs
+        db_save(f"leverage_lock_{allocated_user_id}", leverage)
+        db_save(f"margin_lock_{allocated_user_id}", trade_amount)
     if not in_position_state:
-        price_jump_target = st.number_input("Take Profit Target Interval (\$):", value=float(coin_config["default_tp"]), format="%.6f", key="tp_input_node_box")
-        stop_loss_gap = st.number_input("Stop Loss Boundary GAP Threshold (\$):", value=float(coin_config["default_sl"]), format="%.6f", key="sl_input_node_box")
-        db_save(f"{mode_prefix}_tp_target_{allocated_user_id}", price_jump_target)
-        db_save(f"{mode_prefix}_sl_gap_{allocated_user_id}", stop_loss_gap)
+        price_jump_target = st.number_input("Take Profit Target Interval (\$):", value=float(coin_config["default_tp"]), format="%.6f")
+        stop_loss_gap = st.number_input("Stop Loss Boundary GAP Threshold (\$):", value=float(coin_config["default_sl"]), format="%.6f")
+        db_save(f"tp_target_{allocated_user_id}", price_jump_target)
+        db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
     else:
-        price_jump_target = db_load(f"{mode_prefix}_tp_target_{allocated_user_id}", float(coin_config["default_tp"]))
-        stop_loss_gap = db_load(f"{mode_prefix}_sl_gap_{allocated_user_id}", float(coin_config["default_sl"]))
-
-with st.sidebar:
+        price_jump_target = db_load(f"tp_target_{allocated_user_id}", float(coin_config["default_tp"]))
+        stop_loss_gap = db_load(f"sl_gap_{allocated_user_id}", float(coin_config["default_sl"]))
+        
     api_key, secret_key = "", ""
     if is_real_live:
         st.markdown("<hr style='border:1px solid #1e293b; margin:10px 0;'><div style='background-color:#ff1744; padding:6px; border-radius:5px; text-align:center; margin-bottom:6px;'><b style='color:#ffffff; font-size:11px;'>🚨 LICENSE GATE ACTIVE</b></div>", unsafe_allow_html=True)
         input_license = st.text_input("License Password:", type="password", key="lic_field_sidebar", label_visibility="collapsed").strip()
-        
         if input_license in st._central_key_registry:
             if not user_data.get("license_activated_before", False) and my_sponsor_id != "None" and st._ref_system_active:
                 st._central_user_creds[st.session_state.logged_in_user]["license_activated_before"] = True
                 db_save("user_creds", st._central_user_creds)
-                
                 admin_fixed_bonus = float(db_load("admin_fixed_ref_usd", 10.0))
-                st._global_user_pnl_history.append({
-                    "Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"),
-                    "User ID": my_sponsor_id, "Coin": "REAL_LICENSE_ACTIVATION",
-                    "Action": "REF_COMMISSION_DIRECT", "Net P&L ($)": f"{admin_fixed_bonus:.2f}", "Type": "REAL"
-                })
+                st._global_user_pnl_history.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "User ID": my_sponsor_id, "Coin": "REAL_LICENSE_ACTIVATION", "Action": "REF_COMMISSION_DIRECT", "Net P&L ($)": f"{admin_fixed_bonus:.2f}", "Type": "REAL"})
                 db_save("pnl_history", st._global_user_pnl_history)
             api_key = st.text_input("Bybit API Key Node Token:", type="password", key="api_field_sidebar")
             secret_key = st.text_input("Bybit Secret Key Node Token:", type="password", key="sec_field_sidebar")
-
 effective_vol = trade_amount * leverage
 estimated_fee = effective_vol * 0.0011
-st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
-
 live_price, current_rsi, ai_market_thesis, fig_candlestick = 0.0, 50.0, "SYNCING DATA FEED NODES... 📡", None
 public_session = HTTP(testnet=False)
+df_kline = pd.DataFrame()
 
 try:
     ticker_res = public_session.get_tickers(category="linear", symbol=target_symbol)
     ticker_list = ticker_res.get('result', {}).get('list', [])
-    if ticker_list: live_price = float(ticker_list.get('lastPrice', 0))
+    if ticker_list: live_price = float(ticker_list[0].get('lastPrice', 0))
 except: pass
 try:
     response = public_session.get_kline(category="linear", symbol=target_symbol, interval="1", limit=30)
@@ -409,43 +316,27 @@ try:
     if klines:
         df_kline = pd.DataFrame(klines, columns=['time', 'open', 'high', 'low', 'close', 'volume', 'turnover']).iloc[::-1].reset_index(drop=True)
         for c in ['open', 'high', 'low', 'close', 'volume']: df_kline[c] = pd.to_numeric(df_kline[c])
-        if live_price == 0.0: live_price = float(df_kline['close'].iloc[-1])
-        
         delta = df_kline['close'].diff()
         gain = delta.where(delta > 0, 0).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
         current_rsi = (100 - (100 / (1 + (gain / (loss + 1e-10))))).iloc[-1]
-        
-        ai_market_thesis = f"🔮 AI LIGHTNING MATRIX SCANNER ({target_symbol}) -> Orderbook clusters matching support breakout line vectors."
         fig_candlestick = go.Figure(data=[go.Candlestick(x=df_kline.index, open=df_kline['open'], high=df_kline['high'], low=df_kline['low'], close=df_kline['close'])])
         fig_candlestick.add_trace(go.Scatter(x=df_kline.index, y=df_kline['close'].rolling(window=7).mean(), name="AI Geometric Tracking Vector", line=dict(color='#00e676', width=2, dash='dot')))
         fig_candlestick.update_layout(template="plotly_dark", margin=dict(l=6, r=6, t=6, b=6), height=250, xaxis_rangeslider_visible=False, paper_bgcolor='#06090e', plot_bgcolor='#06090e')
 except: pass
-
-# Hard Pricing Safe Fallback Matrix to Defend Against Overwriting the Active Entry Price
-if live_price == 0.0 or live_price > (float(coin_config.get("default_tp", 1.0)) * 5000.0):
-    if 'df_kline' in locals() and not df_kline.empty:
-        live_price = float(df_kline['close'].iloc[-1])
-    else:
-        live_price = float(db_load(f"{mode_prefix}_buy_price_{allocated_user_id}", 1.5))
-
-if fig_candlestick: 
-    st.plotly_chart(fig_candlestick, use_container_width=True)
-
-st.markdown(f"<div class='custom-box-grid' style='background-color:#050a12; border:1px solid #00e676; padding: 22px;'><div class='matrix-neon-text' style='font-size:14px;'>🧬 <b>INTERNATIONAL LIVE MARKET DATA FEED:</b><br>{ai_market_thesis}</div></div>", unsafe_allow_html=True)
-
+if live_price == 0.0 and not df_kline.empty: live_price = float(df_kline['close'].iloc[-1])
+if fig_candlestick: st.plotly_chart(fig_candlestick, use_container_width=True)
+st.markdown(f"<div class='custom-box-grid' style='background-color:#050a12; border:1px solid #00e676; padding: 22px;'><div class='matrix-neon-text' style='font-size:14px;'>🧬 <b>DEEPSEEK REAL-TIME SWARM INTERFACE LAYER:</b><br>🔮 DEEPEST OPENROUTER ROUTER SCALPER LABELS ACTIVATED ({target_symbol})</div></div>", unsafe_allow_html=True)
 local_win = st.session_state.get('win_count', 0)
 local_loss = st.session_state.get('loss_count', 0)
 total_trades = local_win + local_loss
 win_rate = (local_win / total_trades * 100) if total_trades > 0 else 0.0
 
-st.markdown(
-    f"""<div style="background-color:#141a24; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; display: flex; justify-content: space-between;">
+st.markdown(f"""<div style="background-color:#141a24; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; display: flex; justify-content: space-between;">
     <span style="color:#ffffff; font-weight:bold;">🏆 WON: <b style="color:#00e676;">{local_win}</b></span>
     <span style="color:#ffffff; font-weight:bold;">❌ LOST: <b style="color:#ff1744;">{local_loss}</b></span>
-    <span style="color:#ffffff; font-weight:bold;">🎯 WIN RATE: <b style="color:#29b6f6;">{win_rate:.1f}%</b></span></div>""", 
-    unsafe_allow_html=True
-)
+    <span style="color:#ffffff; font-weight:bold;">🎯 WIN RATE: <b style="color:#29b6f6;">{win_rate:.1f}%</b></span></div>""", unsafe_allow_html=True)
+
 if not is_real_live:
     st.markdown("<b>⚙️ Sandbox Fund Manager Module Panel:</b>", unsafe_allow_html=True)
     cb_col1, cb_col2 = st.columns(2)
@@ -456,152 +347,120 @@ if not is_real_live:
             st.session_state.demo_balance = custom_balance_input
             db_save(f"balance_{allocated_user_id}", st.session_state.demo_balance); st.rerun()
 
-# Dynamic Data Sync Core System
-st.session_state.user_in_pos = db_load(f"{mode_prefix}_in_position_{allocated_user_id}", False)
-st.session_state.user_buy_price = db_load(f"{mode_prefix}_buy_price_{allocated_user_id}", 0.0)
-st.session_state.user_trade_side = db_load(f"{mode_prefix}_current_side_{allocated_user_id}", "NONE")
-st.session_state.bot_active = db_load(f"{mode_prefix}_bot_active_{allocated_user_id}", False)
-
-if is_real_live:
-    base_wallet_balance = db_load(f"real_balance_{allocated_user_id}", 0.0)
-else:
-    base_wallet_balance = db_load(f"balance_{allocated_user_id}", 5000.0)
-
-# --- 🤖 AUTOMATED ENGINE MATRIX: AI LIVE SIGNAL DETECTOR & ORDER PLACER ---
-if st.session_state.bot_active and not st.session_state.user_in_pos and ai_decision and 'df_kline' in locals() and not df_kline.empty:
-    try:
-        current_close = float(df_kline['close'].iloc[-1])
-        ma_7_vector = float(df_kline['close'].rolling(window=7).mean().iloc[-1])
-        
-        # Safe AI Strategy Criteria: RSI + Geometric MA Trend Breakout 
-        if current_rsi <= 32.0 and current_close > ma_7_vector:
-            # TRIGGER AUTO LONG (BUY) ENTRY
-            db_save(f"{mode_prefix}_in_position_{allocated_user_id}", True)
-            db_save(f"{mode_prefix}_buy_price_{allocated_user_id}", live_price)
-            db_save(f"{mode_prefix}_current_side_{allocated_user_id}", "LONG")
-            db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", target_symbol)
-            db_save(f"tp_target_{allocated_user_id}", price_jump_target)
-            db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
-            st.toast(f"🤖 AI Auto-Trade Triggered: LONG entry placed on {target_symbol}!", icon="🟢")
-            st.rerun()
-            
-        elif current_rsi >= 68.0 and current_close < ma_7_vector:
-            # TRIGGER AUTO SHORT (SELL) ENTRY
-            db_save(f"{mode_prefix}_in_position_{allocated_user_id}", True)
-            db_save(f"{mode_prefix}_buy_price_{allocated_user_id}", live_price)
-            db_save(f"{mode_prefix}_current_side_{allocated_user_id}", "SHORT")
-            db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", target_symbol)
-            db_save(f"tp_target_{allocated_user_id}", price_jump_target)
-            db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
-            st.toast(f"🤖 AI Auto-Trade Triggered: SHORT entry placed on {target_symbol}!", icon="🔴")
-            st.rerun()
-    except:
-        pass
+st.session_state.in_position = db_load(f"in_position_{allocated_user_id}", False)
+st.session_state.buy_price = db_load(f"buy_price_{allocated_user_id}", 0.0)
+st.session_state.current_side = db_load(f"current_side_{allocated_user_id}", "NONE")
 
 floating_pnl = 0.0
-if st.session_state.user_in_pos and live_price > 0 and st.session_state.user_buy_price > 0:
-    if "LONG" in st.session_state.user_trade_side:
-        floating_pnl = ((live_price - st.session_state.user_buy_price) * (effective_vol / st.session_state.user_buy_price))
-    else:
-        floating_pnl = ((st.session_state.user_buy_price - live_price) * (effective_vol / st.session_state.user_buy_price))
+if st.session_state.in_position and live_price > 0 and st.session_state.buy_price > 0:
+    if "LONG" in st.session_state.current_side: floating_pnl = ((live_price - st.session_state.buy_price) * (effective_vol / st.session_state.buy_price))
+    else: floating_pnl = ((st.session_state.buy_price - live_price) * (effective_vol / st.session_state.buy_price))
 
-balance_usd_text = f"${(base_wallet_balance + floating_pnl):,.2f} USDT"
-pnl_color_hex = "#00e676" if floating_pnl >= 0 else "#ff1744"
-st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}):</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:14px; color:{pnl_color_hex}; font-weight:bold;'>Live Floating P&L Indicator: {floating_pnl:+.4f} USDT</p></div>", unsafe_allow_html=True)
-
-if st.session_state.user_in_pos:
-    is_long_pos = "LONG" in st.session_state.user_trade_side
-    live_target = (st.session_state.user_buy_price + price_jump_target) if is_long_pos else (st.session_state.user_buy_price - price_jump_target)
-    live_sl = (st.session_state.user_buy_price - stop_loss_gap) if is_long_pos else (st.session_state.user_buy_price + stop_loss_gap)
-    
-    est_profit_dollars = (price_jump_target * (effective_vol / st.session_state.user_buy_price))
-    est_loss_dollars = (stop_loss_gap * (effective_vol / st.session_state.user_buy_price))
-    
-    st.markdown(
-        f"""<div style="background-color:#0b0e14; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; border-left: 5px solid #29b6f6;">
+balance_usd_text = f"${(st.session_state.get('real_balance' if is_real_live else 'demo_balance', 5000.0) + floating_pnl):,.2f} USDT"
+st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}):</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:14px; color:{'#00e676' if floating_pnl >= 0 else '#ff1744'}; font-weight:bold;'>Live Floating P&L Indicator: {floating_pnl:+.4f} USDT</p></div>", unsafe_allow_html=True)
+if st.session_state.in_position:
+    is_long_pos = "LONG" in st.session_state.current_side
+    live_target = (st.session_state.buy_price + price_jump_target) if is_long_pos else (st.session_state.buy_price - price_jump_target)
+    live_sl = (st.session_state.buy_price - stop_loss_gap) if is_long_pos else (st.session_state.buy_price + stop_loss_gap)
+    est_profit_dollars = (price_jump_target * (effective_vol / st.session_state.buy_price))
+    est_loss_dollars = (stop_loss_gap * (effective_vol / st.session_state.buy_price))
+    st.markdown(f"""<div style="background-color:#0b0e14; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; border-left: 5px solid #29b6f6;">
         <span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Active Contract Asset: <b>{target_symbol}</b></span><br>
-        <span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Entry Target Metric: {st.session_state.user_buy_price:.6f} | Live Index Ticker: {live_price:.6f}</span><br>
+        <span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Entry Target Metric: {st.session_state.buy_price:.6f} | Live Index Ticker: {live_price:.6f}</span><br>
         <span style="font-size:14px; color:#00e676; font-weight:bold; font-family: monospace;">Take Profit Limit: {live_target:.6f} (Estimated Gain: +${est_profit_dollars:.2f} USDT)</span><br>
-        <span style="font-size:14px; color:#ff1744; font-weight:bold; font-family: monospace;">Stop Loss Boundary Node: {live_sl:.6f} (Estimated Loss: -${est_loss_dollars:.2f} USDT)</span></div>""", 
-        unsafe_allow_html=True
-    )
-if not ai_decision and not st.session_state.user_in_pos:
-    st.markdown("<p style='color:#ffcc00; font-weight:bold;'>🕹️ Manual Trading Panel Active (AI Crossover Bypassed)</p>", unsafe_allow_html=True)
-    m_col1, m_col2 = st.columns(2)
-    with m_col1:
-        if st.button("🟢 EXECUTE BUY / LONG ENTRY", key="manual_buy_long_btn"):
-            db_save(f"{mode_prefix}_in_position_{allocated_user_id}", True)
-            db_save(f"{mode_prefix}_buy_price_{allocated_user_id}", live_price)
-            db_save(f"{mode_prefix}_current_side_{allocated_user_id}", "LONG")
-            db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", target_symbol)
-            db_save(f"tp_target_{allocated_user_id}", price_jump_target)
-            db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
+        <span style="font-size:14px; color:#ff1744; font-weight:bold; font-family: monospace;">Stop Loss Boundary Node: {live_sl:.6f} (Estimated Loss: -${est_loss_dollars:.2f} USDT)</span></div>""", unsafe_allow_html=True)
+
+st.session_state.bot_active = db_load(f"bot_active_{allocated_user_id}", False)
+
+if st.session_state.bot_active:
+    if not st.session_state.in_position and ai_decision and or_api_key:
+        try:
+            news_titles = []
+            news_res = requests.get("https://cryptopanic.com", timeout=5).json()
+            for post in news_res.get('results', [])[:4]: news_titles.append(post.get('title', ''))
+            news_context = " | ".join(news_titles) if news_titles else "No high-impact macro breakout news detected right now."
+            
+            if not df_kline.empty and len(df_kline) >= 5:
+                recent_candles = df_kline.tail(5).to_dict(orient="records")
+                ma_series = df_kline['close'].rolling(window=7).mean()
+                last_ma = float(ma_series.iloc[-1]) if not ma_series.empty else live_price
+                market_context_prompt = (
+                    f"You are a professional high-speed cryptographic crypto scalping AI trading bot operating on real international feeds.\n"
+                    f"Asset Pair Token Target: {target_symbol}\n"
+                    f"Current Live Market Price Index: {live_price}\n"
+                    f"Current Live RSI (14-period vector): {current_rsi:.2f}\n"
+                    f"Current Geometric Trend Line (MA-7 Vector): {last_ma:.6f}\n"
+                    f"International Crypto News Summary (Market Sentiment Factor): {news_context}\n"
+                    f"Last 5 One-Minute Candlestick Matrix Logs: {json.dumps(recent_candles)}\n\n"
+                    f"CRITICAL SYSTEM RULES:\n"
+                    f"1. You must read the international news sentiment and combine it with the technical indicators.\n"
+                    f"2. User's Sidebar Config Matrix -> Leverage: {leverage}x, TP Target Interval: {price_jump_target}, SL Boundary Threshold: {stop_loss_gap}.\n"
+                    f"3. If conditions are absolutely PERFECT for an instant profitable trade, return EXACTLY ONE UPPERCASE WORD: 'LONG' or 'SHORT'.\n"
+                    f"4. If the market is chop, sideways, or waiting for news impact clarity, you MUST respond with 'HOLD'.\n"
+                    f"Do not write code, thinking blocks, markdown, or text explanation. Only output the single word."
+                )
+                headers = {"Authorization": f"Bearer {or_api_key}", "Content-Type": "application/json"}
+                payload = {"model": or_model_id, "messages": [{"role": "user", "content": market_context_prompt}]}
+                or_response = requests.post("https://openrouter.ai", headers=headers, json=payload, timeout=10)
+                if or_response.status_code == 200:
+                    ai_raw_word = or_response.json()['choices']['message']['content'].strip().upper()
+                    if "LONG" in ai_raw_word or "SHORT" in ai_raw_word:
+                        side = "LONG" if "LONG" in ai_raw_word else "SHORT"
+                        db_save(f"in_position_{allocated_user_id}", True)
+                        db_save(f"buy_price_{allocated_user_id}", live_price)
+                        db_save(f"current_side_{allocated_user_id}", side)
+                        db_save(f"trade_coin_{allocated_user_id}", target_symbol)
+                        db_save(f"tp_target_{allocated_user_id}", price_jump_target)
+                        db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
+                        st.toast(f"🟢 DeepSeek Auto Order Executed: {side}", icon="🚀")
+                        st.rerun()
+        except: pass
+    if st.session_state.in_position and live_price > 0:
+        is_long_pos = "LONG" in st.session_state.current_side
+        saved_tp = db_load(f"tp_target_{allocated_user_id}", float(coin_config["default_tp"]))
+        saved_sl = db_load(f"sl_gap_{allocated_user_id}", float(coin_config["default_sl"]))
+        target_tp_price = (st.session_state.buy_price + saved_tp) if is_long_pos else (st.session_state.buy_price - saved_tp)
+        target_sl_price = (st.session_state.buy_price - saved_sl) if is_long_pos else (st.session_state.buy_price + saved_sl)
+        hit_tp = (live_price >= target_tp_price) if is_long_pos else (live_price <= target_tp_price)
+        hit_sl = (live_price <= target_sl_price) if is_long_pos else (live_price >= target_sl_price)
+        
+        if hit_tp or hit_sl:
+            local_final_pnl = ((live_price - st.session_state.buy_price) * (effective_vol / st.session_state.buy_price)) if is_long_pos else ((st.session_state.buy_price - live_price) * (effective_vol / st.session_state.buy_price))
+            net_pnl = local_final_pnl - estimated_fee
+            if is_real_live:
+                st.session_state.real_balance += net_pnl
+                db_save(f"real_balance_{allocated_user_id}", st.session_state.real_balance)
+            else:
+                st.session_state.demo_balance += net_pnl
+                db_save(f"balance_{allocated_user_id}", st.session_state.demo_balance)
+            if net_pnl > 0: st.session_state.win_count += 1
+            else: st.session_state.loss_count += 1
+            db_save(f"win_{allocated_user_id}", st.session_state.win_count)
+            db_save(f"loss_{allocated_user_id}", st.session_state.loss_count)
+            st._global_user_pnl_history.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "User ID": allocated_user_id, "Coin": target_symbol, "Action": f"AUTO CLOSE {'TP' if hit_tp else 'SL'}", "Net P&L ($)": f"{net_pnl:.2f}", "Type": "REAL" if is_real_live else "DEMO"})
+            db_save("pnl_history", st._global_user_pnl_history)
+            db_save(f"in_position_{allocated_user_id}", False)
+            db_save(f"buy_price_{allocated_user_id}", 0.0)
+            db_save(f"current_side_{allocated_user_id}", "NONE")
+            st.session_state.in_position = False
             st.rerun()
-    with m_col2:
-        if st.button("🔴 EXECUTE SELL / SHORT ENTRY", key="manual_sell_short_btn"):
-            db_save(f"{mode_prefix}_in_position_{allocated_user_id}", True)
-            db_save(f"{mode_prefix}_buy_price_{allocated_user_id}", live_price)
-            db_save(f"{mode_prefix}_current_side_{allocated_user_id}", "SHORT")
-            db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", target_symbol)
-            db_save(f"tp_target_{allocated_user_id}", price_jump_target)
-            db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
-            st.rerun()
+
+if not ai_decision and not st.session_state.in_position:
+    st.markdown("<p style='color:#ffcc00; font-weight:bold;'>🕹️ Manual Trading Panel Active</p>", unsafe_allow_html=True)
 
 c1, c2 = st.columns(2)
 with c1:
     if not st.session_state.bot_active:
-        if st.button("🟢 START ENGINE SCALPER LOOP SEQUENCE", key="start_engine_bot_btn"):
-            db_save(f"{mode_prefix}_bot_active_{allocated_user_id}", True)
-            st.rerun()
+        if st.button("🟢 START ENGINE SCALPER LOOP SEQUENCE"):
+            db_save(f"bot_active_{allocated_user_id}", True); st.rerun()
     else:
-        if st.button("🔴 STOP ENGINE SCALPER LOOP SEQUENCE", key="stop_engine_bot_btn"):
-            db_save(f"{mode_prefix}_bot_active_{allocated_user_id}", False)
-            st.rerun()
+        if st.button("🔴 STOP ENGINE SCALPER LOOP SEQUENCE"):
+            db_save(f"bot_active_{allocated_user_id}", False); st.rerun()
 with c2:
-    # 100% WORKING ACTION NODE: Liquidates position instantly on manual click trigger
-    if st.button("🚨 EMERGENCY LIQUIDATE CLOSE ORDER POSITION", disabled=not st.session_state.user_in_pos, key="force_sell_engine_btn"):
-        local_final_pnl = 0.0
-        if live_price > 0:
-            if "LONG" in st.session_state.user_trade_side:
-                local_final_pnl = ((live_price - st.session_state.user_buy_price) * (effective_vol / st.session_state.user_buy_price))
-            else:
-                local_final_pnl = ((st.session_state.user_buy_price - live_price) * (effective_vol / st.session_state.user_buy_price))
-                
-        net_pnl = local_final_pnl - estimated_fee
-        
-        if is_real_live:
-            current_bal = db_load(f"real_balance_{allocated_user_id}", 0.0)
-            db_save(f"real_balance_{allocated_user_id}", current_bal + net_pnl)
-        else:
-            current_bal = db_load(f"balance_{allocated_user_id}", 5000.0)
-            db_save(f"balance_{allocated_user_id}", current_bal + net_pnl)
-        
-        st._global_user_pnl_history.append({
-            "Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"),
-            "User ID": allocated_user_id, "Coin": target_symbol,
-            "Action": f"CLOSE {st.session_state.user_trade_side}", "Net P&L ($)": f"{net_pnl:.2f}", "Type": "REAL" if is_real_live else "DEMO"
-        })
-        
-        if st._mlm_bonus_enabled and net_pnl > 0:
-            current_parent = my_sponsor_id
-            for gen in range(1, 8):
-                if current_parent == "None" or current_parent == "" or current_parent is None: break
-                share_rate = float(st._mlm_gen_rates.get(str(gen), 5.0)) / 100
-                bonus_payout = net_pnl * share_rate
-                st._global_user_pnl_history.append({
-                    "Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"),
-                    "User ID": current_parent, "Coin": target_symbol,
-                    "Action": f"GEN_COMMISSION_L{gen}", "Net P&L ($)": f"{bonus_payout:.4f}", "Type": "REAL" if is_real_live else "DEMO"
-                })
-                parent_data = [u for u in st._central_user_creds.values() if u.get("uid") == current_parent]
-                current_parent = parent_data.get("sponsor", "None") if parent_data else "None"
+    if st.button("🚨 EMERGENCY LIQUIDATE CLOSE ORDER POSITION", disabled=not st.session_state.in_position):
+        db_save(f"in_position_{allocated_user_id}", False); st.session_state.in_position = False; st.rerun()
 
-        db_save("pnl_history", st._global_user_pnl_history)
-        db_save(f"{mode_prefix}_in_position_{allocated_user_id}", False)
-        db_save(f"{mode_prefix}_buy_price_{allocated_user_id}", 0.0)
-        db_save(f"{mode_prefix}_current_side_{allocated_user_id}", "NONE")
-        db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", "NONE")
-        st.rerun()
+st.markdown("""<iframe src="about:blank" style="display:none;" onload="setTimeout(function(){window.location.reload();}, 1500);"></iframe>""", unsafe_allow_html=True)
 # --- 🌿 DYNAMIC MARKETING NETWORK MODULE PANEL HUB ---
 st.markdown("<hr style='border:1px solid #1f2c3f;'>", unsafe_allow_html=True)
 st.markdown(f"<h3 style='color:#f5a623;'>🌿 Network Marketing Matrix Desk ({dashboard_mode_title})</h3>", unsafe_allow_html=True)
@@ -615,16 +474,13 @@ if st._global_user_pnl_history:
             if str(r.get("User ID")).strip() == str(search_uid_input).strip():
                 action_str = r.get("Action", "")
                 pnl_val = float(r.get("Net P&L ($)", 0))
-                if "GEN_COMMISSION" in action_str and r.get("Type") == mode_filter_string: 
-                    gen_accum += pnl_val
-                elif "REF_COMMISSION" in action_str and r.get("Type") == mode_filter_string: 
-                    ref_accum += pnl_val
+                if "GEN_COMMISSION" in action_str and r.get("Type") == mode_filter_string: gen_accum += pnl_val
+                elif "REF_COMMISSION" in action_str and r.get("Type") == mode_filter_string: ref_accum += pnl_val
         except: pass
 
 cbx1, cbx2 = st.columns(2)
 with cbx1: st.markdown(f"<div class='custom-box-grid' style='border-top:4px solid #00e676; text-align:center;'><span>🔗 REFERRAL TOTAL NET BOX ({mode_filter_string})</span><h4 style='color:#00e676;'>${ref_accum:.2f} USDT</h4></div>", unsafe_allow_html=True)
 with cbx2: st.markdown(f"<div class='custom-box-grid' style='border-top:4px solid #29b6f6; text-align:center;'><span>🌐 7-GEN DAILY ROI COMMISSION ({mode_filter_string})</span><h4 style='color:#29b6f6;'>${gen_accum:.2f} USDT</h4></div>", unsafe_allow_html=True)
-
 if search_uid_input:
     t1, t2 = st.tabs(["Real Production Earnings Gate 🟢", "Demo Sandbox Earnings Gate 🔵"])
     with t1:
@@ -636,7 +492,7 @@ if search_uid_input:
                     child_real_df["Net P&L ($)"] = pd.to_numeric(child_real_df["Net P&L ($)"])
                     st.markdown(f"💰 Real Daily Earnings: <b style='color:#00e676;'>${child_real_df['Net P&L ($)'].sum():.2f} USDT</b>", unsafe_allow_html=True)
                     st.dataframe(child_real_df.iloc[::-1], use_container_width=True)
-                else: st.info("No live production real funds data records synced yet under this identifier.")
+                else: st.info("No live production real funds data records synced yet.")
         else: st.info("Ledger registry is empty.")
     with t2:
         if st._global_user_pnl_history:
@@ -649,7 +505,7 @@ if search_uid_input:
                     st.dataframe(child_demo_df.iloc[::-1], use_container_width=True)
                 else: st.info("No sandbox simulation records synced yet.")
         else: st.info("Ledger registry is empty.")
-# SECURE MULTI-GENERATION DEEP TREE TRACKING LOOPS (Fixes 1st, 2nd, 3rd Gen Missing Map Bug)
+
 def calculate_sub_generations(r_uid, tree):
     g_map = {"Gen 1": [], "Gen 2": [], "Gen 3": [], "Gen 4": [], "Gen 5": [], "Gen 6": [], "Gen 7": []}
     actual_search_uid = r_uid
@@ -657,10 +513,7 @@ def calculate_sub_generations(r_uid, tree):
         if uname == r_uid or data.get("uid") == r_uid:
             actual_search_uid = data.get("uid")
             break
-            
-    if actual_search_uid in tree: 
-        g_map["Gen 1"] = list(tree[actual_search_uid])
-        
+    if actual_search_uid in tree: g_map["Gen 1"] = list(tree[actual_search_uid])
     for idx in range(2, 8):
         prev_name = f"Gen {idx-1}"
         current_name = f"Gen {idx}"
@@ -669,11 +522,9 @@ def calculate_sub_generations(r_uid, tree):
         for p_uid in p_layer:
             if p_uid in tree:
                 for c_uid in tree[p_uid]:
-                    if c_uid not in c_accum:
-                        c_accum.append(c_uid)
+                    if c_uid not in c_accum: c_accum.append(c_uid)
         g_map[current_name] = c_accum
     return g_map
-
 st.markdown("<br><b style='color:#f5a623;'>📊 Sub-Downline Network Members Status Grid Management Node:</b>", unsafe_allow_html=True)
 mapped_gens = calculate_sub_generations(search_uid_input, st._global_referral_tree)
 sub_tree_records = []
@@ -686,33 +537,21 @@ for g_key, sub_uids in mapped_gens.items():
                     val = float(r.get("Net P&L ($)", 0))
                     if r.get("Type") == "REAL": real_pnl += val
                     else: demo_pnl += val
-        
-        sub_tree_records.append({
-            "Hierarchy Level": g_key, "User ID": sub_uid,
-            "Username": st._uid_to_username.get(sub_uid, f"Node-{sub_uid[:4]}"), 
-            "Demo Lifetime Profit": f"${demo_pnl:.2f} USDT", "Real Lifetime Profit": f"${real_pnl:.2f} USDT"
-        })
-
+        sub_tree_records.append({"Hierarchy Level": g_key, "User ID": sub_uid, "Username": st._uid_to_username.get(sub_uid, f"Node-{sub_uid[:4]}"), "Demo Lifetime Profit": f"${demo_pnl:.2f} USDT", "Real Lifetime Profit": f"${real_pnl:.2f} USDT"})
 if sub_tree_records: st.dataframe(pd.DataFrame(sub_tree_records), use_container_width=True)
 else: st.info("No active downline nodes found.")
-
-st.markdown("""<iframe src="about:blank" style="display:none;" onload="setTimeout(function(){window.location.reload();}, 1500);"></iframe>""", unsafe_allow_html=True)
 
 with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Panel)"):
     master_input = st.text_input("Input Master Security Override Code Password:", type="password", key="supreme_admin_password_node")
     if master_input == YOUR_SECRET_MASTER_CODE:
         st.success("Supreme Controller Access Verified.")
-        
         st.markdown("<h2>⚙️ Referral Marketing Master Controls Desk:</h2>", unsafe_allow_html=True)
         old_ref_sys = st._ref_system_active
         st._ref_system_active = st.toggle("Activate Global Referral Sign-Up Bonus Matrix", value=st._ref_system_active, key="adm_ref_sys_toggle")
         if old_ref_sys != st._ref_system_active: db_save("ref_sys_active", st._ref_system_active)
-        
         admin_current_ref_payout = float(db_load("admin_fixed_ref_usd", 10.0))
         admin_new_ref_payout = st.number_input("🚨 Referral Bonus Fixed Amount Settings ($) Input:", min_value=0.0, value=admin_current_ref_payout, step=1.0, key="adm_fixed_ref_amt_box")
-        if admin_new_ref_payout != admin_current_ref_payout:
-            db_save("admin_fixed_ref_usd", admin_new_ref_payout); st.rerun()
-            
+        if admin_new_ref_payout != admin_current_ref_payout: db_save("admin_fixed_ref_usd", admin_new_ref_payout); st.rerun()
         st.markdown("<h3>✍️ Manual Balance Override Control (Edit User Funds)</h3>", unsafe_allow_html=True)
         target_edit_uid = st.text_input("Enter Target Member UID to Edit:", key="adm_edit_target_uid_field").strip()
         edit_mode_sel = st.selectbox("Select Balance Type to Modify:", ["Demo Simulation Balance", "Real Mainnet Balance"])
@@ -729,42 +568,34 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Pane
             deep_tree = calculate_sub_generations(parent_uid, st._global_referral_tree)
             summary_node = {}
             for gen_name, uid_list in deep_tree.items():
-                if uid_list:
-                    summary_node[f"{gen_name} (Total: {len(uid_list)} Active IDs)"] = [f"{st._uid_to_username.get(uid, 'Unknown')} -> {uid}" for uid in uid_list]
+                if uid_list: summary_node[f"{gen_name} (Total: {len(uid_list)} Active IDs)"] = [f"{st._uid_to_username.get(uid, 'Unknown')} -> {uid}" for uid in uid_list]
             if summary_node:
                 user_label = st._uid_to_username.get(parent_uid, parent_uid)
                 full_mapped_tree[f"👤 Sponsor Handle: {user_label} [{parent_uid}]"] = summary_node
         st.json(full_mapped_tree)
-        
         st.markdown("<h3>📊 Global Live Trade Ledger (All Users Tracking):</h3>", unsafe_allow_html=True)
         if st._global_user_pnl_history:
             full_ledger_df = pd.DataFrame(st._global_user_pnl_history)
             unique_uids_list = list(full_ledger_df["User ID"].unique()) if "User ID" in full_ledger_df.columns else []
             selected_audit_uid = st.selectbox("🎯 Select Specific Member UID to Filter Details Tree Ledger:", ["ALL USERS"] + unique_uids_list)
-            
-            if selected_audit_uid == "ALL USERS":
-                st.dataframe(full_ledger_df.iloc[::-1], use_container_width=True)
+            if selected_audit_uid == "ALL USERS": st.dataframe(full_ledger_df.iloc[::-1], use_container_width=True)
             else:
                 filtered_ledger_df = full_ledger_df[full_ledger_df["User ID"] == selected_audit_uid]
                 st.dataframe(filtered_ledger_df.iloc[::-1], use_container_width=True)
-        
         old_val = st._mlm_bonus_enabled
         st._mlm_bonus_enabled = st.toggle("Activate MLM Multi-Generation Incentive Commissions System", value=st._mlm_bonus_enabled, key="adm_mlm_active_toggle")
         if old_val != st._mlm_bonus_enabled: db_save("mlm_enabled", st._mlm_bonus_enabled)
-        
         c_cols = st.columns(2)
         for g in range(1, 8):
             with c_cols[(g-1)%2]:
                 st._mlm_gen_rates[str(g)] = st.number_input(f"Gen {g} Share (%):", min_value=0.0, max_value=100.0, value=st._mlm_gen_rates.get(str(g), st._mlm_gen_rates.get(g, 5.0)), key=f"adm_rates_generation_input_g_{g}")
                 st._mlm_id_thresholds[str(g)] = st.number_input(f"Gen {g} Cap:", min_value=1, value=st._mlm_id_thresholds.get(str(g), st._mlm_id_thresholds.get(g, 10)), key=f"adm_thresholds_generation_input_g_{g}")
         db_save("gen_rates", st._mlm_gen_rates); db_save("id_thresh", st._mlm_id_thresholds)
-        
         if st.button("Mint New Randomized License Token Key", key="adm_mint_token_trigger_btn"):
             random_token = "SCLP-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
             st._central_key_registry[random_token] = "FREE_SLOT"
             st._license_csv_database.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "License Key": random_token, "Status": "Active (Unused)"})
             db_save("key_registry", st._central_key_registry); db_save("license_csv", st._license_csv_database); st.code(f"{random_token}"); st.rerun()
-            
         override_uid = st.text_input("Target User ID (UID) to Hack/Change:", key="adm_override_uid_field").strip()
         override_new_pass = st.text_input("Set Custom New Password Phrase:", key="adm_override_pass_field").strip()
         if st.button("Execute Hard Password Override Ban", key="adm_override_pass_submit_btn"):
@@ -773,13 +604,11 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Pane
                 if data.get("uid") == override_uid: found_account = uname; break
             if found_account and override_new_pass != "":
                 st._central_user_creds[found_account]["password"] = override_new_pass; db_save("user_creds", st._central_user_creds); st.success(f"Success!"); st.rerun()
-        
         target_block_key = st.text_input("Paste Target License Token to BAN permanently:", key="adm_ban_token_input_field")
         if st.button("Execute Permanent Revocation Ban", key="adm_ban_token_trigger_btn"):
             if target_block_key in st._central_key_registry:
                 st._central_blacklist.append(target_block_key); del st._central_key_registry[target_block_key]
                 db_save("blacklist", st._central_blacklist); db_save("key_registry", st._central_key_registry); st.warning(f"Token blocked permanent."); st.rerun()
-                
         if st._license_csv_database: st.dataframe(pd.DataFrame(st._license_csv_database).iloc[::-1], use_container_width=True, height=120)
         all_creds_df = pd.DataFrame.from_dict(st._central_user_creds, orient='index')
         if not all_creds_df.empty: st.dataframe(all_creds_df, use_container_width=True)
