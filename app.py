@@ -412,6 +412,7 @@ with st.sidebar:
     else:
         price_jump_target = db_load(f"{mode_prefix}_tp_target_{allocated_user_id}", float(coin_config["default_tp"]))
         stop_loss_gap = db_load(f"{mode_prefix}_sl_gap_{allocated_user_id}", float(coin_config["default_sl"]))
+# --- BOX 8: STRICT REAL-TIME HUGGING FACE VALIDATION (NO MORE FAKE GREEN) ---
 with st.sidebar:
     st.markdown("<hr style='border:1px solid #1e293b; margin:10px 0;'>", unsafe_allow_html=True)
     
@@ -420,18 +421,20 @@ with st.sidebar:
     
     gemini_is_valid = False
     if gemini_api_key != "":
-        # Flexible validation directly checks if token structure string is properly initiated
-        if gemini_api_key.startswith("hf_") and len(gemini_api_key) > 15:
-            if gemini_api_key != saved_gemini_key:
-                db_save(f"gemini_key_{allocated_user_id}", gemini_api_key)
-            gemini_is_valid = True
-            st.sidebar.success("🟢 Free AI Engine Active!")
+        with st.spinner("Checking official AI clusters..."):
+            # ভুয়া কি দিলে এই রিয়েল টেস্ট প্রম্পটটি Hugging Face সার্ভার সাথে সাথে রিজেক্ট করবে
+            test_prompt = "Verify"
+            test_res, success_status = execute_real_gemini_call(gemini_api_key, test_prompt)
             
-            # Non-blocking async ping checks server status in the background console logs
-            with st.spinner("Syncing server clusters..."):
-                execute_real_gemini_call(gemini_api_key, "Ping")
-        else:
-            st.sidebar.error("❌ Invalid Key Format! Must start with hf_")
+            if success_status and "error" not in test_res:
+                if gemini_api_key != saved_gemini_key:
+                    db_save(f"gemini_key_{allocated_user_id}", gemini_api_key)
+                gemini_is_valid = True
+                st.sidebar.success("🟢 Connected to Hugging Face Mainframe!")
+            else:
+                # সার্ভার থেকে আসা আসল এরর মেসেজটি সরাসরি স্ক্রিনে দেখাবে
+                error_msg = test_res.get("error", "Unauthorized token property layout.") if isinstance(test_res, dict) else str(test_res)
+                st.sidebar.error(f"❌ Connection Refused: {str(error_msg)[:60]}")
     else:
         st.sidebar.warning("⚠️ Enter Hugging Face Key to enable Free AI Mode")
 
@@ -486,6 +489,15 @@ if db_load(f"{mode_prefix}_bot_active_{allocated_user_id}", False) and gemini_is
     current_ai_analysis_status = db_load(f"gemini_thought_{allocated_user_id}", "📊 QUANT ENGINE: Analyzing real-time order books & macro fundamentals... 📡")
     st.markdown(f"<div class='custom-box-grid' style='background-color:#09121f; border-left:5px solid #ff9900; padding:15px;'><b style='color:#ff9900; font-size:13px; font-family:monospace;'>🤖 GEMINI AI INTELLIGENCE CORE LOG:</b><br><p style='color:#94a3b8; font-size:12px; font-family:monospace; margin:5px 0 0 0;'>{current_ai_analysis_status}</p></div>", unsafe_allow_html=True)
 
+    # 🟢 NEW MASTER CONSOLE: Displays the real verbatim response text generated directly by the AI model
+    raw_model_response_dump = db_load(f"raw_ai_dump_{allocated_user_id}", "No raw payload responses tracked inside current session epoch parameters yet. Awaiting fresh analytical loop...")
+    st.markdown(f"""
+    <div class='custom-box-grid' style='background-color:#070d14; border:1px dashed #29b6f6; padding:15px;'>
+        <b style='color:#29b6f6; font-size:13px; font-family:monospace;'>📡 🤖 LIVE RAW AI AGENT DECISION LEDGER LOG:</b><br>
+        <pre style='color:#e2e8f0; font-size:11px; font-family:monospace; background-color:#03070a; padding:10px; border-radius:6px; margin-top:8px; white-space:pre-wrap; word-wrap:break-word;'>{raw_model_response_dump}</pre>
+    </div>
+    """, unsafe_allow_html=True)
+
 local_win = st.session_state.get('win_count', 0)
 local_loss = st.session_state.get('loss_count', 0)
 total_trades = local_win + local_loss
@@ -528,25 +540,21 @@ if st.session_state.bot_active and not st.session_state.user_in_pos and ai_decis
         bids_asks_json = json.dumps(ob_res.get("result", {}))
         global_news_stream = fetch_live_crypto_world_news()
         
-        # Hardcoded Comprehensive Industrial Analytics Blueprint Command Prompt Injection
         ai_payload_prompt = f"""
-        Act as an Expert Quant High-Frequency Algorithmic Scalper Trading System Core Agent Framework Node.
-        Perform real-time multi-dimensional quantitative asset contract analytics using the following context packets:
-        - CURRENT CONTRACT ASSET TARGET: {target_symbol}
-        - SYNCED REAL-TIME TICKER PRICE: {live_price}
-        - STANDARDIZED RSI (14-PERIOD MEASUREMENT): {current_rsi}
-        - BYBIT LIVE POSITION ORDERBOOK SPREAD CLUSTERS LIQUIDITY LOGS: {bids_asks_json}
-        - GLOBAL MACRO NARRATIVES / REALTIME ECONOMIC FUNDAMENTALS STREAM: {global_news_stream}
-        SYSTEM RULES:
-        1. Deeply check and cross-compare current market macro volumes against indicator breakouts line vectors.
-        2. Evaluate RSI boundaries for immediate local oversold/overbought support and resistance levels.
-        3. Make an instant processing decision for short-interval rapid order target placement execution.
-        4. Respond STRICTLY inside the raw JSON blueprint format provided below without any surrounding text or markdown blocks:
+        Analyze this live package and determine if an instant scalp entry should be executed on Bybit Futures:
+        - Target Symbol Asset: {target_symbol} | Ticker Live Price: {live_price} | RSI (14): {current_rsi}
+        - Live Orderbook Clustered Liquidity: {bids_asks_json}
+        - Global Live Crypto Narrative/News & Economic Stream: {global_news_stream}
+        Respond STRICTLY in this raw JSON structure format only. Do not wrap inside codeblocks or markdowns:
         {{"Decision": "LONG", "Reason": "..."}} or {{"Decision": "SHORT", "Reason": "..."}} or {{"Decision": "HOLD", "Reason": "Monitoring orderbook clusters node metadata vector pipelines."}}
         """
         raw_response, status_ok = execute_real_gemini_call(gemini_api_key, ai_payload_prompt)
         if status_ok:
             raw_ai_text = raw_response['candidates']['content']['parts']['text'].strip()
+            
+            # Stores the absolute exact text returned by the AI before any slicing happens
+            db_save(f"raw_ai_dump_{allocated_user_id}", str(raw_ai_text))
+            
             if "{" in raw_ai_text:
                 json_match = re.search(r"\{.*\}", raw_ai_text, re.DOTALL)
                 if json_match: raw_ai_text = json_match.group(0)
@@ -576,8 +584,11 @@ if st.session_state.bot_active and not st.session_state.user_in_pos and ai_decis
                 st.toast(f"🤖 Gemini AI Triggered {ai_verdict}! Reason: {ai_reason}", icon="⚡")
                 st.rerun()
         else:
+            # Captures and logs raw server crash errors directly into the newly created main screen display dashboard
+            db_save(f"raw_ai_dump_{allocated_user_id}", f"Server Status Fault: {str(raw_response)}")
             db_save(f"gemini_thought_{allocated_user_id}", f"📡 Core Engine Connected. Gateway Error Response.")
     except Exception as gemini_loop_error:
+        db_save(f"raw_ai_dump_{allocated_user_id}", f"Runtime Pipeline Exception: {str(gemini_loop_error)}")
         db_save(f"gemini_thought_{allocated_user_id}", f"📡 Core Engine Connected. Processing Error String Cache.")
 if st.session_state.user_in_pos and live_price > 0:
     is_long_pos = "LONG" in st.session_state.user_trade_side
