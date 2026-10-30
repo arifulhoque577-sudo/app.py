@@ -44,6 +44,9 @@ def db_save(key, val):
         db.collection("scalper_system").document(key).set({"data": val})
     except:
         pass
+        # পার্ট ২ এর ডাটাবেজ সেভ ফাংশনের ঠিক নিচে এটি বসিয়ে দিন:
+if "logged_in_user" not in st.session_state:
+    st.session_state.logged_in_user = None
 # Initialize Sync Control Registries Persistent Global Cache System
 if "init_sync" not in st.session_state:
     st._central_user_creds = db_load("user_creds", {})
