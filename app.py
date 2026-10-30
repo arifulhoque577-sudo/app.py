@@ -56,6 +56,7 @@ def db_save(key, val):
 # Initialize Sync Control Registries Persistent Global Cache System
 # Initialize Sync Control Registries Persistent Global Cache System
 # Initialize Sync Control Registries Persistent Global Cache System
+# Initialize Sync Control Registries Persistent Global Cache System
 if "init_sync" not in st.session_state:
     st._central_user_creds = db_load("user_creds", {})
     st._central_key_registry = db_load("key_registry", {})
@@ -84,38 +85,36 @@ else:
     st._mlm_gen_rates = db_load("gen_rates", {1: 5.0, 2: 4.0, 3: 3.0, 4: 2.0, 5: 1.0, 6: 0.5, 7: 0.5})
     st._mlm_id_thresholds = db_load("id_thresh", {1: 10, 2: 20, 3: 40, 4: 80, 5: 160, 6: 320, 7: 640})
 
-# --- ADVANCED OPENAI CALL WITH FIREWALL BYPASS HEADERS ---
+# --- FIXED DEEPSEEK FREE ROUTING VIA OPENROUTER ENDPOINT ---
 def execute_real_gemini_call(api_key, context_prompt):
     cleaned_key = str(api_key).strip().strip("'").strip('"')
-    url = "https://openai.com"
-    
-    # 🕵️‍♂️ Fake User-Agent makes OpenAI firewall believe the request is from a real Chrome browser, not Render bot
+    url = "https://openrouter.ai"
     headers = {
         "Authorization": f"Bearer {cleaned_key}",
         "Content-Type": "application/json",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "application/json",
-        "Accept-Language": "en-US,en;q=0.9"
+        "HTTP-Referer": "https://render.com",
+        "X-Title": "Bybit AI Pro Scalper"
     }
-    
     payload = {
-        "model": "gpt-4o-mini",
+        # Using DeepSeek R1 Distill / V3 Free Tier Models which has zero billing restrictions
+        "model": "deepseek/deepseek-r1:free", 
         "messages": [
             {"role": "user", "content": str(context_prompt)}
         ],
-        "temperature": 0.2
+        "temperature": 0.3
     }
     try:
-        response = requests.post(url, json=payload, headers=headers, timeout=18)
+        response = requests.post(url, json=payload, headers=headers, timeout=20)
         if response.status_code == 200:
             res_json = response.json()
             if "choices" in res_json and len(res_json["choices"]) > 0:
                 generated_text = res_json["choices"][0]["message"]["content"].strip()
+                # Mock array directly normalizes DeepSeek analysis data stream into your trade loop parser
                 mock_response = {"candidates": [{"content": {"parts": [{"text": generated_text}]}}]}
                 return mock_response, True
-            return {"error": "Invalid structure response"}, False
+            return {"error": "Empty choices response array layout from DeepSeek mainframe"}, False
         else:
-            return {"error": f"OpenAI Error {response.status_code}: {response.text}"}, False
+            return {"error": f"Cloud Endpoint Error {response.status_code}: {response.text}"}, False
     except Exception as e:
         return {"error": str(e)}, False
 # --- 🚀 PREMIUM NO-BORDER SPLASH SCREEN ANIMATION TRIGGER ---
