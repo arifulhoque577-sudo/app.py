@@ -57,6 +57,7 @@ def db_save(key, val):
 # Initialize Sync Control Registries Persistent Global Cache System
 # Initialize Sync Control Registries Persistent Global Cache System
 # Initialize Sync Control Registries Persistent Global Cache System
+# Initialize Sync Control Registries Persistent Global Cache System
 if "init_sync" not in st.session_state:
     st._central_user_creds = db_load("user_creds", {})
     st._central_key_registry = db_load("key_registry", {})
@@ -96,7 +97,6 @@ def execute_real_gemini_call(api_key, context_prompt):
         "X-Title": "Bybit AI Pro Scalper"
     }
     payload = {
-        # Using DeepSeek R1 Distill / V3 Free Tier Models which has zero billing restrictions
         "model": "deepseek/deepseek-r1:free", 
         "messages": [
             {"role": "user", "content": str(context_prompt)}
@@ -109,10 +109,9 @@ def execute_real_gemini_call(api_key, context_prompt):
             res_json = response.json()
             if "choices" in res_json and len(res_json["choices"]) > 0:
                 generated_text = res_json["choices"][0]["message"]["content"].strip()
-                # Mock array directly normalizes DeepSeek analysis data stream into your trade loop parser
                 mock_response = {"candidates": [{"content": {"parts": [{"text": generated_text}]}}]}
                 return mock_response, True
-            return {"error": "Empty choices response array layout from DeepSeek mainframe"}, False
+            return {"error": "Empty choices array response"}, False
         else:
             return {"error": f"Cloud Endpoint Error {response.status_code}: {response.text}"}, False
     except Exception as e:
@@ -412,24 +411,24 @@ with st.sidebar:
     st.markdown("<hr style='border:1px solid #1e293b; margin:10px 0;'>", unsafe_allow_html=True)
     
     saved_gemini_key = db_load(f"gemini_key_{allocated_user_id}", "")
-    gemini_api_key = st.text_input("🔑 OpenAI API Token Key (sk-proj):", value=saved_gemini_key, type="password", key="gemini_key_gateway_sidebar").strip()
+    gemini_api_key = st.text_input("🔑 Free OpenRouter/DeepSeek Token Key:", value=saved_gemini_key, type="password", key="gemini_key_gateway_sidebar").strip()
     
     gemini_is_valid = False
     if gemini_api_key != "":
-        with st.spinner("Authenticating with OpenAI Mainframe..."):
-            test_prompt = "Return raw text: OK"
+        with st.spinner("Connecting to Free DeepSeek Mainframe..."):
+            test_prompt = "Return text: OK"
             test_res, success_status = execute_real_gemini_call(gemini_api_key, test_prompt)
             
             if success_status and "error" not in test_res:
                 if gemini_api_key != saved_gemini_key:
                     db_save(f"gemini_key_{allocated_user_id}", gemini_api_key)
                 gemini_is_valid = True
-                st.sidebar.success("🟢 OpenAI Engine Connected Live!")
+                st.sidebar.success("🟢 DeepSeek Free AI Engine Active!")
             else:
                 error_body = test_res.get("error", "Rejected authentication parameters.") if isinstance(test_res, dict) else str(test_res)
                 st.sidebar.error(f"❌ Connection Refused: {str(error_body)[:60]}")
     else:
-        st.sidebar.warning("⚠️ Enter OpenAI API Key to enable Trading Mode")
+        st.sidebar.warning("⚠️ Enter OpenRouter Key to enable Free Trading Mode")
 
     api_key, secret_key = "", ""
     if is_real_live:
