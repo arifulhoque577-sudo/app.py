@@ -53,6 +53,7 @@ def db_save(key, val):
 # Initialize Sync Control Registries Persistent Global Cache System
 # Initialize Sync Control Registries Persistent Global Cache System
 # Initialize Sync Control Registries Persistent Global Cache System
+# Initialize Sync Control Registries Persistent Global Cache System
 if "init_sync" not in st.session_state:
     st._central_user_creds = db_load("user_creds", {})
     st._central_key_registry = db_load("key_registry", {})
@@ -88,11 +89,11 @@ def execute_real_gemini_call(api_key, context_prompt):
     headers = {
         "Authorization": f"Bearer {cleaned_key}",
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://render.com", # Required for OpenRouter server tracking validation
+        "HTTP-Referer": "https://render.com",
         "X-Title": "Bybit AI Scalper"
     }
     payload = {
-        "model": "meta-llama/llama-3-8b-instruct:free", # Highly stable unlimited completely free tier endpoint model
+        "model": "meta-llama/llama-3-8b-instruct:free",
         "messages": [
             {"role": "user", "content": str(context_prompt)}
         ],
@@ -102,12 +103,12 @@ def execute_real_gemini_call(api_key, context_prompt):
         response = requests.post(url, json=payload, headers=headers, timeout=15)
         if response.status_code == 200:
             res_json = response.json()
+            # [0] ইনপুটটি এখানে সঠিকভাবে ম্যাপ করা হয়েছে
             if "choices" in res_json and len(res_json["choices"]) > 0:
                 generated_text = res_json["choices"][0]["message"]["content"].strip()
-                # Mock dictionary structure injection perfectly maps raw output into Box 9's real-time parser
                 mock_response = {"candidates": [{"content": {"parts": [{"text": generated_text}]}}]}
                 return mock_response, True
-            return {"error": "Invalid choice payload response format"}, False
+            return {"error": "Invalid choices dynamic mapping response format"}, False
         else:
             return {"error": f"API Error Code: {response.status_code} - {response.text}"}, False
     except Exception as e:
