@@ -232,7 +232,7 @@ st.markdown(
 if 'bot_active' not in st.session_state: st.session_state.bot_active = False
 if 'all_trades_history' not in st.session_state: st.session_state.all_trades_history = []
 if 'logged_in_user' not in st.session_state: st.session_state.logged_in_user = st.query_params.get("session_user", None)
-if st.session_state.logged_in_user is None:
+    if st.session_state.logged_in_user is None:
     st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
     st.subheader("🔑 Account Identity Gateway Control Panel")
     auth_mode = st.radio("Choose Layer:", ["Secure Login Profile", "Mint New Account ID", "Forget Password Profile"])
@@ -332,7 +332,6 @@ allocated_user_id = user_data["uid"]
 my_sponsor_id = user_data["sponsor"]
 my_profile_email = user_data.get("email", "Not Set")
 
-# Persistent Firebase-Synced Trading States
 if 'demo_balance' not in st.session_state: st.session_state.demo_balance = db_load(f"balance_{allocated_user_id}", 5000.0)
 if 'win_count' not in st.session_state: st.session_state.win_count = db_load(f"win_{allocated_user_id}", 0)
 if 'loss_count' not in st.session_state: st.session_state.loss_count = db_load(f"loss_{allocated_user_id}", 0)
@@ -363,7 +362,6 @@ with st.sidebar:
     else:
         st.session_state.demo_balance = db_load(f"balance_{allocated_user_id}", 5000.0)
 
-    # --- 🔒 ANTI-DRIFT AUTO COIN RE-SELECTION SYSTEM ---
     mode_prefix = "real" if is_real_live else "demo"
     in_position_state = db_load(f"{mode_prefix}_in_position_{allocated_user_id}", False)
     bot_active_state = db_load(f"{mode_prefix}_bot_active_{allocated_user_id}", False)
@@ -393,14 +391,14 @@ with st.sidebar:
         trade_amount = db_load(f"{mode_prefix}_margin_lock_{allocated_user_id}", 20)
         st.sidebar.markdown(f"<div style='background-color:#0b111e; padding:12px; border-radius:8px; border:1px solid #1e293b; margin-bottom:10px;'><b style='color:#00e676; font-size:14px;'>🔒 Position Active</b><br><span style='font-size:13px; color:#94a3b8;'>Leverage: <b>{leverage}x</b> | Margin: <b>${trade_amount}</b></span></div>", unsafe_allow_html=True)
     else:
-        leverage = st.slider("Leverage Scale Selection Array (1x-100x Override):", min_value=1, max_value=max_leverage_bound, value=20, step=1, key="absolute_leverage_node_slider")
-        trade_amount = st.number_input("Margin Requirement Block (\$):", min_value=1, value=20)
+        leverage = st.sidebar.slider("Leverage Scale Selection Array (1x-100x Override):", min_value=1, max_value=max_leverage_bound, value=20, step=1, key="absolute_leverage_node_slider")
+        trade_amount = st.sidebar.number_input("Margin Requirement Block (\$):", min_value=1, value=20)
         db_save(f"{mode_prefix}_leverage_lock_{allocated_user_id}", leverage)
         db_save(f"{mode_prefix}_margin_lock_{allocated_user_id}", trade_amount)
     
     if not in_position_state:
-        price_jump_target = st.number_input("Take Profit Target Interval (\$):", value=float(coin_config["default_tp"]), format="%.6f", key="tp_input_node_box")
-        stop_loss_gap = st.number_input("Stop Loss Boundary GAP Threshold (\$):", value=float(coin_config["default_sl"]), format="%.6f", key="sl_input_node_box")
+        price_jump_target = st.sidebar.number_input("Take Profit Target Interval (\$):", value=float(coin_config["default_tp"]), format="%.6f", key="tp_input_node_box")
+        stop_loss_gap = st.sidebar.number_input("Stop Loss Boundary GAP Threshold (\$):", value=float(coin_config["default_sl"]), format="%.6f", key="sl_input_node_box")
         db_save(f"{mode_prefix}_tp_target_{allocated_user_id}", price_jump_target)
         db_save(f"{mode_prefix}_sl_gap_{allocated_user_id}", stop_loss_gap)
     else:
@@ -411,7 +409,7 @@ with st.sidebar:
     st.markdown("<hr style='border:1px solid #1e293b; margin:10px 0;'>", unsafe_allow_html=True)
     
     saved_gemini_key = db_load(f"gemini_key_{allocated_user_id}", "")
-    gemini_api_key = st.text_input("🔑 Free OpenRouter/DeepSeek Token Key:", value=saved_gemini_key, type="password", key="gemini_key_gateway_sidebar").strip()
+    gemini_api_key = st.text_input("🔑 Free OpenRouter/DeepSeek Token Key:", value=saved_gemini_key, type="password", key="master_clean_ai_key_field").strip()
     
     gemini_is_valid = False
     if gemini_api_key != "":
@@ -433,15 +431,13 @@ with st.sidebar:
     api_key, secret_key = "", ""
     if is_real_live:
         st.markdown("<div style='background-color:#ff1744; padding:6px; border-radius:5px; text-align:center; margin-bottom:6px;'><b style='color:#ffffff; font-size:11px;'>🚨 LICENSE GATE ACTIVE</b></div>", unsafe_allow_html=True)
-        input_license = st.text_input("License Password:", type="password", key="lic_field_sidebar", label_visibility="collapsed").strip()
-        if input_license in st._central_key_registry:
+        input_license = st.text_input("License Password:", type="password", key="lic_field_sidebar_guard", label_visibility="collapsed").strip()
+        if input_license in db_load("key_registry", {}):
             api_key = st.text_input("Bybit API Key Node Token:", type="password", key="api_field_sidebar")
             secret_key = st.text_input("Bybit Secret Key Node Token:", type="password", key="sec_field_sidebar")
 
 effective_vol = trade_amount * leverage
 estimated_fee = effective_vol * 0.0011
-
-st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
 
 live_price, current_rsi, ai_market_thesis, fig_candlestick = 0.0, 50.0, "SYNCING DATA FEED NODES... 📡", None
 public_session = HTTP(testnet=False)
@@ -475,13 +471,12 @@ if live_price == 0.0:
     except: live_price = 1.5
 
 if fig_candlestick: st.plotly_chart(fig_candlestick, use_container_width=True)
-st.markdown(f"<div class='custom-box-grid' style='background-color:#050a12; border:1px solid #00e676; padding: 22px;'><div class='matrix-neon-text' style='font-size:14px;'>🧬 <b>INTERNATIONAL LIVE MARKET DATA FEED:</b><br>{ai_market_thesis}</div></div>", unsafe_allow_html=True)
+st.markdown(f"<div class='custom-box-grid' style='background-color:#050a12; border:1px solid #00e676; padding: 22px;'><div class='matrix-neon-text' style='font-size:14px;'>🧬 <b>INTERNATIONAL LIVE MARKET DATA FEED:</b><br>{ai_market_thesis}</div></div>", unsafe_allow_html=True) 
 # 🦾 DYNAMIC AI THINKING FRAME: Realtime console view logs
 if db_load(f"{mode_prefix}_bot_active_{allocated_user_id}", False) and gemini_is_valid:
     current_ai_analysis_status = db_load(f"gemini_thought_{allocated_user_id}", "📊 QUANT ENGINE: Analyzing real-time order books & macro fundamentals... 📡")
     st.markdown(f"<div class='custom-box-grid' style='background-color:#09121f; border-left:5px solid #ff9900; padding:15px;'><b style='color:#ff9900; font-size:13px; font-family:monospace;'>🤖 GEMINI AI INTELLIGENCE CORE LOG:</b><br><p style='color:#94a3b8; font-size:12px; font-family:monospace; margin:5px 0 0 0;'>{current_ai_analysis_status}</p></div>", unsafe_allow_html=True)
 
-    # 🟢 NEW MASTER CONSOLE: Displays the real verbatim response text generated directly by the AI model
     raw_model_response_dump = db_load(f"raw_ai_dump_{allocated_user_id}", "No raw payload responses tracked inside current session epoch parameters yet. Awaiting fresh analytical loop...")
     st.markdown(f"""
     <div class='custom-box-grid' style='background-color:#070d14; border:1px dashed #29b6f6; padding:15px;'>
@@ -532,21 +527,11 @@ if st.session_state.bot_active and not st.session_state.user_in_pos and ai_decis
         bids_asks_json = json.dumps(ob_res.get("result", {}))
         global_news_stream = fetch_live_crypto_world_news()
         
-        ai_payload_prompt = f"""
-        Analyze this live package and determine if an instant scalp entry should be executed on Bybit Futures:
-        - Target Symbol Asset: {target_symbol} | Ticker Live Price: {live_price} | RSI (14): {current_rsi}
-        - Live Orderbook Clustered Liquidity: {bids_asks_json}
-        - Global Live Crypto Narrative/News & Economic Stream: {global_news_stream}
-        Respond STRICTLY in this raw JSON structure format only. Do not wrap inside codeblocks or markdowns:
-        {{"Decision": "LONG", "Reason": "..."}} or {{"Decision": "SHORT", "Reason": "..."}} or {{"Decision": "HOLD", "Reason": "Monitoring orderbook clusters node metadata vector pipelines."}}
-        """
+        ai_payload_prompt = f"Target Symbol: {target_symbol} | Price: {live_price} | RSI: {current_rsi} | Orderbook: {bids_asks_json} | News: {global_news_stream} Respond strictly in JSON format only: {{\"Decision\": \"LONG\", \"Reason\": \"...\"}} or SHORT or HOLD"
         raw_response, status_ok = execute_real_gemini_call(gemini_api_key, ai_payload_prompt)
         if status_ok:
             raw_ai_text = raw_response['candidates']['content']['parts']['text'].strip()
-            
-            # Stores the absolute exact text returned by the AI before any slicing happens
             db_save(f"raw_ai_dump_{allocated_user_id}", str(raw_ai_text))
-            
             if "{" in raw_ai_text:
                 json_match = re.search(r"\{.*\}", raw_ai_text, re.DOTALL)
                 if json_match: raw_ai_text = json_match.group(0)
@@ -559,13 +544,9 @@ if st.session_state.bot_active and not st.session_state.user_in_pos and ai_decis
                     try:
                         live_private_session = HTTP(testnet=False, api_key=api_key, api_secret=secret_key)
                         calculated_qty = float(effective_vol / live_price)
-                        live_private_session.place_order(
-                            category="linear", symbol=target_symbol,
-                            side="Buy" if ai_verdict == "LONG" else "Sell",
-                            orderType="Market", qty=str(round(calculated_qty, 3))
-                        )
+                        live_private_session.place_order(category="linear", symbol=target_symbol, side="Buy" if ai_verdict == "LONG" else "Sell", orderType="Market", qty=str(round(calculated_qty, 3)))
                     except Exception as order_error:
-                        db_save(f"gemini_thought_{allocated_user_id}", f"❌ Exchange Execution Aborted: {str(order_error)[:40]}")
+                        db_save(f"gemini_thought_{allocated_user_id}", f"❌ Exchange Aborted: {str(order_error)[:40]}")
                         st.stop()
                 db_save(f"{mode_prefix}_in_position_{allocated_user_id}", True)
                 db_save(f"{mode_prefix}_buy_price_{allocated_user_id}", live_price)
@@ -573,15 +554,14 @@ if st.session_state.bot_active and not st.session_state.user_in_pos and ai_decis
                 db_save(f"{mode_prefix}_trade_coin_{allocated_user_id}", target_symbol)
                 db_save(f"tp_target_{allocated_user_id}", price_jump_target)
                 db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
-                st.toast(f"🤖 Gemini AI Triggered {ai_verdict}! Reason: {ai_reason}", icon="⚡")
+                st.toast(f"🤖 Gemini AI Triggered {ai_verdict}!", icon="⚡")
                 st.rerun()
         else:
-            # Captures and logs raw server crash errors directly into the newly created main screen display dashboard
-            db_save(f"raw_ai_dump_{allocated_user_id}", f"Server Status Fault: {str(raw_response)}")
-            db_save(f"gemini_thought_{allocated_user_id}", f"📡 Core Engine Connected. Gateway Error Response.")
+            db_save(f"raw_ai_dump_{allocated_user_id}", f"Fault: {str(raw_response)}")
+            db_save(f"gemini_thought_{allocated_user_id}", f"📡 Core Engine Connected. Gateway Error.")
     except Exception as gemini_loop_error:
-        db_save(f"raw_ai_dump_{allocated_user_id}", f"Runtime Pipeline Exception: {str(gemini_loop_error)}")
-        db_save(f"gemini_thought_{allocated_user_id}", f"📡 Core Engine Connected. Processing Error String Cache.")
+        db_save(f"raw_ai_dump_{allocated_user_id}", f"Exception: {str(gemini_loop_error)}")
+        db_save(f"gemini_thought_{allocated_user_id}", f"📡 Core Engine Connected. Processing Error.")
 if st.session_state.user_in_pos and live_price > 0:
     is_long_pos = "LONG" in st.session_state.user_trade_side
     live_target = (st.session_state.user_buy_price + price_jump_target) if is_long_pos else (st.session_state.user_buy_price - price_jump_target)
