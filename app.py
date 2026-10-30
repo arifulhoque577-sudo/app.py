@@ -232,6 +232,7 @@ st.markdown(
 if 'bot_active' not in st.session_state: st.session_state.bot_active = False
 if 'all_trades_history' not in st.session_state: st.session_state.all_trades_history = []
 if 'logged_in_user' not in st.session_state: st.session_state.logged_in_user = st.query_params.get("session_user", None)
+if st.session_state.logged_in_user is None:
     st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
     st.subheader("🔑 Account Identity Gateway Control Panel")
     auth_mode = st.radio("Choose Layer:", ["Secure Login Profile", "Mint New Account ID", "Forget Password Profile"])
