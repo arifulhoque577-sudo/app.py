@@ -394,19 +394,31 @@ if st.session_state.in_position:
         <span style="font-size:14px; color:#00e676; font-weight:bold; font-family: monospace;">Take Profit Limit: {live_target:.6f} (Estimated Gain: +${est_profit_dollars:.2f} USDT)</span><br>
         <span style="font-size:14px; color:#ff1744; font-weight:bold; font-family: monospace;">Stop Loss Boundary Node: {live_sl:.6f} (Estimated Loss: -${est_loss_dollars:.2f} USDT)</span></div>""", unsafe_allow_html=True)
 
-st.session_state.bot_active = db_load(f"bot_active_{allocated_user_id}", False)
 # =======================================================
 # 🌐 DEEPSEEK OPENROUTER NEWS & INDICATOR SWARM INTELLIGENCE
 # =======================================================
 if st.session_state.bot_active:
     if not st.session_state.in_position and ai_decision and or_api_key:
         try:
-            st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Connecting CryptoPanic Global API...")
+            st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Pulse: Connecting News Stream...")
             news_titles = []
-            news_res = requests.get("https://cryptopanic.com", timeout=5).json()
-            for post in news_res.get('results', [])[:4]: news_titles.append(post.get('title', ''))
-            news_context = " | ".join(news_titles) if news_titles else "No high-impact macro breakout news detected right now."
-            st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] News synced: {len(news_titles)} headlines.")
+            
+            # 🔥 Cloudflare/Block Protection Guard Added
+            try:
+                news_res = requests.get("https://cryptopanic.com", timeout=4)
+                if news_res.status_code == 200:
+                    news_data = news_res.json()
+                    for post in news_data.get('results', [])[:4]:
+                        news_titles.append(post.get('title', ''))
+                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] News synced: {len(news_titles)} items.")
+                else:
+                    news_titles = ["Steady global macro trend line pattern."]
+                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] News Server Busy. Fallback Active.")
+            except:
+                news_titles = ["Consolidating matum vector."]
+                st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] News Network Timeout. Handled Safely.")
+            
+            news_context = " | ".join(news_titles) if news_titles else "No high-impact breakout news available."
             
             if not df_kline.empty and len(df_kline) >= 5:
                 recent_candles = df_kline.tail(5).to_dict(orient="records")
@@ -422,7 +434,7 @@ if st.session_state.bot_active:
                 headers = {"Authorization": f"Bearer {or_api_key}", "Content-Type": "application/json"}
                 payload = {"model": or_model_id, "messages": [{"role": "user", "content": market_context_prompt}]}
                 
-                st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Sending matrix packet to DeepSeek Brain...")
+                st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Sending packet to DeepSeek Server...")
                 or_response = requests.post("https://openrouter.ai", headers=headers, json=payload, timeout=10)
                 if or_response.status_code == 200:
                     ai_raw_word = or_response.json()['choices']['message']['content'].strip().upper()
