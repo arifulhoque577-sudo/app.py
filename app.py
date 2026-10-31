@@ -304,26 +304,34 @@ with st.sidebar:
     mode_suffix = "real" if is_real_live else "demo"
     dashboard_mode_title = "Real Production Dashboard Mode 🟢" if is_real_live else "Demo Sandbox Dashboard Mode 🔵"
 
-    # 🔒 ডাটাবেজ থেকে একটিভ ট্রেডের সিকিউর হার্ড-লকিং চ্যানেল লোড
+    # 🔒 মোড-সুইচ রিসেট গার্ড লেয়ার
     in_position_state = db_load(f"in_position_{mode_suffix}_{allocated_user_id}", False)
     locked_trade_coin = db_load(f"trade_coin_{allocated_user_id}", "NONE")
     
-    # কয়েন লিকেজ প্রোটেকশন ইনডেক্স রিকভারি
     coin_list = list(BYBYT_DATABASE_CORE.keys())
     default_coin_idx = 0
     
+    # লাস্ট সিলেক্টেড কয়েন মেমোরি রিকভারি লুপ (মোড চেঞ্জ করলেও যাতে ড্রপ না করে)
+    last_saved_db_coin = db_load(f"last_selected_coin_sym_{allocated_user_id}", "BTCUSDT")
     if in_position_state and locked_trade_coin != "NONE":
-        for idx, (k, v) in enumerate(BYBYT_DATABASE_CORE.items()):
-            if v["symbol"] == locked_trade_coin:
-                coin_config = v
-                default_coin_idx = idx
-                break
-        target_symbol = locked_trade_coin
+        last_saved_db_coin = locked_trade_coin
+
+    for idx, (k, v) in enumerate(BYBYT_DATABASE_CORE.items()):
+        if v["symbol"] == last_saved_db_coin:
+            default_coin_idx = idx
+            break
+
+    if in_position_state:
+        # পজিশন চালু থাকলে ড্রপডাউন হাইড করে হার্ড লকিং লেবেল দেখাবে
+        st.markdown(f"<div class='custom-box-grid' style='padding:10px; border-left:4px solid #38bdf8;'><b>🎯 Active Asset:</b> {last_saved_db_coin}</div>", unsafe_allow_html=True)
+        coin_config = [v for v in BYBYT_DATABASE_CORE.values() if v["symbol"] == last_saved_db_coin][0]
+        target_symbol = last_saved_db_coin
     else:
-        selected_display_name = st.selectbox("Select Asset Contract Symbol Dropdown:", coin_list, index=0)
+        selected_display_name = st.selectbox("Select Asset Contract Symbol Dropdown:", coin_list, index=default_coin_idx)
         coin_config = BYBYT_DATABASE_CORE[selected_display_name]
         target_symbol = coin_config["symbol"]
         db_save(f"trade_coin_{allocated_user_id}", target_symbol)
+        db_save(f"last_selected_coin_sym_{allocated_user_id}", target_symbol)
 
     ai_decision = st.toggle("AI Smart Crossover Filter Matrix", value=True)
     
@@ -335,7 +343,6 @@ with st.sidebar:
     
     max_leverage_bound = int(coin_config.get('max_leverage', 100))
     
-    # 🔒 ৩ নম্বর স্ক্রিনশটের মতো অবিকল লেভারেজ, মার্জিন, TP, SL লক এবং ইনপুট হাইড ইঞ্জিন
     if in_position_state:
         leverage = db_load(f"leverage_lock_{allocated_user_id}", 20)
         trade_amount = db_load(f"margin_lock_{allocated_user_id}", 20)
@@ -343,10 +350,9 @@ with st.sidebar:
         stop_loss_gap = db_load(f"sl_gap_{allocated_user_id}", float(coin_config["default_sl"]))
         
         st.markdown(f"""
-        <div style="background-color:#1e293b; padding:12px; border-radius:8px; border-left: 4px solid #00e676; margin-top:10px; margin-bottom:10px;">
-            <b style="color:#00e676; font-size:14px;">🔒 Position Active</b><br>
-            <span style="font-size:12px; color:#ffffff; font-family:monospace;">Leverage: {leverage}x | Margin: ${trade_amount}</span><br>
-            <span style="font-size:11px; color:#00e676; font-family:monospace;">Position Parameters Locked Successfully</span>
+        <div style="background-color:#1e293b; padding:12px; border-radius:8px; border-left: 4px solid #00e676; margin-top:10px;">
+            <b style="color:#00e676; font-size:14px;">🔒 Position Active Parameter Lock</b><br>
+            <span style="font-size:12px; color:#ffffff; font-family:monospace;">Leverage: {leverage}x | Margin: ${trade_amount}</span>
         </div>
         """, unsafe_allow_html=True)
     else:
@@ -437,13 +443,28 @@ st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}
 # ==========================================
 # 🧱 BOX 15: GLOBAL PIPELINE SYNC & REAL-TIME FLOATING OVERLAY ENGINE
 # ==========================================
-# গ্লোবাল পজিশন মেমরি পাইপলাইন পুনরুদ্ধার এবং পিঅ্যান্ডএল লাইভ আনফ্রিজিং লেয়ার
+# গ্লোবাল সেশন পাইপলাইন পুনরুদ্ধার এবং পিঅ্যান্ডএল লাইভ আনফ্রিজিং ক্যালকুলেশন মডিউল
 st.session_state.in_position = db_load(f"in_position_{mode_suffix}_{allocated_user_id}", False)
 st.session_state.buy_price = db_load(f"buy_price_{mode_suffix}_{allocated_user_id}", 0.0)
 st.session_state.current_side = db_load(f"current_side_{mode_suffix}_{allocated_user_id}", "NONE")
 st.session_state.trade_coin = db_load(f"trade_coin_{allocated_user_id}", target_symbol)
 
-# একটিভ ট্রেড কন্টেইনার এবং প্রফিট কার্ড জেনারেটর
+# ডাইনামিক লাইভ ফ্লোটিং P&L রি-ক্যালকুলেটর ইঞ্জিন (০.০০০০ ফিক্সিং গেট)
+floating_pnl = 0.0
+leverage = db_load(f"leverage_lock_{allocated_user_id}", 20)
+trade_amount = db_load(f"margin_lock_{allocated_user_id}", 20)
+effective_vol = trade_amount * leverage
+
+if st.session_state.in_position and live_price > 0 and st.session_state.buy_price > 0:
+    if "LONG" in st.session_state.current_side:
+        floating_pnl = ((live_price - st.session_state.buy_price) * (effective_vol / st.session_state.buy_price))
+    else:
+        floating_pnl = ((st.session_state.buy_price - live_price) * (effective_vol / st.session_state.buy_price))
+
+# এভেলেবল ব্যালেন্স এরিয়া রি-রেন্ডারিং উইজেট
+balance_usd_text = f"${(st.session_state.get('real_balance' if is_real_live else 'demo_balance', 5000.0) + floating_pnl):,.2f} USDT"
+st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}):</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:14px; color:{'#00e676' if floating_pnl >= 0 else '#ff1744'}; font-weight:bold;'>Live Floating P&L Indicator: {floating_pnl:+.4f} USDT</p></div>", unsafe_allow_html=True)
+
 position_overlay_container = st.container()
 with position_overlay_container:
     if st.session_state.in_position:
