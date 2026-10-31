@@ -418,6 +418,10 @@ st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}
 # ==========================================
 # 🧱 BOX 15: POSITION TRACKER VISUAL OVERLAY (ট্রেড ডিটেইলস প্যানেল)
 # ==========================================
+# এখানে mode_suffix ফিক্স করা হলো যাতে NameError না আসে
+is_real_live = "Live" in bot_mode if 'bot_mode' in locals() else False
+mode_suffix = "real" if is_real_live else "demo"
+
 position_overlay_container = st.container()
 with position_overlay_container:
     is_user_in_position = db_load(f"in_position_{mode_suffix}_{allocated_user_id}", st.session_state.get("in_position", False))
