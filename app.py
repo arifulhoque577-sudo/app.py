@@ -70,20 +70,16 @@ else:
     st._mlm_deposit_bonus_rate = db_load("dep_rate", 5.18)
     st._mlm_gen_rates = db_load("gen_rates", {1: 5.0, 2: 4.0, 3: 3.0, 4: 2.0, 5: 1.0, 6: 0.5, 7: 0.5})
     st._mlm_id_thresholds = db_load("id_thresh", {1: 10, 2: 20, 3: 40, 4: 80, 5: 160, 6: 320, 7: 640})
-if "bot_active" not in st.session_state:
-    st.session_state.bot_active = False
-
-if "logged_in_user" not in st.session_state:
-    st.session_state.logged_in_user = st.query_params.get("session_user", None)
+if 'logged_in_user' in st.session_state and st.session_state.logged_in_user:
+    u_data = st._central_user_creds.get(st.session_state.logged_in_user, {})
+    curr_uid = u_data.get("uid", "GLOBAL")
+    st.session_state.bot_active = db_load(f"bot_active_{curr_uid}", False)
+else:
+    if "bot_active" not in st.session_state:
+        st.session_state.bot_active = False
 
 if "engine_logs" not in st.session_state:
     st.session_state.engine_logs = ["System Swarm Gateway Init... 📡"]
-
-# CRITICAL ERROR FIX: Initialize logged_in_user securely from URL query parameters to prevent vanish refresh bugs
-if 'logged_in_user' not in st.session_state:
-    st.session_state.logged_in_user = st.query_params.get("session_user", None)
-if 'engine_logs' not in st.session_state:
-    st.session_state.engine_logs = ["System Gateway Init... 📡"]
 # --- 🚀 PREMIUM NO-BORDER SPLASH SCREEN ANIMATION TRIGGER ---
 if "splash_done" not in st.session_state:
     st.set_page_config(page_title="Bybit AI Scalper", page_icon="⚡", layout="centered")
@@ -513,18 +509,18 @@ if not ai_decision and not st.session_state.in_position:
 
 c1, c2 = st.columns(2)
 with c1:
-    # ফিক্সড ল্যাচিং লজিক: বাটন ক্লিক করলে সরাসরি স্টেট ফায়ারবেস ডাটাবেজে পার্মানেন্ট লক হবে
+    # ফিক্সড হার্ড-ল্যাচ বাটন: ক্লিক করার সাথে সাথে ডাটাবেজে পার্মানেন্ট সত্য (True) বা মিথ্যা (False) লক হয়ে যাবে
     if not st.session_state.bot_active:
-        if st.button("🟢 START ENGINE SCALPER LOOP SEQUENCE", key="trigger_start_engine_latch_btn"):
+        if st.button("🟢 START ENGINE SCALPER LOOP SEQUENCE", key="final_latch_start_btn"):
             st.session_state.bot_active = True
             db_save(f"bot_active_{allocated_user_id}", True)
-            st.toast("AI Scalper Engine Started Successfully!", icon="🚀")
+            st.toast("AI Scalper Engine Lock Activated!", icon="🚀")
             st.rerun()
     else:
-        if st.button("🔴 STOP ENGINE SCALPER LOOP SEQUENCE", key="trigger_stop_engine_latch_btn"):
+        if st.button("🔴 STOP ENGINE SCALPER LOOP SEQUENCE", key="final_latch_stop_btn"):
             st.session_state.bot_active = False
             db_save(f"bot_active_{allocated_user_id}", False)
-            st.toast("AI Scalper Engine Stopped Safely.", icon="🛑")
+            st.toast("AI Scalper Engine Safely Disengaged.", icon="🛑")
             st.rerun()
 with c2:
     if st.button("🚨 EMERGENCY LIQUIDATE CLOSE ORDER POSITION", disabled=not st.session_state.in_position, key="force_sell_engine_btn"):
