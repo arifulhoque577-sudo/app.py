@@ -11,6 +11,7 @@ import pandas as pd
 from pybit.unified_trading import HTTP
 import requests
 import streamlit as st
+
 # Secure Cloud Firebase Gateway Authentication Layer
 if not firebase_admin._apps:
     fb_json = os.environ.get("firebase_json", None)
@@ -29,24 +30,18 @@ if not firebase_admin._apps:
         else:
             st.error("Missing Config Database Keys Node Property!")
             st.stop()
+
 db = firestore.client()
 def db_load(key, default_val):
     try:
         ref = db.collection("scalper_system").document(key).get()
-        if ref.exists:
-            return ref.to_dict().get("data", default_val)
+        if ref.exists: return ref.to_dict().get("data", default_val)
         return default_val
-    except:
-        return default_val
+    except: return default_val
 
 def db_save(key, val):
-    try:
-        db.collection("scalper_system").document(key).set({"data": val})
-    except:
-        pass
-        # পার্ট ২ এর ডাটাবেজ সেভ ফাংশনের ঠিক নিচে এটি বসিয়ে দিন:
-if "logged_in_user" not in st.session_state:
-    st.session_state.logged_in_user = None
+    try: db.collection("scalper_system").document(key).set({"data": val})
+    except: pass
 # Initialize Sync Control Registries Persistent Global Cache System
 if "init_sync" not in st.session_state:
     st._central_user_creds = db_load("user_creds", {})
@@ -75,6 +70,12 @@ else:
     st._mlm_deposit_bonus_rate = db_load("dep_rate", 5.18)
     st._mlm_gen_rates = db_load("gen_rates", {1: 5.0, 2: 4.0, 3: 3.0, 4: 2.0, 5: 1.0, 6: 0.5, 7: 0.5})
     st._mlm_id_thresholds = db_load("id_thresh", {1: 10, 2: 20, 3: 40, 4: 80, 5: 160, 6: 320, 7: 640})
+
+# CRITICAL ERROR FIX: Initialize logged_in_user securely from URL query parameters to prevent vanish refresh bugs
+if 'logged_in_user' not in st.session_state:
+    st.session_state.logged_in_user = st.query_params.get("session_user", None)
+if 'engine_logs' not in st.session_state:
+    st.session_state.engine_logs = ["System Gateway Init... 📡"]
 # --- 🚀 PREMIUM NO-BORDER SPLASH SCREEN ANIMATION TRIGGER ---
 if "splash_done" not in st.session_state:
     st.set_page_config(page_title="Bybit AI Scalper", page_icon="⚡", layout="centered")
@@ -82,7 +83,7 @@ if "splash_done" not in st.session_state:
         """
         <style>
         [data-testid="stAppViewContainer"], html, body { background-color: #06090e !important; margin: 0 !important; padding: 0 !important; border: none !important; }
-        .splash-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 90vh; background-color: #06090e; color: white; font-family: 'Courier New', monospace; }
+        .splash-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 90vh; background-color: #06090e; color: white; font-family: 'Courier New', monospace; border: none !important; box-shadow: none !important; }
         .loader-circle { border: 4px solid rgba(255, 255, 255, 0.05); border-radius: 50%; border-top: 4px solid #00e676; border-bottom: 4px solid #ffcc00; width: 100px; height: 100px; animation: spin 1.0s linear infinite; margin-bottom: 35px; box-shadow: 0 0 15px rgba(0, 230, 118, 0.2); }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .progress-bar-container { width: 65%; background-color: #141a24; border-radius: 10px; padding: 2px; border: 1px solid #1f2c3f; }
@@ -116,7 +117,19 @@ def fetch_bybit_future_coins():
         "🚀 SHIB (Shiba Inu)": {"symbol": "SHIBUSDT", "max_leverage": 50, "default_tp": 0.0000005, "default_sl": 0.000001, "step": 0.00000001},
         "⚡ LTC (Litecoin)": {"symbol": "LTCUSDT", "max_leverage": 75, "default_tp": 1.5, "default_sl": 3.0, "step": 0.05},
         "🔺 AVAX (Avalanche)": {"symbol": "AVAXUSDT", "max_leverage": 50, "default_tp": 0.80, "default_sl": 1.50, "step": 0.01},
-        "🔴 TRX (TRON)": {"symbol": "TRXUSDT", "max_leverage": 50, "default_tp": 0.002, "default_sl": 0.005, "step": 0.0001}
+        "🔴 TRX (TRON)": {"symbol": "TRXUSDT", "max_leverage": 50, "default_tp": 0.002, "default_sl": 0.005, "step": 0.0001},
+        "💵 BCH (Bitcoin Cash)": {"symbol": "BCHUSDT", "max_leverage": 75, "default_tp": 5.0, "default_sl": 10.0, "step": 0.1},
+        "🪐 XLM (Stellar)": {"symbol": "XLMUSDT", "max_leverage": 50, "default_tp": 0.005, "default_sl": 0.01, "step": 0.0001},
+        "💧 SUI (Sui Network)": {"symbol": "SUIUSDT", "max_leverage": 50, "default_tp": 0.05, "default_sl": 0.10, "step": 0.001},
+        "🌿 NEAR (Near Protocol)": {"symbol": "NEARUSDT", "max_leverage": 50, "default_tp": 0.10, "default_sl": 0.20, "step": 0.001},
+        "🧪 APT (Aptos)": {"symbol": "APTUSDT", "max_leverage": 50, "default_tp": 0.15, "default_sl": 0.30, "step": 0.001},
+        "🔴 OP (Optimism)": {"symbol": "OPUSDT", "max_leverage": 50, "default_tp": 0.05, "default_sl": 0.10, "step": 0.001},
+        "🔷 ARB (Arbitrum)": {"symbol": "ARBUSDT", "max_leverage": 50, "default_tp": 0.03, "default_sl": 0.06, "step": 0.001},
+        "🎛️ INJ (Injective)": {"symbol": "INJUSDT", "max_leverage": 50, "default_tp": 0.40, "default_sl": 0.80, "step": 0.01},
+        "🟢 RNDR (Render)": {"symbol": "RNDRUSDT", "max_leverage": 50, "default_tp": 0.20, "default_sl": 0.40, "step": 0.001},
+        "🤖 FET (Artificial Superintelligence)": {"symbol": "FETUSDT", "max_leverage": 50, "default_tp": 0.04, "default_sl": 0.08, "step": 0.001},
+        "🧱 TIA (Celestia)": {"symbol": "TIAUSDT", "max_leverage": 50, "default_tp": 0.12, "default_sl": 0.25, "step": 0.001},
+        "🎮 GALA (Gala Games)": {"symbol": "GALAUSDT", "max_leverage": 50, "default_tp": 0.001, "default_sl": 0.003, "step": 0.0001}
     }
     try:
         url = "https://bybit.com"
@@ -130,24 +143,26 @@ def fetch_bybit_future_coins():
                 tick_size = float(inst.get("priceFilter", {}).get("tickSize", "0.01"))
                 display_key = f"🪙 {base} (Bybit Futures Market)"
                 if display_key not in backup_database:
-                    backup_database[display_key] = {
-                        "symbol": sym, "max_leverage": max_lev,
-                        "default_tp": tick_size * 400, "default_sl": tick_size * 600, "step": tick_size
-                    }
+                    backup_database[display_key] = {"symbol": sym, "max_leverage": max_lev, "default_tp": tick_size * 400, "default_sl": tick_size * 600, "step": tick_size}
         return backup_database
-    except:
-        return backup_database
+    except: return backup_database
 
 BYBYT_DATABASE_CORE = fetch_bybit_future_coins()
 YOUR_SECRET_MASTER_CODE = "ADMIN1234"
 st.markdown(
     """
     <style>
-    html, body, [data-testid="stAppViewContainer"] { background: #06090e !important; background-image: radial-gradient(circle at 50% 20%, #0d1527 0%, #06090e 80%) !important; overflow-y: auto !important; overflow-x: hidden !important; box-sizing: border-box !important; }
+    html, body, [data-testid="stAppViewContainer"] {
+        background: #06090e !important;
+        background-image: radial-gradient(circle at 50% 20%, #0d1527 0%, #06090e 80%) !important;
+        overflow-y: auto !important; overflow-x: hidden !important; box-sizing: border-box !important;
+    }
     div[data-testid="stSidebar"] { background-color: #0c1017 !important; border-right: 1px solid #1e293b; }
     div.stButton > button:first-child { width: 100%; border-radius: 8px; font-weight: bold; font-size: 16px; height: 46px; }
     .stDataFrame, .stTable, div[data-testid="stDataFrame"] { max-width: 100% !important; overflow-x: auto !important; display: block !important; }
-    div[data-testid="stMarkdownContainer"] p, span, label, h1, h2, h3, b, code { word-wrap: break-word !important; white-space: normal !important; word-break: break-word !important; max-width: 100% !important; }
+    div[data-testid="stMarkdownContainer"] p, span, label, h1, h2, h3, b, code { 
+        word-wrap: break-word !important; white-space: normal !important; word-break: break-word !important; max-width: 100% !important;
+    }
     .custom-box-grid { background-color: #141a24; padding: 15px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #1f2c3f; }
     .matrix-neon-text { font-family: 'Courier New', monospace; color: #00e676; text-shadow: 0 0 8px #00e676; font-size: 13px; line-height: 1.6; }
     div[data-testid="stSlider"] div { flex-direction: column !important; align-items: flex-start !important; }
@@ -182,6 +197,11 @@ if st.session_state.logged_in_user is None:
                 if reg_sponsor != "":
                     resolved_sponsor_uid = reg_sponsor
                     if reg_sponsor in st._central_user_creds: resolved_sponsor_uid = st._central_user_creds[reg_sponsor].get("uid", reg_sponsor)
+                    else:
+                        for u_name, data in st._central_user_creds.items():
+                            if data.get("uid") == reg_sponsor or u_name == reg_sponsor:
+                                resolved_sponsor_uid = data.get("uid", reg_sponsor)
+                                break
                 full_mobile = f"{reg_flag_code.split(' ')} {reg_phone_raw}"
                 admin_fixed_bonus = float(db_load("admin_fixed_ref_usd", 10.0))
                 st._central_user_creds[reg_username] = {"password": reg_password, "uid": new_uid, "email": reg_email, "country": reg_country, "phone": full_mobile, "school_answer": reg_school.lower(), "sponsor": resolved_sponsor_uid, "license_activated_before": False}
@@ -199,7 +219,7 @@ if st.session_state.logged_in_user is None:
                 if resolved_sponsor_uid != "None" and st._ref_system_active:
                     st._global_referral_tree = db_load("referral_tree", {})
                     if resolved_sponsor_uid not in st._global_referral_tree: st._global_referral_tree[resolved_sponsor_uid] = []
-                    st._global_referral_tree[resolved_sponsor_uid].append(new_uid)
+                    if new_uid not in st._global_referral_tree[resolved_sponsor_uid]: st._global_referral_tree[resolved_sponsor_uid].append(new_uid)
                     db_save("referral_tree", st._global_referral_tree)
                     st._global_user_pnl_history.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "User ID": resolved_sponsor_uid, "Coin": "REGISTRATION", "Action": "REF_COMMISSION_DIRECT", "Net P&L ($)": f"{admin_fixed_bonus:.2f}", "Type": "DEMO"})
                     db_save("pnl_history", st._global_user_pnl_history)
@@ -211,8 +231,7 @@ if st.session_state.logged_in_user is None:
         f_school = st.text_input("Verification: First School Name?", key="forget_sch_field").strip()
         if st.button("⚡ Verify and Reveal Password", key="submit_forget_proc_btn"):
             st._central_user_creds = db_load("user_creds", {})
-            if f_user in st._central_user_creds and st._central_user_creds[f_user].get("school_answer", "") == f_school.lower():
-                st.success(f"Identity Verified! Your Password is: **{st._central_user_creds[f_user]['password']}**")
+            if f_user in st._central_user_creds and st._central_user_creds[f_user].get("school_answer", "") == f_school.lower(): st.success(f"Identity Verified! Your Password is: **{st._central_user_creds[f_user]['password']}**")
             else: st.error("Verification parameters failed or mismatch!")
         st.stop()
         
@@ -233,25 +252,37 @@ allocated_user_id = user_data["uid"]
 my_sponsor_id = user_data["sponsor"]
 my_profile_email = user_data.get("email", "Not Set")
 
+# Persistent Firebase-Synced Trading States
 if 'demo_balance' not in st.session_state: st.session_state.demo_balance = db_load(f"balance_{allocated_user_id}", 5000.0)
 if 'win_count' not in st.session_state: st.session_state.win_count = db_load(f"win_{allocated_user_id}", 0)
 if 'loss_count' not in st.session_state: st.session_state.loss_count = db_load(f"loss_{allocated_user_id}", 0)
 if 'real_balance' not in st.session_state: st.session_state.real_balance = db_load(f"real_balance_{allocated_user_id}", 0.0)
 
+st.session_state.in_position = db_load(f"in_position_{allocated_user_id}", False)
+st.session_state.buy_price = db_load(f"buy_price_{allocated_user_id}", 0.0)
+st.session_state.current_side = db_load(f"current_side_{allocated_user_id}", "NONE")
+st.session_state.trade_coin = db_load(f"trade_coin_{allocated_user_id}", "NONE")
+
 with st.sidebar:
     st.markdown("<h2 style='color:#f5a623; margin-top:0;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#ffffff; font-size:13px; margin:0;'>👤 Handle Profile: <b>{st.session_state.logged_in_user}</b></p>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#38bdf8; font-size:13px; margin:4px 0;'>🆔 My Referral ID: <b>{allocated_user_id}</b></p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color:#00e676; font-size:12px; margin:0 0 4px 0;'>📧 Account Email: <b>{my_profile_email}</b></p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color:#94a3b8; font-size:12px; margin:0 0 12px 0;'>🔗 Sponsor UID Node: <b>{my_sponsor_id}</b></p>", unsafe_allow_html=True)
+    
     if st.button("🚪 Logout Active Profile Handle Node", key="logout_sidebar_node_proc"):
         st.session_state.logged_in_user = None
         st.query_params.clear()
         st.rerun()
-
     bot_mode = st.radio("Trading Account Mode Settings:", ["Demo Simulation (Virtual Funds)", "Live Exchange (Bybit Mainnet API)"])
     is_real_live = "Live" in bot_mode
     dashboard_mode_title = "Real Production Dashboard Mode 🟢" if is_real_live else "Demo Sandbox Dashboard Mode 🔵"
+    if is_real_live: st.session_state.real_balance = db_load(f"real_balance_{allocated_user_id}", 0.0)
+    else: st.session_state.demo_balance = db_load(f"balance_{allocated_user_id}", 5000.0)
+
     selected_display_name = st.selectbox("Select Asset Contract Symbol Dropdown:", list(BYBYT_DATABASE_CORE.keys()), index=0)
     coin_config = BYBYT_DATABASE_CORE[selected_display_name]
+    
     in_position_state = db_load(f"in_position_{allocated_user_id}", False)
     locked_trade_coin = db_load(f"trade_coin_{allocated_user_id}", "NONE")
     if in_position_state and locked_trade_coin != "NONE":
@@ -266,40 +297,34 @@ with st.sidebar:
     st.markdown("<b style='color:#38bdf8;'>🤖 OpenRouter AI Router Configuration:</b>", unsafe_allow_html=True)
     or_api_key = st.text_input("OpenRouter API Key:", type="password", value=db_load(f"or_key_{allocated_user_id}", ""), key="openrouter_api_key_field")
     or_model_id = st.text_input("Model ID:", value=db_load(f"or_model_{allocated_user_id}", "openrouter/free"), key="openrouter_model_id_field")
-    if st.button("Save AI Router Node Config"):
-        db_save(f"or_key_{allocated_user_id}", or_api_key)
-        db_save(f"or_model_{allocated_user_id}", or_model_id)
-        st.toast("OpenRouter configuration saved safely!", icon="💾")
-        
+    if st.button("Save AI Router Node Config", key="save_or_config_btn"):
+        db_save(f"or_key_{allocated_user_id}", or_api_key); db_save(f"or_model_{allocated_user_id}", or_model_id); st.toast("Config Saved!", icon="💾")
     max_leverage_bound = int(coin_config.get('max_leverage', 100))
     if in_position_state:
         leverage = db_load(f"leverage_lock_{allocated_user_id}", 20)
         trade_amount = db_load(f"margin_lock_{allocated_user_id}", 20)
+        st.sidebar.markdown(f"<div style='background-color:#1e293b; padding:8px; border-radius:5px;'><b style='color:#00e676;'>🔒 Position Active</b><br><span style='font-size:12px;color:#fff;'>Leverage: {leverage}x | Margin: ${trade_amount}</span></div>", unsafe_allow_html=True)
     else:
-        leverage = st.slider("Leverage Scale Selection Array:", min_value=1, max_value=max_leverage_bound, value=20)
+        leverage = st.slider("Leverage Scale Selection Array (1x-100x Override):", min_value=1, max_value=max_leverage_bound, value=20, step=1, key="absolute_leverage_node_slider")
         trade_amount = st.number_input("Margin Requirement Block (\$):", min_value=1, value=20)
-        db_save(f"leverage_lock_{allocated_user_id}", leverage)
-        db_save(f"margin_lock_{allocated_user_id}", trade_amount)
+        db_save(f"leverage_lock_{allocated_user_id}", leverage); db_save(f"margin_lock_{allocated_user_id}", trade_amount)
     if not in_position_state:
-        price_jump_target = st.number_input("Take Profit Target Interval (\$):", value=float(coin_config["default_tp"]), format="%.6f")
-        stop_loss_gap = st.number_input("Stop Loss Boundary GAP Threshold (\$):", value=float(coin_config["default_sl"]), format="%.6f")
-        db_save(f"tp_target_{allocated_user_id}", price_jump_target)
-        db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
+        price_jump_target = st.number_input("Take Profit Target Interval (\$):", value=float(coin_config["default_tp"]), format="%.6f", key="tp_input_node_box")
+        stop_loss_gap = st.number_input("Stop Loss Boundary GAP Threshold (\$):", value=float(coin_config["default_sl"]), format="%.6f", key="sl_input_node_box")
+        db_save(f"tp_target_{allocated_user_id}", price_jump_target); db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
     else:
         price_jump_target = db_load(f"tp_target_{allocated_user_id}", float(coin_config["default_tp"]))
         stop_loss_gap = db_load(f"sl_gap_{allocated_user_id}", float(coin_config["default_sl"]))
-        
+
     api_key, secret_key = "", ""
     if is_real_live:
         st.markdown("<hr style='border:1px solid #1e293b; margin:10px 0;'><div style='background-color:#ff1744; padding:6px; border-radius:5px; text-align:center; margin-bottom:6px;'><b style='color:#ffffff; font-size:11px;'>🚨 LICENSE GATE ACTIVE</b></div>", unsafe_allow_html=True)
         input_license = st.text_input("License Password:", type="password", key="lic_field_sidebar", label_visibility="collapsed").strip()
         if input_license in st._central_key_registry:
             if not user_data.get("license_activated_before", False) and my_sponsor_id != "None" and st._ref_system_active:
-                st._central_user_creds[st.session_state.logged_in_user]["license_activated_before"] = True
-                db_save("user_creds", st._central_user_creds)
+                st._central_user_creds[st.session_state.logged_in_user]["license_activated_before"] = True; db_save("user_creds", st._central_user_creds)
                 admin_fixed_bonus = float(db_load("admin_fixed_ref_usd", 10.0))
-                st._global_user_pnl_history.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "User ID": my_sponsor_id, "Coin": "REAL_LICENSE_ACTIVATION", "Action": "REF_COMMISSION_DIRECT", "Net P&L ($)": f"{admin_fixed_bonus:.2f}", "Type": "REAL"})
-                db_save("pnl_history", st._global_user_pnl_history)
+                st._global_user_pnl_history.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "User ID": my_sponsor_id, "Coin": "REAL_LICENSE_ACTIVATION", "Action": "REF_COMMISSION_DIRECT", "Net P&L ($)": f"{admin_fixed_bonus:.2f}", "Type": "REAL"}); db_save("pnl_history", st._global_user_pnl_history)
             api_key = st.text_input("Bybit API Key Node Token:", type="password", key="api_field_sidebar")
             secret_key = st.text_input("Bybit Secret Key Node Token:", type="password", key="sec_field_sidebar")
 effective_vol = trade_amount * leverage
@@ -319,6 +344,7 @@ try:
     if klines:
         df_kline = pd.DataFrame(klines, columns=['time', 'open', 'high', 'low', 'close', 'volume', 'turnover']).iloc[::-1].reset_index(drop=True)
         for c in ['open', 'high', 'low', 'close', 'volume']: df_kline[c] = pd.to_numeric(df_kline[c])
+        if live_price == 0.0: live_price = df_kline['close'].iloc[-1]
         delta = df_kline['close'].diff()
         gain = delta.where(delta > 0, 0).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
@@ -347,13 +373,7 @@ if not is_real_live:
     with cb_col2:
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("Set Balance Amount", key="submit_custom_balance_btn"):
-            st.session_state.demo_balance = custom_balance_input
-            db_save(f"balance_{allocated_user_id}", st.session_state.demo_balance); st.rerun()
-
-st.session_state.in_position = db_load(f"in_position_{allocated_user_id}", False)
-st.session_state.buy_price = db_load(f"buy_price_{allocated_user_id}", 0.0)
-st.session_state.current_side = db_load(f"current_side_{allocated_user_id}", "NONE")
-
+            st.session_state.demo_balance = custom_balance_input; db_save(f"balance_{allocated_user_id}", st.session_state.demo_balance); st.rerun()
 floating_pnl = 0.0
 if st.session_state.in_position and live_price > 0 and st.session_state.buy_price > 0:
     if "LONG" in st.session_state.current_side: floating_pnl = ((live_price - st.session_state.buy_price) * (effective_vol / st.session_state.buy_price))
@@ -361,6 +381,7 @@ if st.session_state.in_position and live_price > 0 and st.session_state.buy_pric
 
 balance_usd_text = f"${(st.session_state.get('real_balance' if is_real_live else 'demo_balance', 5000.0) + floating_pnl):,.2f} USDT"
 st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}):</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:14px; color:{'#00e676' if floating_pnl >= 0 else '#ff1744'}; font-weight:bold;'>Live Floating P&L Indicator: {floating_pnl:+.4f} USDT</p></div>", unsafe_allow_html=True)
+
 if st.session_state.in_position:
     is_long_pos = "LONG" in st.session_state.current_side
     live_target = (st.session_state.buy_price + price_jump_target) if is_long_pos else (st.session_state.buy_price - price_jump_target)
@@ -374,50 +395,50 @@ if st.session_state.in_position:
         <span style="font-size:14px; color:#ff1744; font-weight:bold; font-family: monospace;">Stop Loss Boundary Node: {live_sl:.6f} (Estimated Loss: -${est_loss_dollars:.2f} USDT)</span></div>""", unsafe_allow_html=True)
 
 st.session_state.bot_active = db_load(f"bot_active_{allocated_user_id}", False)
-
+# =======================================================
+# 🌐 DEEPSEEK OPENROUTER NEWS & INDICATOR SWARM INTELLIGENCE
+# =======================================================
 if st.session_state.bot_active:
     if not st.session_state.in_position and ai_decision and or_api_key:
         try:
+            st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Connecting CryptoPanic Global API...")
             news_titles = []
             news_res = requests.get("https://cryptopanic.com", timeout=5).json()
             for post in news_res.get('results', [])[:4]: news_titles.append(post.get('title', ''))
             news_context = " | ".join(news_titles) if news_titles else "No high-impact macro breakout news detected right now."
+            st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] News synced: {len(news_titles)} headlines.")
             
             if not df_kline.empty and len(df_kline) >= 5:
                 recent_candles = df_kline.tail(5).to_dict(orient="records")
                 ma_series = df_kline['close'].rolling(window=7).mean()
                 last_ma = float(ma_series.iloc[-1]) if not ma_series.empty else live_price
                 market_context_prompt = (
-                    f"You are a professional high-speed cryptographic crypto scalping AI trading bot operating on real international feeds.\n"
-                    f"Asset Pair Token Target: {target_symbol}\n"
-                    f"Current Live Market Price Index: {live_price}\n"
-                    f"Current Live RSI (14-period vector): {current_rsi:.2f}\n"
-                    f"Current Geometric Trend Line (MA-7 Vector): {last_ma:.6f}\n"
-                    f"International Crypto News Summary (Market Sentiment Factor): {news_context}\n"
-                    f"Last 5 One-Minute Candlestick Matrix Logs: {json.dumps(recent_candles)}\n\n"
-                    f"CRITICAL SYSTEM RULES:\n"
-                    f"1. You must read the international news sentiment and combine it with the technical indicators.\n"
-                    f"2. User's Sidebar Config Matrix -> Leverage: {leverage}x, TP Target Interval: {price_jump_target}, SL Boundary Threshold: {stop_loss_gap}.\n"
-                    f"3. If conditions are absolutely PERFECT for an instant profitable trade, return EXACTLY ONE UPPERCASE WORD: 'LONG' or 'SHORT'.\n"
-                    f"4. If the market is chop, sideways, or waiting for news impact clarity, you MUST respond with 'HOLD'.\n"
-                    f"Do not write code, thinking blocks, markdown, or text explanation. Only output the single word."
+                    f"Asset: {target_symbol} | Live Price: {live_price} | RSI: {current_rsi:.2f} | MA-7: {last_ma:.6f}\n"
+                    f"International Crypto News Summary: {news_context}\n"
+                    f"Config Matrix -> Leverage: {leverage}x, TP: {price_jump_target}, SL: {stop_loss_gap}\n"
+                    f"Candlesticks: {json.dumps(recent_candles)}\n\n"
+                    f"INSTRUCTION: You are a professional scalping bot. Respond with EXACTLY ONE UPPERCASE WORD: 'LONG' or 'SHORT'. If the market is chop, sideways, respond with 'HOLD'. No explanation."
                 )
                 headers = {"Authorization": f"Bearer {or_api_key}", "Content-Type": "application/json"}
                 payload = {"model": or_model_id, "messages": [{"role": "user", "content": market_context_prompt}]}
+                
+                st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Sending matrix packet to DeepSeek Brain...")
                 or_response = requests.post("https://openrouter.ai", headers=headers, json=payload, timeout=10)
                 if or_response.status_code == 200:
                     ai_raw_word = or_response.json()['choices']['message']['content'].strip().upper()
-                    if "LONG" in ai_raw_word or "SHORT" in ai_raw_word:
-                        side = "LONG" if "LONG" in ai_raw_word else "SHORT"
-                        db_save(f"in_position_{allocated_user_id}", True)
-                        db_save(f"buy_price_{allocated_user_id}", live_price)
-                        db_save(f"current_side_{allocated_user_id}", side)
-                        db_save(f"trade_coin_{allocated_user_id}", target_symbol)
-                        db_save(f"tp_target_{allocated_user_id}", price_jump_target)
-                        db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
-                        st.toast(f"🟢 DeepSeek Auto Order Executed: {side}", icon="🚀")
-                        st.rerun()
-        except: pass
+                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Brain Response Received: '{ai_raw_word}'")
+                    
+                    if "LONG" in ai_raw_word:
+                        db_save(f"in_position_{allocated_user_id}", True); db_save(f"buy_price_{allocated_user_id}", live_price); db_save(f"current_side_{allocated_user_id}", "LONG"); db_save(f"trade_coin_{allocated_user_id}", target_symbol)
+                        db_save(f"tp_target_{allocated_user_id}", price_jump_target); db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
+                        st.toast(f"🟢 Auto Long Opened: {target_symbol}", icon="🚀"); st.rerun()
+                    elif "SHORT" in ai_raw_word:
+                        db_save(f"in_position_{allocated_user_id}", True); db_save(f"buy_price_{allocated_user_id}", live_price); db_save(f"current_side_{allocated_user_id}", "SHORT"); db_save(f"trade_coin_{allocated_user_id}", target_symbol)
+                        db_save(f"tp_target_{allocated_user_id}", price_jump_target); db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
+                        st.toast(f"🔴 Auto Short Opened: {target_symbol}", icon="🚨"); st.rerun()
+                    else: st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Market Chop. Engine Rest Mode Active.")
+                else: st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] OpenRouter Error Code: {or_response.status_code}")
+        except Exception as e: st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Exception Guard: {str(e)}")
     if st.session_state.in_position and live_price > 0:
         is_long_pos = "LONG" in st.session_state.current_side
         saved_tp = db_load(f"tp_target_{allocated_user_id}", float(coin_config["default_tp"]))
@@ -430,23 +451,17 @@ if st.session_state.bot_active:
         if hit_tp or hit_sl:
             local_final_pnl = ((live_price - st.session_state.buy_price) * (effective_vol / st.session_state.buy_price)) if is_long_pos else ((st.session_state.buy_price - live_price) * (effective_vol / st.session_state.buy_price))
             net_pnl = local_final_pnl - estimated_fee
-            if is_real_live:
-                st.session_state.real_balance += net_pnl
-                db_save(f"real_balance_{allocated_user_id}", st.session_state.real_balance)
-            else:
-                st.session_state.demo_balance += net_pnl
-                db_save(f"balance_{allocated_user_id}", st.session_state.demo_balance)
+            if is_real_live: st.session_state.real_balance += net_pnl; db_save(f"real_balance_{allocated_user_id}", st.session_state.real_balance)
+            else: st.session_state.demo_balance += net_pnl; db_save(f"balance_{allocated_user_id}", st.session_state.demo_balance)
             if net_pnl > 0: st.session_state.win_count += 1
             else: st.session_state.loss_count += 1
-            db_save(f"win_{allocated_user_id}", st.session_state.win_count)
-            db_save(f"loss_{allocated_user_id}", st.session_state.loss_count)
+            db_save(f"win_{allocated_user_id}", st.session_state.win_count); db_save(f"loss_{allocated_user_id}", st.session_state.loss_count)
             st._global_user_pnl_history.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "User ID": allocated_user_id, "Coin": target_symbol, "Action": f"AUTO CLOSE {'TP' if hit_tp else 'SL'}", "Net P&L ($)": f"{net_pnl:.2f}", "Type": "REAL" if is_real_live else "DEMO"})
-            db_save("pnl_history", st._global_user_pnl_history)
-            db_save(f"in_position_{allocated_user_id}", False)
-            db_save(f"buy_price_{allocated_user_id}", 0.0)
-            db_save(f"current_side_{allocated_user_id}", "NONE")
-            st.session_state.in_position = False
-            st.rerun()
+            db_save("pnl_history", st._global_user_pnl_history); db_save(f"in_position_{allocated_user_id}", False); db_save(f"buy_price_{allocated_user_id}", 0.0); db_save(f"current_side_{allocated_user_id}", "NONE"); st.session_state.in_position = False; st.rerun()
+# --- 🪐 REAL-TIME LIVE BACKEND TECHNICAL LOG NODE BOX ---
+st.markdown("<b>🖥️ Real-Time AI Swarm Scalper Loop Sequence Log Panel:</b>", unsafe_allow_html=True)
+log_text = "\n".join(st.session_state.engine_logs[-6:]) # শুধুমাত্র শেষ ৬টি অ্যাক্টিভ লাইভ ইভেন্ট ট্র্যাক করবে
+st.text_area(label="Live Engine Activity Terminal Window Property Node", value=log_text, height=135, label_visibility="collapsed")
 
 if not ai_decision and not st.session_state.in_position:
     st.markdown("<p style='color:#ffcc00; font-weight:bold;'>🕹️ Manual Trading Panel Active</p>", unsafe_allow_html=True)
@@ -454,15 +469,13 @@ if not ai_decision and not st.session_state.in_position:
 c1, c2 = st.columns(2)
 with c1:
     if not st.session_state.bot_active:
-        if st.button("🟢 START ENGINE SCALPER LOOP SEQUENCE"):
-            db_save(f"bot_active_{allocated_user_id}", True); st.rerun()
+        if st.button("🟢 START ENGINE SCALPER LOOP SEQUENCE"): db_save(f"bot_active_{allocated_user_id}", True); st.rerun()
     else:
-        if st.button("🔴 STOP ENGINE SCALPER LOOP SEQUENCE"):
-            db_save(f"bot_active_{allocated_user_id}", False); st.rerun()
+        if st.button("🔴 STOP ENGINE SCALPER LOOP SEQUENCE"): db_save(f"bot_active_{allocated_user_id}", False); st.rerun()
 with c2:
-    if st.button("🚨 EMERGENCY LIQUIDATE CLOSE ORDER POSITION", disabled=not st.session_state.in_position):
-        db_save(f"in_position_{allocated_user_id}", False); st.session_state.in_position = False; st.rerun()
+    if st.button("🚨 EMERGENCY LIQUIDATE CLOSE ORDER POSITION", disabled=not st.session_state.in_position): db_save(f"in_position_{allocated_user_id}", False); st.session_state.in_position = False; st.rerun()
 
+# 1.5 Second Background Heartbeat Refresher Frame Node Loop
 st.markdown("""<iframe src="about:blank" style="display:none;" onload="setTimeout(function(){window.location.reload();}, 1500);"></iframe>""", unsafe_allow_html=True)
 # --- 🌿 DYNAMIC MARKETING NETWORK MODULE PANEL HUB ---
 st.markdown("<hr style='border:1px solid #1f2c3f;'>", unsafe_allow_html=True)
