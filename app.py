@@ -438,17 +438,27 @@ if st.session_state.bot_active:
                 st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Connecting DeepSeek Brain over OpenRouter...")
                 or_response = requests.post("https://openrouter.ai", headers=headers, json=payload, timeout=10)
                 if or_response.status_code == 200:
-                    ai_raw_word = or_response.json()['choices']['message']['content'].strip().upper()
-                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Brain Signal: '{ai_raw_word}' for {target_symbol}")
-                    
-                    if "LONG" in ai_raw_word:
-                        db_save(f"in_position_{allocated_user_id}", True); db_save(f"buy_price_{allocated_user_id}", live_price); db_save(f"current_side_{allocated_user_id}", "LONG"); db_save(f"trade_coin_{allocated_user_id}", target_symbol)
-                        db_save(f"tp_target_{allocated_user_id}", price_jump_target); db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
-                        st.toast(f"🟢 Auto Long Opened: {target_symbol}", icon="🚀"); st.rerun()
-                    elif "SHORT" in ai_raw_word:
-                        db_save(f"in_position_{allocated_user_id}", True); db_save(f"buy_price_{allocated_user_id}", live_price); db_save(f"current_side_{allocated_user_id}", "SHORT"); db_save(f"trade_coin_{allocated_user_id}", target_symbol)
-                        db_save(f"tp_target_{allocated_user_id}", price_jump_target); db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
-                        st.toast(f"🔴 Auto Short Opened: {target_symbol}", icon="🚨"); st.rerun()
+                    try:
+                        # ওপেনরাউটার থেকে আসা JSON ডেটা অত্যন্ত নিরাপদে পার্স করা হচ্ছে
+                        res_json = or_response.json()
+                        if 'choices' in res_json and len(res_json['choices']) > 0:
+                            ai_raw_word = res_json['choices'][0]['message']['content'].strip().upper()
+                            st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Brain Signal: '{ai_raw_word}' for {target_symbol}")
+                            
+                            if "LONG" in ai_raw_word:
+                                db_save(f"in_position_{allocated_user_id}", True); db_save(f"buy_price_{allocated_user_id}", live_price); db_save(f"current_side_{allocated_user_id}", "LONG"); db_save(f"trade_coin_{allocated_user_id}", target_symbol)
+                                db_save(f"tp_target_{allocated_user_id}", price_jump_target); db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
+                                st.toast(f"🟢 Auto Long Opened: {target_symbol}", icon="🚀"); st.rerun()
+                            elif "SHORT" in ai_raw_word:
+                                db_save(f"in_position_{allocated_user_id}", True); db_save(f"buy_price_{allocated_user_id}", live_price); db_save(f"current_side_{allocated_user_id}", "SHORT"); db_save(f"trade_coin_{allocated_user_id}", target_symbol)
+                                db_save(f"tp_target_{allocated_user_id}", price_jump_target); db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
+                                st.toast(f"🔴 Ahort Opened: {target_symbol}", icon="🚨"); st.rerun()
+                        else:
+                            st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] AI Empty Choice Slot. Check API Balance/Key.")
+                    except ValueError:
+                        # রেসপন্স টেক্সট খালি বা এইচটিএমএল হলে তা লগ উইন্ডোতে সুনির্দিষ্টভাবে প্রিন্ট করা হবে
+                        raw_preview = or_response.text[:40] if or_response.text else "EMPTY_REPLY"
+                        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Invalid JSON Format. Raw Server Reply: {raw_preview}")
                 else:
                     st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Router Request Failed. HTTP Code: {or_response.status_code}")
         except Exception as e:
