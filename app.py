@@ -477,28 +477,32 @@ if st.session_state.bot_active:
                     try:
                         res_json = or_response.json()
                         ai_raw_word = res_json['choices']['message']['content'].strip().upper()
-                        
                         resolved_signal = "HOLD"
                         if "LONG" in ai_raw_word: resolved_signal = "LONG"
                         elif "SHORT" in ai_raw_word: resolved_signal = "SHORT"
-                        
                         st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] AI Brain Decision: '{resolved_signal}'")
-                        
                         if resolved_signal in ["LONG", "SHORT"]:
                             db_save(f"in_position_{allocated_user_id}", True); db_save(f"buy_price_{allocated_user_id}", live_price); db_save(f"current_side_{allocated_user_id}", resolved_signal); db_save(f"trade_coin_{allocated_user_id}", target_symbol)
                             db_save(f"tp_target_{allocated_user_id}", price_jump_target); db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
-                            
-                            # প্রথম রিয়েল এআই ট্রেড সাকসেসফুলি প্লে হলে স্টেট ডাটাবেজে পার্মানেন্ট লক হবে
                             if not st.session_state.first_trade_done:
                                 st.session_state.first_trade_done = True
                                 db_save(f"first_done_{allocated_user_id}", True)
-                                
-                            st.toast(f"🟢 Real AI Order Opened ({resolved_signal}): {target_symbol}", icon="🚀")
-                            st.rerun()
-                    except:
+                            st.toast(f"🟢 Real AI Order Opened ({resolved_signal}): {target_symbol}", icon="🚀"); st.rerun()
+                    except Exception as parse_err:
                         st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Pattern Scanning... Retrying next loop.")
                 else:
-                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Router Offline Code {or_response.status_code}. Retrying...")
+                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Router Offline Code {or_response.status_code}. Activating Local Backup...")
+                    local_decision = "HOLD"
+                    if current_rsi < 35: local_decision = "LONG"
+                    elif current_rsi > 65: local_decision = "SHORT"
+                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Local Signal: '{local_decision}' for {target_symbol}")
+                    if local_decision in ["LONG", "SHORT"]:
+                        db_save(f"in_position_{allocated_user_id}", True); db_save(f"buy_price_{allocated_user_id}", live_price); db_save(f"current_side_{allocated_user_id}", local_decision); db_save(f"trade_coin_{allocated_user_id}", target_symbol)
+                        db_save(f"tp_target_{allocated_user_id}", price_jump_target); db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
+                        if not st.session_state.first_trade_done:
+                            st.session_state.first_trade_done = True
+                            db_save(f"first_done_{allocated_user_id}", True)
+                        st.toast(f"⚡ Backup Engine Executed: {local_decision}", icon="⚙️"); st.rerun()
         except Exception as e:
             st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Loop Error Node: {str(e)}")
                 else:
