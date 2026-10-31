@@ -382,7 +382,13 @@ try:
         fig_candlestick.update_layout(template="plotly_dark", margin=dict(l=6, r=6, t=6, b=6), height=250, xaxis_rangeslider_visible=False, paper_bgcolor='#06090e', plot_bgcolor='#06090e')
 except: pass
 if live_price == 0.0 and not df_kline.empty: live_price = float(df_kline['close'].iloc[-1])
-if fig_candlestick: st.plotly_chart(fig_candlestick, use_container_width=True)
+# ==========================================
+# 🧱 BOX 17: REAL-TIME CHART RENDERING INTERFACE
+# ==========================================
+chart_display_box = st.container()
+with chart_display_box:
+    if fig_candlestick: 
+        st.plotly_chart(fig_candlestick, use_container_width=True)
 st.markdown(f"<div class='custom-box-grid' style='background-color:#050a12; border:1px solid #00e676; padding: 22px;'><div class='matrix-neon-text' style='font-size:14px;'>🧬 <b>DEEPSEEK REAL-TIME SWARM INTERFACE LAYER:</b><br>🔮 DEEPEST OPENROUTER ROUTER SCALPER LABELS ACTIVATED ({target_symbol})</div></div>", unsafe_allow_html=True)
 local_win = st.session_state.get('win_count', 0)
 local_loss = st.session_state.get('loss_count', 0)
@@ -409,17 +415,32 @@ if st.session_state.in_position and live_price > 0 and st.session_state.buy_pric
 
 balance_usd_text = f"${(st.session_state.get('real_balance' if is_real_live else 'demo_balance', 5000.0) + floating_pnl):,.2f} USDT"
 st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}):</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:14px; color:{'#00e676' if floating_pnl >= 0 else '#ff1744'}; font-weight:bold;'>Live Floating P&L Indicator: {floating_pnl:+.4f} USDT</p></div>", unsafe_allow_html=True)
-if st.session_state.in_position:
-    is_long_pos = "LONG" in st.session_state.current_side
-    live_target = (st.session_state.buy_price + price_jump_target) if is_long_pos else (st.session_state.buy_price - price_jump_target)
-    live_sl = (st.session_state.buy_price - stop_loss_gap) if is_long_pos else (st.session_state.buy_price + stop_loss_gap)
-    est_profit_dollars = (price_jump_target * (effective_vol / st.session_state.buy_price))
-    est_loss_dollars = (stop_loss_gap * (effective_vol / st.session_state.buy_price))
-    st.markdown(f"""<div style="background-color:#0b0e14; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; border-left: 5px solid #29b6f6;">
-        <span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Active Contract Asset: <b>{target_symbol}</b></span><br>
-        <span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Entry Target Metric: {st.session_state.buy_price:.6f} | Live Index Ticker: {live_price:.6f}</span><br>
-        <span style="font-size:14px; color:#00e676; font-weight:bold; font-family: monospace;">Take Profit Limit: {live_target:.6f} (Estimated Gain: +${est_profit_dollars:.2f} USDT)</span><br>
-        <span style="font-size:14px; color:#ff1744; font-weight:bold; font-family: monospace;">Stop Loss Boundary Node: {live_sl:.6f} (Estimated Loss: -${est_loss_dollars:.2f} USDT)</span></div>""", unsafe_allow_html=True)
+# ==========================================
+# 🧱 BOX 15: POSITION TRACKER VISUAL OVERLAY (ট্রেড ডিটেইলস প্যানেল)
+# ==========================================
+position_overlay_container = st.container()
+with position_overlay_container:
+    is_user_in_position = db_load(f"in_position_{mode_suffix}_{allocated_user_id}", st.session_state.get("in_position", False))
+    
+    if is_user_in_position:
+        current_active_side = db_load(f"current_side_{mode_suffix}_{allocated_user_id}", st.session_state.get("current_side", "NONE"))
+        current_entry_price = db_load(f"buy_price_{mode_suffix}_{allocated_user_id}", st.session_state.get("buy_price", 0.0))
+        
+        is_long_pos = "LONG" in current_active_side
+        live_target = (current_entry_price + price_jump_target) if is_long_pos else (current_entry_price - price_jump_target)
+        live_sl = (current_entry_price - stop_loss_gap) if is_long_pos else (current_entry_price + stop_loss_gap)
+        
+        est_profit_dollars = (price_jump_target * (effective_vol / (current_entry_price if current_entry_price > 0 else 1.0)))
+        est_loss_dollars = (stop_loss_gap * (effective_vol / (current_entry_price if current_entry_price > 0 else 1.0)))
+        
+        st.markdown(f"""
+        <div style="background-color:#0b0e14; padding:15px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; border-left: 5px solid #29b6f6; box-shadow: 0 0 10px rgba(41, 182, 246, 0.15);">
+            <span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Active Contract Asset: <b>{target_symbol}</b></span><br>
+            <span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Entry Target Metric: {current_entry_price:.6f} | Live Index Ticker: {live_price:.6f}</span><br>
+            <span style="font-size:14px; color:#00e676; font-weight:bold; font-family: monospace;">Take Profit Limit: {live_target:.6f} (Estimated Gain: +${est_profit_dollars:.2f} USDT)</span><br>
+            <span style="font-size:14px; color:#ff1744; font-weight:bold; font-family: monospace;">Stop Loss Boundary Node: {live_sl:.6f} (Estimated Loss: -${est_loss_dollars:.2f} USDT)</span>
+        </div>
+        """, unsafe_allow_html=True)
 # 🔥 FULLY ACCURATE ISOLATION CHANNELS FOR DEMO & REAL TRADES
 mode_suffix = "real" if is_real_live else "demo"
 cloud_bot_trigger = db_load(f"bot_active_{mode_suffix}_{allocated_user_id}", False) if (allocated_user_id and allocated_user_id != "NONE") else st.session_state.get(f"bot_active_{mode_suffix}", False)
@@ -535,18 +556,25 @@ log_text = "\n".join(st.session_state.engine_logs[-6:])
 st.text_area(label="Live Terminal", value=log_text, height=135, label_visibility="collapsed")
 
 # --- 🕹️ RESTORE FIXED MANUAL TRADING PANEL MATRIX ---
-if not ai_decision and not st.session_state.in_position:
+# --- 🕹️ RESTORE FIXED MANUAL TRADING PANEL MATRIX ---
+if not ai_decision and not is_user_in_position:
     st.markdown("<p style='color:#ffcc00; font-weight:bold;'>🕹️ Manual Trading Panel Active</p>", unsafe_allow_html=True)
     m_col1, m_col2 = st.columns(2)
     with m_col1:
         if st.button("🟢 EXECUTE BUY / LONG ENTRY", key="manual_long_gate"):
-            db_save(f"in_position_{mode_suffix}_{allocated_user_id}", True); db_save(f"buy_price_{mode_suffix}_{allocated_user_id}", live_price)
-            db_save(f"current_side_{mode_suffix}_{allocated_user_id}", "LONG"); db_save(f"trade_coin_{allocated_user_id}", target_symbol)
+            db_save(f"in_position_{mode_suffix}_{allocated_user_id}", True)
+            db_save(f"buy_price_{mode_suffix}_{allocated_user_id}", live_price)
+            db_save(f"current_side_{mode_suffix}_{allocated_user_id}", "LONG")
+            db_save(f"trade_coin_{allocated_user_id}", target_symbol)
+            st.session_state.in_position = True
             st.rerun()
     with m_col2:
         if st.button("🔴 EXECUTE SELL / SHORT ENTRY", key="manual_short_gate"):
-            db_save(f"in_position_{mode_suffix}_{allocated_user_id}", True); db_save(f"buy_price_{mode_suffix}_{allocated_user_id}", live_price)
-            db_save(f"current_side_{mode_suffix}_{allocated_user_id}", "SHORT"); db_save(f"trade_coin_{allocated_user_id}", target_symbol)
+            db_save(f"in_position_{mode_suffix}_{allocated_user_id}", True)
+            db_save(f"buy_price_{mode_suffix}_{allocated_user_id}", live_price)
+            db_save(f"current_side_{mode_suffix}_{allocated_user_id}", "SHORT")
+            db_save(f"trade_coin_{allocated_user_id}", target_symbol)
+            st.session_state.in_position = True
             st.rerun()
 c1, c2 = st.columns(2)
 with c1:
