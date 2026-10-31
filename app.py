@@ -76,11 +76,26 @@ if "logged_in_user" not in st.session_state:
 if "first_trade_done" not in st.session_state:
     st.session_state.first_trade_done = False
 
-if 'logged_in_user' in st.session_state and st.session_state.logged_in_user:
+# 🔥 CLOUD HARD-LATCH: সেশন মেমোরি না থাকলেও লাস্ট একটিভ ইউজারের ক্লাউড ডাটা লক রিড করবে
+last_active_uid = db_load("global_last_active_uid", "NONE")
+if st.session_state.logged_in_user:
     u_data = st._central_user_creds.get(st.session_state.logged_in_user, {})
-    curr_uid = u_data.get("uid", "GLOBAL")
-    st.session_state.bot_active = db_load(f"bot_active_{curr_uid}", False)
-    st.session_state.first_trade_done = db_load(f"first_done_{curr_uid}", False)
+    allocated_user_id = u_data.get("uid", "GLOBAL")
+    db_save("global_last_active_uid", allocated_user_id)
+else:
+    allocated_user_id = last_active_uid
+
+if allocated_user_id != "NONE":
+    st.session_state.bot_active = db_load(f"bot_active_{allocated_user_id}", False)
+    st.session_state.first_trade_done = db_load(f"first_done_{allocated_user_id}", False)
+    # ক্লাউড রান ট্র্যাকিংয়ের জন্য সাইডবার প্যারামিটার ব্যাকআপ রিকভারি লেয়ার
+    price_jump_target = db_load(f"tp_target_{allocated_user_id}", 0.01)
+    stop_loss_gap = db_load(f"sl_gap_{allocated_user_id}", 0.02)
+    leverage = db_load(f"leverage_lock_{allocated_user_id}", 20)
+    trade_amount = db_load(f"margin_lock_{allocated_user_id}", 20)
+    target_symbol = db_load(f"trade_coin_{allocated_user_id}", "BTCUSDT")
+    or_api_key = db_load(f"or_key_{allocated_user_id}", "")
+    or_model_id = db_load(f"or_model_{allocated_user_id}", "google/gemini-2.5-flash:free")
 else:
     if "bot_active" not in st.session_state:
         st.session_state.bot_active = False
@@ -408,28 +423,31 @@ if st.session_state.in_position:
 # =======================================================
 # 🌐 DEEPSEEK OPENROUTER NEWS & INDICATOR SWARM INTELLIGENCE
 # =======================================================
-if st.session_state.bot_active:
+# 🔥 CLOUD RUN GATEWAY: লগআউট করা থাকলেও ডাটাবেজের bot_active লক ট্রু থাকলে লুপ চলবে
+cloud_bot_trigger = db_load(f"bot_active_{allocated_user_id}", False) if (allocated_user_id and allocated_user_id != "NONE") else st.session_state.bot_active
+
+if cloud_bot_trigger and allocated_user_id != "NONE":
+    # সাইডবার ক্র্যাশ প্রোটেকশন অবজেক্ট রিলোড
+    or_api_key = db_load(f"or_key_{allocated_user_id}", "")
+    or_model_id = db_load(f"or_model_{allocated_user_id}", "google/gemini-2.5-flash:free")
+    
     if not st.session_state.in_position and ai_decision and or_api_key:
         try:
             news_context = "Steady global macro trend line pattern."
-            
-            # --- 🛡️ FAIL-SAFE NEWS SEPARATOR: CRASH PROTECTION GUARD ---
             try:
                 news_res = requests.get("https://cryptopanic.com", timeout=3)
                 if news_res.status_code == 200:
                     news_data = news_res.json()
                     news_titles = [post.get('title', '') for post in news_data.get('results', [])[:4]]
                     if news_titles: news_context = " | ".join(news_titles)
-            except:
-                pass  # নিউজ সার্ভার ব্লক বা এরর দিলেও লুপ থামবে না, বাইপাস হয়ে যাবে
+            except: pass
             
             if not df_kline.empty and len(df_kline) >= 5:
                 recent_candles = df_kline.tail(5).to_dict(orient="records")
                 ma_series = df_kline['close'].rolling(window=7).mean()
                 last_ma = float(ma_series.iloc[-1]) if not ma_series.empty else live_price
-                                # প্রথম ট্রেডের জন্য প্রম্পট লজিককে ফাস্ট স্ক্যাল্পিং ডিরেকশন দেওয়া হচ্ছে, পরের গুলোর জন্য আল্ট্রা-সিকিউর
-                is_turbo = not st.session_state.first_trade_done
                 
+                is_turbo = not st.session_state.first_trade_done
                 if is_turbo:
                     mode_instruction = (
                         "CRITICAL: You must operate in TURBO SCALPING MODE. Analyze the minor 1-minute candlestick movements, "
@@ -466,25 +484,21 @@ if st.session_state.bot_active:
                 log_prefix = "🚀 [TURBO AI PROMPT]" if is_turbo else "🔒 [SECURE AI PROMPT]"
                 st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] {log_prefix} Analyzing Live Feeds...")
                 or_response = requests.post("https://openrouter.ai", headers=headers, json=payload, timeout=10)
+
                 if or_response.status_code == 200:
                     try:
                         ai_raw_word = ""
-                        # জেসন এবং র টেক্সট দুই ফরম্যাটেই ব্যাকআপ প্রটেকশন রিড লেয়ার
                         try:
                             res_json = or_response.json()
-                            ai_raw_word = res_json['choices'][0]['message']['content'].strip().upper()
+                            ai_raw_word = res_json['choices']['message']['content'].strip().upper()
                         except:
                             ai_raw_word = or_response.text.strip().upper()
                         
                         resolved_signal = "HOLD"
-                        if "LONG" in ai_raw_word and "SHORT" not in ai_raw_word:
-                            resolved_signal = "LONG"
-                        elif "SHORT" in ai_raw_word and "LONG" not in ai_raw_word:
-                            resolved_signal = "SHORT"
-                        elif "HOLD" in ai_raw_word:
-                            resolved_signal = "HOLD"
-                            
-                        # প্রথম ট্রেডটি দ্রুত প্লে করার জন্য ডাইনামিক ওভাররাইড সিকোয়েন্স
+                        if "LONG" in ai_raw_word and "SHORT" not in ai_raw_word: resolved_signal = "LONG"
+                        elif "SHORT" in ai_raw_word and "LONG" not in ai_raw_word: resolved_signal = "SHORT"
+                        elif "HOLD" in ai_raw_word: resolved_signal = "HOLD"
+                        
                         if resolved_signal == "HOLD" and not st.session_state.first_trade_done:
                             resolved_signal = "LONG" if current_rsi < 50 else "SHORT"
                             st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Turbo Core Signal Assigned via Matrix Verification.")
@@ -510,7 +524,7 @@ if st.session_state.bot_active:
                             st.toast(f"🟢 Real AI Order Triggered ({resolved_signal}): {target_symbol}", icon="🚀")
                             st.rerun()
                     except Exception as parse_err:
-                        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Latching Signal... Auto-routing next loop index.")
+                        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Sorting Data Packets... Scanning next index.")
                 else:
                     st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Router Request Dropped {or_response.status_code}. Activating Local Backup...")
                     local_decision = "HOLD"
