@@ -582,12 +582,12 @@ st.text_area(label="Live Terminal", value=log_text, height=135, label_visibility
 # --- 🕹️ RESTORE FIXED MANUAL TRADING PANEL MATRIX ---
 # --- 🕹️ RESTORE FIXED MANUAL TRADING PANEL MATRIX ---
 # --- 🕹️ RESTORE FIXED MANUAL TRADING PANEL MATRIX ---
-if not ai_decision and not is_user_in_position:
+# --- 🕹️ RESTORE FIXED MANUAL TRADING PANEL MATRIX ---
+if not ai_decision and not st.session_state.get("in_position", False):
     st.markdown("<p style='color:#ffcc00; font-weight:bold;'>🕹️ Manual Trading Panel Active</p>", unsafe_allow_html=True)
     m_col1, m_col2 = st.columns(2)
     with m_col1:
         if st.button("🟢 EXECUTE BUY / LONG ENTRY", key="manual_long_gate"):
-            # ভ্যালুগুলো ডাটাবেজে লক করা হচ্ছে (text.file 12 লকিং রিকভারি)
             db_save(f"in_position_{mode_suffix}_{allocated_user_id}", True)
             db_save(f"buy_price_{mode_suffix}_{allocated_user_id}", live_price)
             db_save(f"current_side_{mode_suffix}_{allocated_user_id}", "LONG")
@@ -600,7 +600,6 @@ if not ai_decision and not is_user_in_position:
             st.rerun()
     with m_col2:
         if st.button("🔴 EXECUTE SELL / SHORT ENTRY", key="manual_short_gate"):
-            # ভ্যালুগুলো ডাটাবেজে লক করা হচ্ছে (text.file 12 লকিং রিকভারি)
             db_save(f"in_position_{mode_suffix}_{allocated_user_id}", True)
             db_save(f"buy_price_{mode_suffix}_{allocated_user_id}", live_price)
             db_save(f"current_side_{mode_suffix}_{allocated_user_id}", "SHORT")
