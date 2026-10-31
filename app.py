@@ -304,15 +304,14 @@ with st.sidebar:
     mode_suffix = "real" if is_real_live else "demo"
     dashboard_mode_title = "Real Production Dashboard Mode 🟢" if is_real_live else "Demo Sandbox Dashboard Mode 🔵"
 
-    # 🔒 মোড-সুইচ রিসেট গার্ড লেয়ার
+    # 🔒 মোড ভিত্তিক সম্পূর্ণ আলাদা আইসোলেটেড লকিং স্টেট
     in_position_state = db_load(f"in_position_{mode_suffix}_{allocated_user_id}", False)
-    locked_trade_coin = db_load(f"trade_coin_{allocated_user_id}", "NONE")
+    locked_trade_coin = db_load(f"trade_coin_{mode_suffix}_{allocated_user_id}", "NONE")
     
     coin_list = list(BYBYT_DATABASE_CORE.keys())
     default_coin_idx = 0
     
-    # লাস্ট সিলেক্টেড কয়েন মেমোরি রিকভারি লুপ (মোড চেঞ্জ করলেও যাতে ড্রপ না করে)
-    last_saved_db_coin = db_load(f"last_selected_coin_sym_{allocated_user_id}", "BTCUSDT")
+    last_saved_db_coin = db_load(f"last_selected_coin_{mode_suffix}_{allocated_user_id}", "BTCUSDT")
     if in_position_state and locked_trade_coin != "NONE":
         last_saved_db_coin = locked_trade_coin
 
@@ -322,16 +321,15 @@ with st.sidebar:
             break
 
     if in_position_state:
-        # পজিশন চালু থাকলে ড্রপডাউন হাইড করে হার্ড লকিং লেবেল দেখাবে
         st.markdown(f"<div class='custom-box-grid' style='padding:10px; border-left:4px solid #38bdf8;'><b>🎯 Active Asset:</b> {last_saved_db_coin}</div>", unsafe_allow_html=True)
-        coin_config = [v for v in BYBYT_DATABASE_CORE.values() if v["symbol"] == last_saved_db_coin][0]
+        coin_config = [v for v in BYBYT_DATABASE_CORE.values() if v["symbol"] == last_saved_db_coin]
         target_symbol = last_saved_db_coin
     else:
         selected_display_name = st.selectbox("Select Asset Contract Symbol Dropdown:", coin_list, index=default_coin_idx)
         coin_config = BYBYT_DATABASE_CORE[selected_display_name]
         target_symbol = coin_config["symbol"]
-        db_save(f"trade_coin_{allocated_user_id}", target_symbol)
-        db_save(f"last_selected_coin_sym_{allocated_user_id}", target_symbol)
+        db_save(f"trade_coin_{mode_suffix}_{allocated_user_id}", target_symbol)
+        db_save(f"last_selected_coin_{mode_suffix}_{allocated_user_id}", target_symbol)
 
     ai_decision = st.toggle("AI Smart Crossover Filter Matrix", value=True)
     
@@ -343,11 +341,12 @@ with st.sidebar:
     
     max_leverage_bound = int(coin_config.get('max_leverage', 100))
     
+    # 🔒 ডেমো ও রিয়ালের সেটিংস সম্পূর্ণ পৃথকীকরণ (text.file 12 মোড প্রোটেকশন)
     if in_position_state:
-        leverage = db_load(f"leverage_lock_{allocated_user_id}", 20)
-        trade_amount = db_load(f"margin_lock_{allocated_user_id}", 20)
-        price_jump_target = db_load(f"tp_target_{allocated_user_id}", float(coin_config["default_tp"]))
-        stop_loss_gap = db_load(f"sl_gap_{allocated_user_id}", float(coin_config["default_sl"]))
+        leverage = db_load(f"leverage_lock_{mode_suffix}_{allocated_user_id}", 20)
+        trade_amount = db_load(f"margin_lock_{mode_suffix}_{allocated_user_id}", 20)
+        price_jump_target = db_load(f"tp_target_{mode_suffix}_{allocated_user_id}", float(coin_config["default_tp"]))
+        stop_loss_gap = db_load(f"sl_gap_{mode_suffix}_{allocated_user_id}", float(coin_config["default_sl"]))
         
         st.markdown(f"""
         <div style="background-color:#1e293b; padding:12px; border-radius:8px; border-left: 4px solid #00e676; margin-top:10px;">
@@ -356,15 +355,15 @@ with st.sidebar:
         </div>
         """, unsafe_allow_html=True)
     else:
-        leverage = st.slider("Leverage Scale Selection Array (1x-100x Override):", min_value=1, max_value=max_leverage_bound, value=20, step=1, key="absolute_leverage_node_slider")
-        trade_amount = st.number_input("Margin Requirement Block (\$):", min_value=1, value=20)
-        price_jump_target = st.number_input("Take Profit Target Interval (\$):", value=float(coin_config["default_tp"]), format="%.6f", key="tp_input_node_box")
-        stop_loss_gap = st.number_input("Stop Loss Boundary GAP Threshold (\$):", value=float(coin_config["default_sl"]), format="%.6f", key="sl_input_node_box")
+        leverage = st.slider("Leverage Scale Selection Array (1x-100x Override):", min_value=1, max_value=max_leverage_bound, value=int(db_load(f"leverage_lock_{mode_suffix}_{allocated_user_id}", 20)), step=1, key="absolute_leverage_node_slider")
+        trade_amount = st.number_input("Margin Requirement Block (\$):", min_value=1, value=int(db_load(f"margin_lock_{mode_suffix}_{allocated_user_id}", 20)))
+        price_jump_target = st.number_input("Take Profit Target Interval (\$):", value=float(db_load(f"tp_target_{mode_suffix}_{allocated_user_id}", float(coin_config["default_tp"]))), format="%.6f", key="tp_input_node_box")
+        stop_loss_gap = st.number_input("Stop Loss Boundary GAP Threshold (\$):", value=float(db_load(f"sl_gap_{mode_suffix}_{allocated_user_id}", float(coin_config["default_sl"]))), format="%.6f", key="sl_input_node_box")
         
-        db_save(f"leverage_lock_{allocated_user_id}", leverage)
-        db_save(f"margin_lock_{allocated_user_id}", trade_amount)
-        db_save(f"tp_target_{allocated_user_id}", price_jump_target)
-        db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
+        db_save(f"leverage_lock_{mode_suffix}_{allocated_user_id}", leverage)
+        db_save(f"margin_lock_{mode_suffix}_{allocated_user_id}", trade_amount)
+        db_save(f"tp_target_{mode_suffix}_{allocated_user_id}", price_jump_target)
+        db_save(f"sl_gap_{mode_suffix}_{allocated_user_id}", stop_loss_gap)
 
     api_key, secret_key = "", ""
     if is_real_live:
@@ -443,25 +442,27 @@ st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}
 # ==========================================
 # 🧱 BOX 15: GLOBAL PIPELINE SYNC & REAL-TIME FLOATING OVERLAY ENGINE
 # ==========================================
-# গ্লোবাল সেশন পাইপলাইন পুনরুদ্ধার এবং পিঅ্যান্ডএল লাইভ আনফ্রিজিং ক্যালকুলেশন মডিউল
+# গলোবাল সেশন এবং মোড আইসোলেশন লেয়ার সিঙ্ক্রোনাইজেশন
 st.session_state.in_position = db_load(f"in_position_{mode_suffix}_{allocated_user_id}", False)
 st.session_state.buy_price = db_load(f"buy_price_{mode_suffix}_{allocated_user_id}", 0.0)
 st.session_state.current_side = db_load(f"current_side_{mode_suffix}_{allocated_user_id}", "NONE")
-st.session_state.trade_coin = db_load(f"trade_coin_{allocated_user_id}", target_symbol)
+st.session_state.trade_coin = db_load(f"trade_coin_{mode_suffix}_{allocated_user_id}", target_symbol)
 
-# ডাইনামিক লাইভ ফ্লোটিং P&L রি-ক্যালকুলেটর ইঞ্জিন (০.০০০০ ফিক্সিং গেট)
-floating_pnl = 0.0
-leverage = db_load(f"leverage_lock_{allocated_user_id}", 20)
-trade_amount = db_load(f"margin_lock_{allocated_user_id}", 20)
+# মোড ভিত্তিক লাইভ ক্যালকুলেটর রান
+leverage = db_load(f"leverage_lock_{mode_suffix}_{allocated_user_id}", 20)
+trade_amount = db_load(f"margin_lock_{mode_suffix}_{allocated_user_id}", 20)
+price_jump_target = db_load(f"tp_target_{mode_suffix}_{allocated_user_id}", 0.01)
+stop_loss_gap = db_load(f"sl_gap_{mode_suffix}_{allocated_user_id}", 0.02)
 effective_vol = trade_amount * leverage
 
+floating_pnl = 0.0
 if st.session_state.in_position and live_price > 0 and st.session_state.buy_price > 0:
     if "LONG" in st.session_state.current_side:
         floating_pnl = ((live_price - st.session_state.buy_price) * (effective_vol / st.session_state.buy_price))
     else:
         floating_pnl = ((st.session_state.buy_price - live_price) * (effective_vol / st.session_state.buy_price))
 
-# এভেলেবল ব্যালেন্স এরিয়া রি-রেন্ডারিং উইজেট
+# একক সিকিউর এভেলেবল ব্যালেন্স উইজেট (ডবল বক্স ফিক্সড)
 balance_usd_text = f"${(st.session_state.get('real_balance' if is_real_live else 'demo_balance', 5000.0) + floating_pnl):,.2f} USDT"
 st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}):</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:14px; color:{'#00e676' if floating_pnl >= 0 else '#ff1744'}; font-weight:bold;'>Live Floating P&L Indicator: {floating_pnl:+.4f} USDT</p></div>", unsafe_allow_html=True)
 
