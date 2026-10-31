@@ -431,10 +431,20 @@ if st.session_state.bot_active:
                     f"Candlesticks: {json.dumps(recent_candles)}\n\n"
                     f"INSTRUCTION: You are a professional scalping bot. Respond with EXACTLY ONE UPPERCASE WORD: 'LONG' or 'SHORT'. If the market is chop, sideways, respond with 'HOLD'. No explanation."
                 )
-                headers = {"Authorization": f"Bearer {or_api_key}", "Content-Type": "application/json"}
-                payload = {"model": or_model_id, "messages": [{"role": "user", "content": market_context_prompt}]}
                 
-                # লাইভ টার্মিনাল উইন্ডোতে রিয়েল-টাইম ট্র্যাকিং ইভেন্ট পুশ করা হচ্ছে
+                # 🔥 CLOUDFLARE BYPASS HEADERS: সোর্স আইডেন্টিটি ভ্যালিডেশন লেয়ার যুক্ত করা হলো
+                headers = {
+                    "Authorization": f"Bearer {or_api_key}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://streamlit.io",  # ওপেনরাউটার রিকোয়েস্ট পাসিং রেফারার
+                    "X-Title": "Bybit AI Scalper Swarm Engine"  # অ্যাপ টাইটেল টোকেন ভেরিফিকেশন
+                }
+                
+                payload = {
+                    "model": or_model_id if or_model_id else "deepseek/deepseek-r1:free",
+                    "messages": [{"role": "user", "content": market_context_prompt}]
+                }
+                
                 st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Connecting DeepSeek Brain over OpenRouter...")
                 or_response = requests.post("https://openrouter.ai", headers=headers, json=payload, timeout=10)
                 if or_response.status_code == 200:
