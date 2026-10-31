@@ -408,25 +408,17 @@ if st.session_state.in_position:
 if st.session_state.bot_active:
     if not st.session_state.in_position and ai_decision and or_api_key:
         try:
-            st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Pulse: Connecting News Stream...")
-            news_titles = []
+            news_context = "Steady global macro trend line pattern."
             
-            # 🔥 Cloudflare/Block Protection Guard Added
+            # --- 🛡️ FAIL-SAFE NEWS SEPARATOR: CRASH PROTECTION GUARD ---
             try:
-                news_res = requests.get("https://cryptopanic.com", timeout=4)
+                news_res = requests.get("https://cryptopanic.com", timeout=3)
                 if news_res.status_code == 200:
                     news_data = news_res.json()
-                    for post in news_data.get('results', [])[:4]:
-                        news_titles.append(post.get('title', ''))
-                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] News synced: {len(news_titles)} items.")
-                else:
-                    news_titles = ["Steady global macro trend line pattern."]
-                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] News Server Busy. Fallback Active.")
+                    news_titles = [post.get('title', '') for post in news_data.get('results', [])[:4]]
+                    if news_titles: news_context = " | ".join(news_titles)
             except:
-                news_titles = ["Consolidating matum vector."]
-                st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] News Network Timeout. Handled Safely.")
-            
-            news_context = " | ".join(news_titles) if news_titles else "No high-impact breakout news available."
+                pass  # নিউজ সার্ভার ব্লক বা এরর দিলেও লুপ থামবে না, বাইপাস হয়ে যাবে
             
             if not df_kline.empty and len(df_kline) >= 5:
                 recent_candles = df_kline.tail(5).to_dict(orient="records")
@@ -442,11 +434,12 @@ if st.session_state.bot_active:
                 headers = {"Authorization": f"Bearer {or_api_key}", "Content-Type": "application/json"}
                 payload = {"model": or_model_id, "messages": [{"role": "user", "content": market_context_prompt}]}
                 
-                st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Sending packet to DeepSeek Server...")
+                # লাইভ টার্মিনাল উইন্ডোতে রিয়েল-টাইম ট্র্যাকিং ইভেন্ট পুশ করা হচ্ছে
+                st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Connecting DeepSeek Brain over OpenRouter...")
                 or_response = requests.post("https://openrouter.ai", headers=headers, json=payload, timeout=10)
                 if or_response.status_code == 200:
                     ai_raw_word = or_response.json()['choices']['message']['content'].strip().upper()
-                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Brain Response Received: '{ai_raw_word}'")
+                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Brain Signal: '{ai_raw_word}' for {target_symbol}")
                     
                     if "LONG" in ai_raw_word:
                         db_save(f"in_position_{allocated_user_id}", True); db_save(f"buy_price_{allocated_user_id}", live_price); db_save(f"current_side_{allocated_user_id}", "LONG"); db_save(f"trade_coin_{allocated_user_id}", target_symbol)
@@ -456,9 +449,10 @@ if st.session_state.bot_active:
                         db_save(f"in_position_{allocated_user_id}", True); db_save(f"buy_price_{allocated_user_id}", live_price); db_save(f"current_side_{allocated_user_id}", "SHORT"); db_save(f"trade_coin_{allocated_user_id}", target_symbol)
                         db_save(f"tp_target_{allocated_user_id}", price_jump_target); db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
                         st.toast(f"🔴 Auto Short Opened: {target_symbol}", icon="🚨"); st.rerun()
-                    else: st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Market Chop. Engine Rest Mode Active.")
-                else: st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] OpenRouter Error Code: {or_response.status_code}")
-        except Exception as e: st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Exception Guard: {str(e)}")
+                else:
+                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Router Request Failed. HTTP Code: {or_response.status_code}")
+        except Exception as e:
+            st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Loop Error: {str(e)}")
     if st.session_state.in_position and live_price > 0:
         is_long_pos = "LONG" in st.session_state.current_side
         saved_tp = db_load(f"tp_target_{allocated_user_id}", float(coin_config["default_tp"]))
