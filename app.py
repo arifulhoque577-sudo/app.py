@@ -452,22 +452,27 @@ if st.session_state.bot_active:
                     try:
                         res_json = or_response.json()
                         ai_raw_word = res_json['choices']['message']['content'].strip().upper()
-                        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] AI Brain Signal: '{ai_raw_word}'")
                         
-                        if "LONG" in ai_raw_word:
+                        # এআই-এর বড় রেসপন্সের ভেতর থেকে সুনির্দিষ্ট সিগন্যাল ফিল্টার করা হচ্ছে
+                        resolved_signal = "HOLD"
+                        if "LONG" in ai_raw_word: resolved_signal = "LONG"
+                        elif "SHORT" in ai_raw_word: resolved_signal = "SHORT"
+                        
+                        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Brain Signal: '{resolved_signal}'")
+                        
+                        if resolved_signal == "LONG":
                             db_save(f"in_position_{allocated_user_id}", True); db_save(f"buy_price_{allocated_user_id}", live_price); db_save(f"current_side_{allocated_user_id}", "LONG"); db_save(f"trade_coin_{allocated_user_id}", target_symbol)
                             db_save(f"tp_target_{allocated_user_id}", price_jump_target); db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
                             st.toast(f"🟢 Auto Long Opened: {target_symbol}", icon="🚀"); st.rerun()
-                        elif "SHORT" in ai_raw_word:
+                        elif resolved_signal == "SHORT":
                             db_save(f"in_position_{allocated_user_id}", True); db_save(f"buy_price_{allocated_user_id}", live_price); db_save(f"current_side_{allocated_user_id}", "SHORT"); db_save(f"trade_coin_{allocated_user_id}", target_symbol)
                             db_save(f"tp_target_{allocated_user_id}", price_jump_target); db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
                             st.toast(f"🔴 Auto Short Opened: {target_symbol}", icon="🚨"); st.rerun()
-                    except:
-                        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Parsing Match. Retrying Next Loop Sequence...")
+                    except Exception as parse_err:
+                        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Signal Blank or Range-bound. Waiting...")
                 else:
-                    # 🔥 ওপেনরাউটার ব্লক থাকলে লোকাল এআই ইন্ডিকেটর অ্যালগরিদম ব্যাকআপ মোড চালু হবে (১০০% সচল রাখার জন্য)
+                    # ওপেনরাউটার ব্লক বা এরর থাকলে লোকাল এআই অ্যালগরিদম ব্যাকআপ মোড চালু হবে
                     st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Cloud Error {or_response.status_code}. Activating Local Backup Brain...")
-                    
                     local_decision = "HOLD"
                     if current_rsi < 32: local_decision = "LONG"
                     elif current_rsi > 68: local_decision = "SHORT"
