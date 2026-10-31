@@ -416,16 +416,24 @@ if st.session_state.in_position and live_price > 0 and st.session_state.buy_pric
 balance_usd_text = f"${(st.session_state.get('real_balance' if is_real_live else 'demo_balance', 5000.0) + floating_pnl):,.2f} USDT"
 st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}):</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:14px; color:{'#00e676' if floating_pnl >= 0 else '#ff1744'}; font-weight:bold;'>Live Floating P&L Indicator: {floating_pnl:+.4f} USDT</p></div>", unsafe_allow_html=True)
 # ==========================================
-# 🧱 BOX 15: POSITION TRACKER VISUAL OVERLAY (ট্রেড ডিটেইলস প্যানেল)
+# 🧱 BOX 15: POSITION TRACKER VISUAL OVERLAY & PARAMETER Master LOCK
 # ==========================================
-# এখানে mode_suffix ফিক্স করা হলো যাতে NameError না আসে
 is_real_live = "Live" in bot_mode if 'bot_mode' in locals() else False
 mode_suffix = "real" if is_real_live else "demo"
 
+# ডাটাবেজ থেকে সিকিউর স্টেট লোড
+is_user_in_position = db_load(f"in_position_{mode_suffix}_{allocated_user_id}", st.session_state.get("in_position", False))
+
+# 🔒 হার্ড-ল্যাচিং রিকভারি লেয়ার: পজিশন একটিভ থাকলে সাইডবার সেটিংসকে লক করে দেবে (text.file 12 থেকে রিকভার করা)
+if is_user_in_position:
+    target_symbol = db_load(f"trade_coin_{allocated_user_id}", target_symbol)
+    leverage = db_load(f"leverage_lock_{allocated_user_id}", leverage)
+    trade_amount = db_load(f"margin_lock_{allocated_user_id}", trade_amount)
+    price_jump_target = db_load(f"tp_target_{allocated_user_id}", price_jump_target)
+    stop_loss_gap = db_load(f"sl_gap_{allocated_user_id}", stop_loss_gap)
+
 position_overlay_container = st.container()
 with position_overlay_container:
-    is_user_in_position = db_load(f"in_position_{mode_suffix}_{allocated_user_id}", st.session_state.get("in_position", False))
-    
     if is_user_in_position:
         current_active_side = db_load(f"current_side_{mode_suffix}_{allocated_user_id}", st.session_state.get("current_side", "NONE"))
         current_entry_price = db_load(f"buy_price_{mode_suffix}_{allocated_user_id}", st.session_state.get("buy_price", 0.0))
@@ -561,23 +569,34 @@ st.text_area(label="Live Terminal", value=log_text, height=135, label_visibility
 
 # --- 🕹️ RESTORE FIXED MANUAL TRADING PANEL MATRIX ---
 # --- 🕹️ RESTORE FIXED MANUAL TRADING PANEL MATRIX ---
+# --- 🕹️ RESTORE FIXED MANUAL TRADING PANEL MATRIX ---
 if not ai_decision and not is_user_in_position:
     st.markdown("<p style='color:#ffcc00; font-weight:bold;'>🕹️ Manual Trading Panel Active</p>", unsafe_allow_html=True)
     m_col1, m_col2 = st.columns(2)
     with m_col1:
         if st.button("🟢 EXECUTE BUY / LONG ENTRY", key="manual_long_gate"):
+            # ভ্যালুগুলো ডাটাবেজে লক করা হচ্ছে (text.file 12 লকিং রিকভারি)
             db_save(f"in_position_{mode_suffix}_{allocated_user_id}", True)
             db_save(f"buy_price_{mode_suffix}_{allocated_user_id}", live_price)
             db_save(f"current_side_{mode_suffix}_{allocated_user_id}", "LONG")
             db_save(f"trade_coin_{allocated_user_id}", target_symbol)
+            db_save(f"leverage_lock_{allocated_user_id}", leverage)
+            db_save(f"margin_lock_{allocated_user_id}", trade_amount)
+            db_save(f"tp_target_{allocated_user_id}", price_jump_target)
+            db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
             st.session_state.in_position = True
             st.rerun()
     with m_col2:
         if st.button("🔴 EXECUTE SELL / SHORT ENTRY", key="manual_short_gate"):
+            # ভ্যালুগুলো ডাটাবেজে লক করা হচ্ছে (text.file 12 লকিং রিকভারি)
             db_save(f"in_position_{mode_suffix}_{allocated_user_id}", True)
             db_save(f"buy_price_{mode_suffix}_{allocated_user_id}", live_price)
             db_save(f"current_side_{mode_suffix}_{allocated_user_id}", "SHORT")
             db_save(f"trade_coin_{allocated_user_id}", target_symbol)
+            db_save(f"leverage_lock_{allocated_user_id}", leverage)
+            db_save(f"margin_lock_{allocated_user_id}", trade_amount)
+            db_save(f"tp_target_{allocated_user_id}", price_jump_target)
+            db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
             st.session_state.in_position = True
             st.rerun()
 c1, c2 = st.columns(2)
