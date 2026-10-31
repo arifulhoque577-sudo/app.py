@@ -432,16 +432,19 @@ if st.session_state.bot_active:
                     f"INSTRUCTION: You are a professional scalping bot. Respond with EXACTLY ONE UPPERCASE WORD: 'LONG' or 'SHORT'. If the market is chop, sideways, respond with 'HOLD'. No explanation."
                 )
                 
-                # 🔥 CLOUDFLARE BYPASS HEADERS: সোর্স আইডেন্টিটি ভ্যালিডেশন লেয়ার যুক্ত করা হলো
+                # 🔥 REAL BROWSER IMPERSONATION HEADERS (বাস্তব ক্রোম ব্রাউজারের মাস্কিং লেয়ার)
                 headers = {
                     "Authorization": f"Bearer {or_api_key}",
                     "Content-Type": "application/json",
-                    "HTTP-Referer": "https://streamlit.io",  # ওপেনরাউটার রিকোয়েস্ট পাসিং রেফারার
-                    "X-Title": "Bybit AI Scalper Swarm Engine"  # অ্যাপ টাইটেল টোকেন ভেরিফিকেশন
+                    "HTTP-Referer": "https://streamlit.io",
+                    "X-Title": "Bybit AI Scalper Swarm Engine",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "Accept": "application/json",
+                    "Origin": "https://streamlit.io"
                 }
                 
                 payload = {
-                    "model": or_model_id if or_model_id else "deepseek/deepseek-r1:free",
+                    "model": or_model_id if or_model_id else "google/gemini-2.5-flash:free",
                     "messages": [{"role": "user", "content": market_context_prompt}]
                 }
                 
