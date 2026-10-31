@@ -491,21 +491,6 @@ if st.session_state.bot_active:
                     except Exception as parse_err:
                         st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Pattern Scanning... Retrying next loop.")
                 else:
-                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Router Offline Code {or_response.status_code}. Activating Local Backup...")
-                    local_decision = "HOLD"
-                    if current_rsi < 35: local_decision = "LONG"
-                    elif current_rsi > 65: local_decision = "SHORT"
-                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Local Signal: '{local_decision}' for {target_symbol}")
-                    if local_decision in ["LONG", "SHORT"]:
-                        db_save(f"in_position_{allocated_user_id}", True); db_save(f"buy_price_{allocated_user_id}", live_price); db_save(f"current_side_{allocated_user_id}", local_decision); db_save(f"trade_coin_{allocated_user_id}", target_symbol)
-                        db_save(f"tp_target_{allocated_user_id}", price_jump_target); db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
-                        if not st.session_state.first_trade_done:
-                            st.session_state.first_trade_done = True
-                            db_save(f"first_done_{allocated_user_id}", True)
-                        st.toast(f"⚡ Backup Engine Executed: {local_decision}", icon="⚙️"); st.rerun()
-        except Exception as e:
-            st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Loop Error Node: {str(e)}")
-                else:
                     # ওপেনরাউটার ব্লক বা এরর থাকলে লোকাল এআই অ্যালগরিদম ব্যাকআপ মোড চালু হবে
                     st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Cloud Error {or_response.status_code}. Activating Local Backup Brain...")
                     local_decision = "HOLD"
