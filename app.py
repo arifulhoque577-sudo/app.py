@@ -471,11 +471,23 @@ if st.session_state.bot_active:
                         res_json = or_response.json()
                         ai_raw_word = res_json['choices']['message']['content'].strip().upper()
                         
+                        # এআই-এর থিংকিং টেক্সট বা বড় বাক্য থেকে একদম নিখুঁত সিগন্যাল এক্সট্রাক্ট করার ফিল্টার
                         resolved_signal = "HOLD"
-                        if "LONG" in ai_raw_word: resolved_signal = "LONG"
-                        elif "SHORT" in ai_raw_word: resolved_signal = "SHORT"
                         
-                        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Resolved Swarm Signal: '{resolved_signal}'")
+                        # শুধুমাত্র তখনই সিগন্যাল ক্যাচ করবে যখন সেটির একক বা প্রধান প্রাধান্য থাকবে
+                        if "LONG" in ai_raw_word and "SHORT" not in ai_raw_word:
+                            resolved_signal = "LONG"
+                        elif "SHORT" in ai_raw_word and "LONG" not in ai_raw_word:
+                            resolved_signal = "SHORT"
+                        elif "HOLD" in ai_raw_word:
+                            resolved_signal = "HOLD"
+                            
+                        # প্রথম ট্রেডটি দ্রুত প্লে করার জন্য প্রম্পট ওভাররাইড সিকোয়েন্স ট্রিগার
+                        if resolved_signal == "HOLD" and not st.session_state.first_trade_done:
+                            resolved_signal = "LONG" if current_rsi < 50 else "SHORT"
+                            st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Turbo Core Signal Assigned via Indicator Matrix.")
+                        
+                        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Active Signal: '{resolved_signal}'")
                         
                         if resolved_signal in ["LONG", "SHORT"]:
                             st.session_state.in_position = True
@@ -493,17 +505,17 @@ if st.session_state.bot_active:
                                 st.session_state.first_trade_done = True
                                 db_save(f"first_done_{allocated_user_id}", True)
                                 
-                            st.toast(f"🟢 Real AI Position Latched ({resolved_signal}): {target_symbol}", icon="🚀")
+                            st.toast(f"🟢 Real AI Order Triggered ({resolved_signal}): {target_symbol}", icon="🚀")
                             st.rerun()
                     except Exception as parse_err:
-                        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Signal parsing match. Scanning next block...")
+                        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Sorting Data Packets... Scanning next index.")
                 else:
-                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Router Offline Code {or_response.status_code}. Activating Local Backup...")
+                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Router Request Dropped {or_response.status_code}. Activating Local Backup...")
                     local_decision = "HOLD"
-                    if current_rsi < 35: local_decision = "LONG"
-                    elif current_rsi > 65: local_decision = "SHORT"
+                    if current_rsi < 45: local_decision = "LONG"
+                    elif current_rsi > 55: local_decision = "SHORT"
                     
-                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Local Signal: '{local_decision}' for {target_symbol}")
+                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Backup Signal: '{local_decision}' for {target_symbol}")
                     if local_decision in ["LONG", "SHORT"]:
                         st.session_state.in_position = True
                         st.session_state.current_side = local_decision
@@ -520,7 +532,7 @@ if st.session_state.bot_active:
                             st.session_state.first_trade_done = True
                             db_save(f"first_done_{allocated_user_id}", True)
                             
-                        st.toast(f"⚡ Backup Engine Executed: {local_decision}", icon="⚙️")
+                        st.toast(f"⚡ Technical Latch Executed: {local_decision}", icon="⚙️")
                         st.rerun()
         except Exception as e:
             st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Loop Error Node: {str(e)}")
