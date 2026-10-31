@@ -474,7 +474,7 @@ if st.session_state.bot_active:
             db_save("pnl_history", st._global_user_pnl_history); db_save(f"in_position_{allocated_user_id}", False); db_save(f"buy_price_{allocated_user_id}", 0.0); db_save(f"current_side_{allocated_user_id}", "NONE"); st.session_state.in_position = False; st.rerun()
 # --- 🪐 REAL-TIME LIVE BACKEND TECHNICAL LOG NODE BOX ---
 st.markdown("<b>🖥️ Real-Time AI Swarm Scalper Loop Sequence Log Panel:</b>", unsafe_allow_html=True)
-log_text = "\n".join(st.session_state.engine_logs[-6:]) # শুধুমাত্র শেষ ৬টি অ্যাক্টিভ লাইভ ইভেন্ট ট্র্যাক করবে
+log_text = "\n".join(st.session_state.engine_logs[-6:])
 st.text_area(label="Live Engine Activity Terminal Window Property Node", value=log_text, height=135, label_visibility="collapsed")
 
 if not ai_decision and not st.session_state.in_position:
@@ -482,12 +482,24 @@ if not ai_decision and not st.session_state.in_position:
 
 c1, c2 = st.columns(2)
 with c1:
+    # ফিক্সড ল্যাচিং লজিক: বাটন ক্লিক করলে সরাসরি স্টেট ফায়ারবেস ডাটাবেজে পার্মানেন্ট লক হবে
     if not st.session_state.bot_active:
-        if st.button("🟢 START ENGINE SCALPER LOOP SEQUENCE"): db_save(f"bot_active_{allocated_user_id}", True); st.rerun()
+        if st.button("🟢 START ENGINE SCALPER LOOP SEQUENCE", key="trigger_start_engine_latch_btn"):
+            st.session_state.bot_active = True
+            db_save(f"bot_active_{allocated_user_id}", True)
+            st.toast("AI Scalper Engine Started Successfully!", icon="🚀")
+            st.rerun()
     else:
-        if st.button("🔴 STOP ENGINE SCALPER LOOP SEQUENCE"): db_save(f"bot_active_{allocated_user_id}", False); st.rerun()
+        if st.button("🔴 STOP ENGINE SCALPER LOOP SEQUENCE", key="trigger_stop_engine_latch_btn"):
+            st.session_state.bot_active = False
+            db_save(f"bot_active_{allocated_user_id}", False)
+            st.toast("AI Scalper Engine Stopped Safely.", icon="🛑")
+            st.rerun()
 with c2:
-    if st.button("🚨 EMERGENCY LIQUIDATE CLOSE ORDER POSITION", disabled=not st.session_state.in_position): db_save(f"in_position_{allocated_user_id}", False); st.session_state.in_position = False; st.rerun()
+    if st.button("🚨 EMERGENCY LIQUIDATE CLOSE ORDER POSITION", disabled=not st.session_state.in_position, key="force_sell_engine_btn"):
+        db_save(f"in_position_{allocated_user_id}", False)
+        st.session_state.in_position = False
+        st.rerun()
 
 # 1.5 Second Background Heartbeat Refresher Frame Node Loop
 st.markdown("""<iframe src="about:blank" style="display:none;" onload="setTimeout(function(){window.location.reload();}, 1500);"></iframe>""", unsafe_allow_html=True)
