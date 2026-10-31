@@ -423,12 +423,17 @@ if st.session_state.in_position:
 # =======================================================
 # 🌐 DEEPSEEK OPENROUTER NEWS & INDICATOR SWARM INTELLIGENCE
 # =======================================================
-# 🔥 DEMO/REAL ACCOUNT ISO-LATCH SYSTEM NODES
+# 🔥 RESTORE BANNER LOGO AT THE ABSOLUTE TOP OF THE PAGE
+st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
+
+# 🔥 FULLY ACCURATE ISOLATION CHANNELS FOR DEMO & REAL TRADES
 mode_suffix = "real" if is_real_live else "demo"
 cloud_bot_trigger = db_load(f"bot_active_{mode_suffix}_{allocated_user_id}", False) if (allocated_user_id and allocated_user_id != "NONE") else st.session_state.get(f"bot_active_{mode_suffix}", False)
 
-# --- 👑 RESTORE BANNER LOGO HEADER ---
-st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
+# ১00% ডেটাবেজ ও লোকাল সেশন মেমোরি চ্যানেল পৃথকীকরণ (কনф্লিক্ট প্রোটেকশন)
+st.session_state.in_position = db_load(f"in_position_{mode_suffix}_{allocated_user_id}", False)
+st.session_state.buy_price = db_load(f"buy_price_{mode_suffix}_{allocated_user_id}", 0.0)
+st.session_state.current_side = db_load(f"current_side_{mode_suffix}_{allocated_user_id}", "NONE")
 if cloud_bot_trigger and allocated_user_id != "NONE":
     or_api_key = db_load(f"or_key_{allocated_user_id}", "")
     or_model_id = db_load(f"or_model_{allocated_user_id}", "google/gemini-2.5-flash:free")
@@ -493,9 +498,9 @@ if cloud_bot_trigger and allocated_user_id != "NONE":
                             st.session_state.current_side = resolved_signal
                             st.session_state.buy_price = live_price
                             
-                            db_save(f"in_position_{allocated_user_id}", True)
-                            db_save(f"buy_price_{allocated_user_id}", live_price)
-                            db_save(f"current_side_{allocated_user_id}", resolved_signal)
+                            db_save(f"in_position_{mode_suffix}_{allocated_user_id}", True)
+                            db_save(f"buy_price_{mode_suffix}_{allocated_user_id}", live_price)
+                            db_save(f"current_side_{mode_suffix}_{allocated_user_id}", resolved_signal)
                             db_save(f"trade_coin_{allocated_user_id}", target_symbol)
                             db_save(f"tp_target_{allocated_user_id}", price_jump_target)
                             db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
@@ -518,9 +523,9 @@ if cloud_bot_trigger and allocated_user_id != "NONE":
                         st.session_state.current_side = local_decision
                         st.session_state.buy_price = live_price
                         
-                        db_save(f"in_position_{allocated_user_id}", True)
-                        db_save(f"buy_price_{allocated_user_id}", live_price)
-                        db_save(f"current_side_{allocated_user_id}", local_decision)
+                        db_save(f"in_position_{mode_suffix}_{allocated_user_id}", True)
+                        db_save(f"buy_price_{mode_suffix}_{allocated_user_id}", live_price)
+                        db_save(f"current_side_{mode_suffix}_{allocated_user_id}", local_decision)
                         db_save(f"trade_coin_{allocated_user_id}", target_symbol)
                         db_save(f"tp_target_{allocated_user_id}", price_jump_target)
                         db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
@@ -538,19 +543,19 @@ st.markdown("<b>🖥️ Real-Time AI Swarm Scalper Loop Sequence Log Panel:</b>"
 log_text = "\n".join(st.session_state.engine_logs[-6:])
 st.text_area(label="Live Terminal", value=log_text, height=135, label_visibility="collapsed")
 
-# --- 🕹️ RESTORE MANUAL TRADING PANEL MATRIX ---
+# --- 🕹️ RESTORE FIXED MANUAL TRADING PANEL MATRIX ---
 if not ai_decision and not st.session_state.in_position:
     st.markdown("<p style='color:#ffcc00; font-weight:bold;'>🕹️ Manual Trading Panel Active</p>", unsafe_allow_html=True)
     m_col1, m_col2 = st.columns(2)
     with m_col1:
         if st.button("🟢 EXECUTE BUY / LONG ENTRY", key="manual_long_gate"):
-            db_save(f"in_position_{allocated_user_id}", True); db_save(f"buy_price_{allocated_user_id}", live_price)
-            db_save(f"current_side_{allocated_user_id}", "LONG"); db_save(f"trade_coin_{allocated_user_id}", target_symbol)
+            db_save(f"in_position_{mode_suffix}_{allocated_user_id}", True); db_save(f"buy_price_{mode_suffix}_{allocated_user_id}", live_price)
+            db_save(f"current_side_{mode_suffix}_{allocated_user_id}", "LONG"); db_save(f"trade_coin_{allocated_user_id}", target_symbol)
             st.rerun()
     with m_col2:
         if st.button("🔴 EXECUTE SELL / SHORT ENTRY", key="manual_short_gate"):
-            db_save(f"in_position_{allocated_user_id}", True); db_save(f"buy_price_{allocated_user_id}", live_price)
-            db_save(f"current_side_{allocated_user_id}", "SHORT"); db_save(f"trade_coin_{allocated_user_id}", target_symbol)
+            db_save(f"in_position_{mode_suffix}_{allocated_user_id}", True); db_save(f"buy_price_{mode_suffix}_{allocated_user_id}", live_price)
+            db_save(f"current_side_{mode_suffix}_{allocated_user_id}", "SHORT"); db_save(f"trade_coin_{allocated_user_id}", target_symbol)
             st.rerun()
 c1, c2 = st.columns(2)
 with c1:
@@ -566,10 +571,30 @@ with c1:
             st.rerun()
 with c2:
     if st.button("🚨 EMERGENCY LIQUIDATE CLOSE ORDER POSITION", disabled=not st.session_state.in_position, key="force_liquidate_btn"):
-        db_save(f"in_position_{allocated_user_id}", False); st.session_state.in_position = False; st.rerun()
+        db_save(f"in_position_{mode_suffix}_{allocated_user_id}", False); st.session_state.in_position = False; st.rerun()
 
 st.markdown("""<iframe src="about:blank" style="display:none;" onload="setTimeout(function(){window.location.reload();}, 1500);"></iframe>""", unsafe_allow_html=True)
 
+# --- 🧬 100% RESTORE NAMEERROR: RE-DEFINED LOST CALCULATOR FUNCTION ---
+def calculate_sub_generations(r_uid, tree):
+    g_map = {"Gen 1": [], "Gen 2": [], "Gen 3": [], "Gen 4": [], "Gen 5": [], "Gen 6": [], "Gen 7": []}
+    actual_search_uid = r_uid
+    for uname, data in st._central_user_creds.items():
+        if uname == r_uid or data.get("uid") == r_uid:
+            actual_search_uid = data.get("uid")
+            break
+    if actual_search_uid in tree: g_map["Gen 1"] = list(tree[actual_search_uid])
+    for idx in range(2, 8):
+        prev_name = f"Gen {idx-1}"
+        current_name = f"Gen {idx}"
+        p_layer = g_map.get(prev_name, [])
+        c_accum = []
+        for p_uid in p_layer:
+            if p_uid in tree:
+                for c_uid in tree[p_uid]:
+                    if c_uid not in c_accum: c_accum.append(c_uid)
+        g_map[current_name] = c_accum
+    return g_map
 # --- 🌿 RESTORE NETWORK MARKETING MATRIX PANELS ---
 st.markdown("<hr style='border:1px solid #1f2c3f;'>", unsafe_allow_html=True)
 st.markdown(f"<h3 style='color:#f5a623;'>🌿 Network Marketing Matrix Desk ({dashboard_mode_title})</h3>", unsafe_allow_html=True)
@@ -590,6 +615,7 @@ if st._global_user_pnl_history:
 cbx1, cbx2 = st.columns(2)
 with cbx1: st.markdown(f"<div class='custom-box-grid' style='border-top:4px solid #00e676; text-align:center;'><span>🔗 REFERRAL TOTAL NET BOX ({mode_filter_string})</span><h4 style='color:#00e676;'>${ref_accum:.2f} USDT</h4></div>", unsafe_allow_html=True)
 with cbx2: st.markdown(f"<div class='custom-box-grid' style='border-top:4px solid #29b6f6; text-align:center;'><span>🌐 7-GEN DAILY ROI COMMISSION ({mode_filter_string})</span><h4 style='color:#29b6f6;'>${gen_accum:.2f} USDT</h4></div>", unsafe_allow_html=True)
+
 if search_uid_input:
     t1, t2 = st.tabs(["Real Production Earnings Gate 🟢", "Demo Sandbox Earnings Gate 🔵"])
     with t1:
@@ -614,7 +640,6 @@ if search_uid_input:
                     st.dataframe(child_demo_df.iloc[::-1], use_container_width=True)
                 else: st.info("No sandbox simulation records synced yet.")
         else: st.info("Ledger registry is empty.")
-
 st.markdown("<br><b style='color:#f5a623;'>📊 Sub-Downline Network Members Status Grid Management Node:</b>", unsafe_allow_html=True)
 sub_tree_records = []
 mapped_gens = calculate_sub_generations(search_uid_input, st._global_referral_tree)
