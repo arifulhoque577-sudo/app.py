@@ -468,13 +468,15 @@ if st.session_state.bot_active:
                 or_response = requests.post("https://openrouter.ai", headers=headers, json=payload, timeout=10)
                 if or_response.status_code == 200:
                     try:
-                        res_json = or_response.json()
-                        ai_raw_word = res_json['choices']['message']['content'].strip().upper()
+                        ai_raw_word = ""
+                        # জেসন এবং র টেক্সট দুই ফরম্যাটেই ব্যাকআপ প্রটেকশন রিড লেয়ার
+                        try:
+                            res_json = or_response.json()
+                            ai_raw_word = res_json['choices'][0]['message']['content'].strip().upper()
+                        except:
+                            ai_raw_word = or_response.text.strip().upper()
                         
-                        # এআই-এর থিংকিং টেক্সট বা বড় বাক্য থেকে একদম নিখুঁত সিগন্যাল এক্সট্রাক্ট করার ফিল্টার
                         resolved_signal = "HOLD"
-                        
-                        # শুধুমাত্র তখনই সিগন্যাল ক্যাচ করবে যখন সেটির একক বা প্রধান প্রাধান্য থাকবে
                         if "LONG" in ai_raw_word and "SHORT" not in ai_raw_word:
                             resolved_signal = "LONG"
                         elif "SHORT" in ai_raw_word and "LONG" not in ai_raw_word:
@@ -482,10 +484,10 @@ if st.session_state.bot_active:
                         elif "HOLD" in ai_raw_word:
                             resolved_signal = "HOLD"
                             
-                        # প্রথম ট্রেডটি দ্রুত প্লে করার জন্য প্রম্পট ওভাররাইড সিকোয়েন্স ট্রিগার
+                        # প্রথম ট্রেডটি দ্রুত প্লে করার জন্য ডাইনামিক ওভাররাইড সিকোয়েন্স
                         if resolved_signal == "HOLD" and not st.session_state.first_trade_done:
                             resolved_signal = "LONG" if current_rsi < 50 else "SHORT"
-                            st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Turbo Core Signal Assigned via Indicator Matrix.")
+                            st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Turbo Core Signal Assigned via Matrix Verification.")
                         
                         st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Active Signal: '{resolved_signal}'")
                         
@@ -508,7 +510,7 @@ if st.session_state.bot_active:
                             st.toast(f"🟢 Real AI Order Triggered ({resolved_signal}): {target_symbol}", icon="🚀")
                             st.rerun()
                     except Exception as parse_err:
-                        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Sorting Data Packets... Scanning next index.")
+                        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Latching Signal... Auto-routing next loop index.")
                 else:
                     st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Router Request Dropped {or_response.status_code}. Activating Local Backup...")
                     local_decision = "HOLD"
