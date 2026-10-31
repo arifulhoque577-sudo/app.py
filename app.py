@@ -298,48 +298,67 @@ with st.sidebar:
         st.session_state.logged_in_user = None
         st.query_params.clear()
         st.rerun()
-with st.sidebar:
+        
     bot_mode = st.radio("Trading Account Mode Settings:", ["Demo Simulation (Virtual Funds)", "Live Exchange (Bybit Mainnet API)"])
     is_real_live = "Live" in bot_mode
+    mode_suffix = "real" if is_real_live else "demo"
     dashboard_mode_title = "Real Production Dashboard Mode 🟢" if is_real_live else "Demo Sandbox Dashboard Mode 🔵"
-    if is_real_live: st.session_state.real_balance = db_load(f"real_balance_{allocated_user_id}", 0.0)
-    else: st.session_state.demo_balance = db_load(f"balance_{allocated_user_id}", 5000.0)
 
-    selected_display_name = st.selectbox("Select Asset Contract Symbol Dropdown:", list(BYBYT_DATABASE_CORE.keys()), index=0)
-    coin_config = BYBYT_DATABASE_CORE[selected_display_name]
-    
-    in_position_state = db_load(f"in_position_{allocated_user_id}", False)
+    # 🔒 ডাটাবেজ থেকে একটিভ ট্রেডের সিকিউর হার্ড-লকিং চ্যানেল লোড
+    in_position_state = db_load(f"in_position_{mode_suffix}_{allocated_user_id}", False)
     locked_trade_coin = db_load(f"trade_coin_{allocated_user_id}", "NONE")
+    
+    # কয়েন লিকেজ প্রোটেকশন ইনডেক্স রিকভারি
+    coin_list = list(BYBYT_DATABASE_CORE.keys())
+    default_coin_idx = 0
+    
     if in_position_state and locked_trade_coin != "NONE":
-        for k, v in BYBYT_DATABASE_CORE.items():
-            if v["symbol"] == locked_trade_coin: coin_config = v; break
+        for idx, (k, v) in enumerate(BYBYT_DATABASE_CORE.items()):
+            if v["symbol"] == locked_trade_coin:
+                coin_config = v
+                default_coin_idx = idx
+                break
+        target_symbol = locked_trade_coin
     else:
+        selected_display_name = st.selectbox("Select Asset Contract Symbol Dropdown:", coin_list, index=0)
+        coin_config = BYBYT_DATABASE_CORE[selected_display_name]
         target_symbol = coin_config["symbol"]
         db_save(f"trade_coin_{allocated_user_id}", target_symbol)
-    target_symbol = coin_config["symbol"]
+
     ai_decision = st.toggle("AI Smart Crossover Filter Matrix", value=True)
-with st.sidebar:
+    
     st.markdown("<b style='color:#38bdf8;'>🤖 OpenRouter AI Router Configuration:</b>", unsafe_allow_html=True)
     or_api_key = st.text_input("OpenRouter API Key:", type="password", value=db_load(f"or_key_{allocated_user_id}", ""), key="openrouter_api_key_field")
     or_model_id = st.text_input("Model ID:", value=db_load(f"or_model_{allocated_user_id}", "google/gemini-2.5-flash:free"), key="openrouter_model_id_field")
     if st.button("Save AI Router Node Config", key="save_or_config_btn"):
         db_save(f"or_key_{allocated_user_id}", or_api_key); db_save(f"or_model_{allocated_user_id}", or_model_id); st.toast("Config Saved!", icon="💾")
+    
     max_leverage_bound = int(coin_config.get('max_leverage', 100))
+    
+    # 🔒 ৩ নম্বর স্ক্রিনশটের মতো অবিকল লেভারেজ, মার্জিন, TP, SL লক এবং ইনপুট হাইড ইঞ্জিন
     if in_position_state:
         leverage = db_load(f"leverage_lock_{allocated_user_id}", 20)
         trade_amount = db_load(f"margin_lock_{allocated_user_id}", 20)
-        st.sidebar.markdown(f"<div style='background-color:#1e293b; padding:8px; border-radius:5px;'><b style='color:#00e676;'>🔒 Position Active</b><br><span style='font-size:12px;color:#fff;'>Leverage: {leverage}x | Margin: ${trade_amount}</span></div>", unsafe_allow_html=True)
+        price_jump_target = db_load(f"tp_target_{allocated_user_id}", float(coin_config["default_tp"]))
+        stop_loss_gap = db_load(f"sl_gap_{allocated_user_id}", float(coin_config["default_sl"]))
+        
+        st.markdown(f"""
+        <div style="background-color:#1e293b; padding:12px; border-radius:8px; border-left: 4px solid #00e676; margin-top:10px; margin-bottom:10px;">
+            <b style="color:#00e676; font-size:14px;">🔒 Position Active</b><br>
+            <span style="font-size:12px; color:#ffffff; font-family:monospace;">Leverage: {leverage}x | Margin: ${trade_amount}</span><br>
+            <span style="font-size:11px; color:#00e676; font-family:monospace;">Position Parameters Locked Successfully</span>
+        </div>
+        """, unsafe_allow_html=True)
     else:
         leverage = st.slider("Leverage Scale Selection Array (1x-100x Override):", min_value=1, max_value=max_leverage_bound, value=20, step=1, key="absolute_leverage_node_slider")
         trade_amount = st.number_input("Margin Requirement Block (\$):", min_value=1, value=20)
-        db_save(f"leverage_lock_{allocated_user_id}", leverage); db_save(f"margin_lock_{allocated_user_id}", trade_amount)
-    if not in_position_state:
         price_jump_target = st.number_input("Take Profit Target Interval (\$):", value=float(coin_config["default_tp"]), format="%.6f", key="tp_input_node_box")
         stop_loss_gap = st.number_input("Stop Loss Boundary GAP Threshold (\$):", value=float(coin_config["default_sl"]), format="%.6f", key="sl_input_node_box")
-        db_save(f"tp_target_{allocated_user_id}", price_jump_target); db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
-    else:
-        price_jump_target = db_load(f"tp_target_{allocated_user_id}", float(coin_config["default_tp"]))
-        stop_loss_gap = db_load(f"sl_gap_{allocated_user_id}", float(coin_config["default_sl"]))
+        
+        db_save(f"leverage_lock_{allocated_user_id}", leverage)
+        db_save(f"margin_lock_{allocated_user_id}", trade_amount)
+        db_save(f"tp_target_{allocated_user_id}", price_jump_target)
+        db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
 
     api_key, secret_key = "", ""
     if is_real_live:
@@ -416,27 +435,20 @@ if st.session_state.in_position and live_price > 0 and st.session_state.buy_pric
 balance_usd_text = f"${(st.session_state.get('real_balance' if is_real_live else 'demo_balance', 5000.0) + floating_pnl):,.2f} USDT"
 st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}):</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:14px; color:{'#00e676' if floating_pnl >= 0 else '#ff1744'}; font-weight:bold;'>Live Floating P&L Indicator: {floating_pnl:+.4f} USDT</p></div>", unsafe_allow_html=True)
 # ==========================================
-# 🧱 BOX 15: POSITION TRACKER VISUAL OVERLAY & PARAMETER Master LOCK
+# 🧱 BOX 15: GLOBAL PIPELINE SYNC & REAL-TIME FLOATING OVERLAY ENGINE
 # ==========================================
-is_real_live = "Live" in bot_mode if 'bot_mode' in locals() else False
-mode_suffix = "real" if is_real_live else "demo"
+# গ্লোবাল পজিশন মেমরি পাইপলাইন পুনরুদ্ধার এবং পিঅ্যান্ডএল লাইভ আনফ্রিজিং লেয়ার
+st.session_state.in_position = db_load(f"in_position_{mode_suffix}_{allocated_user_id}", False)
+st.session_state.buy_price = db_load(f"buy_price_{mode_suffix}_{allocated_user_id}", 0.0)
+st.session_state.current_side = db_load(f"current_side_{mode_suffix}_{allocated_user_id}", "NONE")
+st.session_state.trade_coin = db_load(f"trade_coin_{allocated_user_id}", target_symbol)
 
-# ডাটাবেজ থেকে সিকিউর স্টেট লোড
-is_user_in_position = db_load(f"in_position_{mode_suffix}_{allocated_user_id}", st.session_state.get("in_position", False))
-
-# 🔒 হার্ড-ল্যাচিং রিকভারি লেয়ার: পজিশন একটিভ থাকলে সাইডবার সেটিংসকে লক করে দেবে (text.file 12 থেকে রিকভার করা)
-if is_user_in_position:
-    target_symbol = db_load(f"trade_coin_{allocated_user_id}", target_symbol)
-    leverage = db_load(f"leverage_lock_{allocated_user_id}", leverage)
-    trade_amount = db_load(f"margin_lock_{allocated_user_id}", trade_amount)
-    price_jump_target = db_load(f"tp_target_{allocated_user_id}", price_jump_target)
-    stop_loss_gap = db_load(f"sl_gap_{allocated_user_id}", stop_loss_gap)
-
+# একটিভ ট্রেড কন্টেইনার এবং প্রফিট কার্ড জেনারেটর
 position_overlay_container = st.container()
 with position_overlay_container:
-    if is_user_in_position:
-        current_active_side = db_load(f"current_side_{mode_suffix}_{allocated_user_id}", st.session_state.get("current_side", "NONE"))
-        current_entry_price = db_load(f"buy_price_{mode_suffix}_{allocated_user_id}", st.session_state.get("buy_price", 0.0))
+    if st.session_state.in_position:
+        current_entry_price = st.session_state.buy_price
+        current_active_side = st.session_state.current_side
         
         is_long_pos = "LONG" in current_active_side
         live_target = (current_entry_price + price_jump_target) if is_long_pos else (current_entry_price - price_jump_target)
@@ -447,7 +459,7 @@ with position_overlay_container:
         
         st.markdown(f"""
         <div style="background-color:#0b0e14; padding:15px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; border-left: 5px solid #29b6f6; box-shadow: 0 0 10px rgba(41, 182, 246, 0.15);">
-            <span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Active Contract Asset: <b>{target_symbol}</b></span><br>
+            <span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Active Contract Asset: <b>{st.session_state.trade_coin}</b></span><br>
             <span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Entry Target Metric: {current_entry_price:.6f} | Live Index Ticker: {live_price:.6f}</span><br>
             <span style="font-size:14px; color:#00e676; font-weight:bold; font-family: monospace;">Take Profit Limit: {live_target:.6f} (Estimated Gain: +${est_profit_dollars:.2f} USDT)</span><br>
             <span style="font-size:14px; color:#ff1744; font-weight:bold; font-family: monospace;">Stop Loss Boundary Node: {live_sl:.6f} (Estimated Loss: -${est_loss_dollars:.2f} USDT)</span>
