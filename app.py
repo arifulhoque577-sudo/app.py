@@ -73,21 +73,14 @@ else:
 if "logged_in_user" not in st.session_state:
     st.session_state.logged_in_user = st.query_params.get("session_user", None)
 
-if 'logged_in_user' in st.session_state and st.session_state.logged_in_user:
-    u_data = st._central_user_creds.get(st.session_state.logged_in_user, {})
-    curr_uid = u_data.get("uid", "GLOBAL")
-    st.session_state.bot_active = db_load(f"bot_active_{curr_uid}", False)
-else:
-    if "bot_active" not in st.session_state:
-        st.session_state.bot_active = False
-
-if "engine_logs" not in st.session_state:
-    st.session_state.engine_logs = ["System Swarm Gateway Init... 📡"]
+if "first_trade_done" not in st.session_state:
+    st.session_state.first_trade_done = False
 
 if 'logged_in_user' in st.session_state and st.session_state.logged_in_user:
     u_data = st._central_user_creds.get(st.session_state.logged_in_user, {})
     curr_uid = u_data.get("uid", "GLOBAL")
     st.session_state.bot_active = db_load(f"bot_active_{curr_uid}", False)
+    st.session_state.first_trade_done = db_load(f"first_done_{curr_uid}", False)
 else:
     if "bot_active" not in st.session_state:
         st.session_state.bot_active = False
