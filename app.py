@@ -11,7 +11,6 @@ import pandas as pd
 from pybit.unified_trading import HTTP
 import requests
 import streamlit as st
-
 # Secure Cloud Firebase Gateway Authentication Layer
 if not firebase_admin._apps:
     fb_json = os.environ.get("firebase_json", None)
@@ -84,7 +83,6 @@ if st.session_state.logged_in_user:
     db_save("global_last_active_uid", allocated_user_id)
 else:
     allocated_user_id = last_active_uid
-
 if allocated_user_id != "NONE":
     st.session_state.bot_active = db_load(f"bot_active_{allocated_user_id}", False)
     st.session_state.first_trade_done = db_load(f"first_done_{allocated_user_id}", False)
@@ -300,6 +298,7 @@ with st.sidebar:
         st.session_state.logged_in_user = None
         st.query_params.clear()
         st.rerun()
+with st.sidebar:
     bot_mode = st.radio("Trading Account Mode Settings:", ["Demo Simulation (Virtual Funds)", "Live Exchange (Bybit Mainnet API)"])
     is_real_live = "Live" in bot_mode
     dashboard_mode_title = "Real Production Dashboard Mode 🟢" if is_real_live else "Demo Sandbox Dashboard Mode 🔵"
@@ -319,10 +318,10 @@ with st.sidebar:
         db_save(f"trade_coin_{allocated_user_id}", target_symbol)
     target_symbol = coin_config["symbol"]
     ai_decision = st.toggle("AI Smart Crossover Filter Matrix", value=True)
-    
+with st.sidebar:
     st.markdown("<b style='color:#38bdf8;'>🤖 OpenRouter AI Router Configuration:</b>", unsafe_allow_html=True)
     or_api_key = st.text_input("OpenRouter API Key:", type="password", value=db_load(f"or_key_{allocated_user_id}", ""), key="openrouter_api_key_field")
-    or_model_id = st.text_input("Model ID:", value=db_load(f"or_model_{allocated_user_id}", "openrouter/free"), key="openrouter_model_id_field")
+    or_model_id = st.text_input("Model ID:", value=db_load(f"or_model_{allocated_user_id}", "google/gemini-2.5-flash:free"), key="openrouter_model_id_field")
     if st.button("Save AI Router Node Config", key="save_or_config_btn"):
         db_save(f"or_key_{allocated_user_id}", or_api_key); db_save(f"or_model_{allocated_user_id}", or_model_id); st.toast("Config Saved!", icon="💾")
     max_leverage_bound = int(coin_config.get('max_leverage', 100))
@@ -353,6 +352,9 @@ with st.sidebar:
                 st._global_user_pnl_history.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "User ID": my_sponsor_id, "Coin": "REAL_LICENSE_ACTIVATION", "Action": "REF_COMMISSION_DIRECT", "Net P&L ($)": f"{admin_fixed_bonus:.2f}", "Type": "REAL"}); db_save("pnl_history", st._global_user_pnl_history)
             api_key = st.text_input("Bybit API Key Node Token:", type="password", key="api_field_sidebar")
             secret_key = st.text_input("Bybit Secret Key Node Token:", type="password", key="sec_field_sidebar")
+# 🔥 লোগো ব্যানার পেজের একদম উপরে প্লেস করা হলো
+st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
+
 effective_vol = trade_amount * leverage
 estimated_fee = effective_vol * 0.0011
 live_price, current_rsi, ai_market_thesis, fig_candlestick = 0.0, 50.0, "SYNCING DATA FEED NODES... 📡", None
@@ -407,7 +409,6 @@ if st.session_state.in_position and live_price > 0 and st.session_state.buy_pric
 
 balance_usd_text = f"${(st.session_state.get('real_balance' if is_real_live else 'demo_balance', 5000.0) + floating_pnl):,.2f} USDT"
 st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}):</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:14px; color:{'#00e676' if floating_pnl >= 0 else '#ff1744'}; font-weight:bold;'>Live Floating P&L Indicator: {floating_pnl:+.4f} USDT</p></div>", unsafe_allow_html=True)
-
 if st.session_state.in_position:
     is_long_pos = "LONG" in st.session_state.current_side
     live_target = (st.session_state.buy_price + price_jump_target) if is_long_pos else (st.session_state.buy_price - price_jump_target)
@@ -419,18 +420,10 @@ if st.session_state.in_position:
         <span style="font-size:14px; color:#ffffff; font-weight:bold; font-family: monospace;">Entry Target Metric: {st.session_state.buy_price:.6f} | Live Index Ticker: {live_price:.6f}</span><br>
         <span style="font-size:14px; color:#00e676; font-weight:bold; font-family: monospace;">Take Profit Limit: {live_target:.6f} (Estimated Gain: +${est_profit_dollars:.2f} USDT)</span><br>
         <span style="font-size:14px; color:#ff1744; font-weight:bold; font-family: monospace;">Stop Loss Boundary Node: {live_sl:.6f} (Estimated Loss: -${est_loss_dollars:.2f} USDT)</span></div>""", unsafe_allow_html=True)
-
-# =======================================================
-# 🌐 DEEPSEEK OPENROUTER NEWS & INDICATOR SWARM INTELLIGENCE
-# =======================================================
-# 🔥 RESTORE BANNER LOGO AT THE ABSOLUTE TOP OF THE PAGE
-st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
-
 # 🔥 FULLY ACCURATE ISOLATION CHANNELS FOR DEMO & REAL TRADES
 mode_suffix = "real" if is_real_live else "demo"
 cloud_bot_trigger = db_load(f"bot_active_{mode_suffix}_{allocated_user_id}", False) if (allocated_user_id and allocated_user_id != "NONE") else st.session_state.get(f"bot_active_{mode_suffix}", False)
 
-# ১00% ডেটাবেজ ও লোকাল সেশন মেমোরি চ্যানেল পৃথকীকরণ (কনф্লিক্ট প্রোটেকশন)
 st.session_state.in_position = db_load(f"in_position_{mode_suffix}_{allocated_user_id}", False)
 st.session_state.buy_price = db_load(f"buy_price_{mode_suffix}_{allocated_user_id}", 0.0)
 st.session_state.current_side = db_load(f"current_side_{mode_suffix}_{allocated_user_id}", "NONE")
@@ -474,7 +467,6 @@ if cloud_bot_trigger and allocated_user_id != "NONE":
                 log_prefix = "🚀 [TURBO AI]" if is_turbo else "🔒 [SECURE AI]"
                 st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] {log_prefix} Analyzing Live Feeds...")
                 or_response = requests.post("https://openrouter.ai", headers=headers, json=payload, timeout=10)
-
                 if or_response.status_code == 200:
                     try:
                         ai_raw_word = ""
@@ -537,7 +529,6 @@ if cloud_bot_trigger and allocated_user_id != "NONE":
                         st.rerun()
         except Exception as e:
             st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Loop Error Node: {str(e)}")
-
 # --- 🪐 LIVE TERMINAL BOX ---
 st.markdown("<b>🖥️ Real-Time AI Swarm Scalper Loop Sequence Log Panel:</b>", unsafe_allow_html=True)
 log_text = "\n".join(st.session_state.engine_logs[-6:])
@@ -574,7 +565,6 @@ with c2:
         db_save(f"in_position_{mode_suffix}_{allocated_user_id}", False); st.session_state.in_position = False; st.rerun()
 
 st.markdown("""<iframe src="about:blank" style="display:none;" onload="setTimeout(function(){window.location.reload();}, 1500);"></iframe>""", unsafe_allow_html=True)
-
 # --- 🧬 100% RESTORE NAMEERROR: RE-DEFINED LOST CALCULATOR FUNCTION ---
 def calculate_sub_generations(r_uid, tree):
     g_map = {"Gen 1": [], "Gen 2": [], "Gen 3": [], "Gen 4": [], "Gen 5": [], "Gen 6": [], "Gen 7": []}
@@ -615,7 +605,6 @@ if st._global_user_pnl_history:
 cbx1, cbx2 = st.columns(2)
 with cbx1: st.markdown(f"<div class='custom-box-grid' style='border-top:4px solid #00e676; text-align:center;'><span>🔗 REFERRAL TOTAL NET BOX ({mode_filter_string})</span><h4 style='color:#00e676;'>${ref_accum:.2f} USDT</h4></div>", unsafe_allow_html=True)
 with cbx2: st.markdown(f"<div class='custom-box-grid' style='border-top:4px solid #29b6f6; text-align:center;'><span>🌐 7-GEN DAILY ROI COMMISSION ({mode_filter_string})</span><h4 style='color:#29b6f6;'>${gen_accum:.2f} USDT</h4></div>", unsafe_allow_html=True)
-
 if search_uid_input:
     t1, t2 = st.tabs(["Real Production Earnings Gate 🟢", "Demo Sandbox Earnings Gate 🔵"])
     with t1:
@@ -655,7 +644,6 @@ for g_key, sub_uids in mapped_gens.items():
         sub_tree_records.append({"Hierarchy Level": g_key, "User ID": sub_uid, "Username": st._uid_to_username.get(sub_uid, f"Node-{sub_uid[:4]}"), "Demo Lifetime Profit": f"${demo_pnl:.2f} USDT", "Real Lifetime Profit": f"${real_pnl:.2f} USDT"})
 if sub_tree_records: st.dataframe(pd.DataFrame(sub_tree_records), use_container_width=True)
 else: st.info("No active downline nodes found.")
-
 with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Panel)"):
     master_input = st.text_input("Input Master Security Override Code Password:", type="password", key="supreme_admin_password_node")
     if master_input == YOUR_SECRET_MASTER_CODE:
