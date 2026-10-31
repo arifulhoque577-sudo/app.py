@@ -508,6 +508,8 @@ if st.session_state.bot_active:
                             
                         st.toast(f"⚡ Backup Engine Executed: {local_decision}", icon="⚙️")
                         st.rerun()
+        except Exception as e:
+            st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Loop Error Node: {str(e)}")
                 else:
                     # ওপেনরাউটার ব্লক বা এরর থাকলে লোকাল এআই অ্যালগরিদম ব্যাকআপ মোড চালু হবে
                     st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Cloud Error {or_response.status_code}. Activating Local Backup Brain...")
