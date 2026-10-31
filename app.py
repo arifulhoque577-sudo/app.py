@@ -423,11 +423,13 @@ if st.session_state.in_position:
 # =======================================================
 # 🌐 DEEPSEEK OPENROUTER NEWS & INDICATOR SWARM INTELLIGENCE
 # =======================================================
-# 🔥 CLOUD RUN GATEWAY: লগআউট করা থাকলেও ডাটাবেজের bot_active লক ট্রু থাকলে লুপ চলবে
-cloud_bot_trigger = db_load(f"bot_active_{allocated_user_id}", False) if (allocated_user_id and allocated_user_id != "NONE") else st.session_state.bot_active
+# 🔥 DEMO/REAL ACCOUNT ISO-LATCH SYSTEM NODES
+mode_suffix = "real" if is_real_live else "demo"
+cloud_bot_trigger = db_load(f"bot_active_{mode_suffix}_{allocated_user_id}", False) if (allocated_user_id and allocated_user_id != "NONE") else st.session_state.get(f"bot_active_{mode_suffix}", False)
 
+# --- 👑 RESTORE BANNER LOGO HEADER ---
+st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
 if cloud_bot_trigger and allocated_user_id != "NONE":
-    # সাইডবার ক্র্যাশ প্রোটেকশন অবজেক্ট রিলোড
     or_api_key = db_load(f"or_key_{allocated_user_id}", "")
     or_model_id = db_load(f"or_model_{allocated_user_id}", "google/gemini-2.5-flash:free")
     
@@ -449,39 +451,22 @@ if cloud_bot_trigger and allocated_user_id != "NONE":
                 
                 is_turbo = not st.session_state.first_trade_done
                 if is_turbo:
-                    mode_instruction = (
-                        "CRITICAL: You must operate in TURBO SCALPING MODE. Analyze the minor 1-minute candlestick movements, "
-                        "RSI velocity, and news sentiment right now. Your priority is speed. Find the immediate next micro-trend "
-                        "breakout or breakdown and issue a 'LONG' or 'SHORT' signal immediately. Avoid 'HOLD' unless the market is completely dead."
-                    )
+                    mode_instruction = "CRITICAL: You must operate in TURBO SCALPING MODE. Find immediate next micro-trend breakout/breakdown and issue LONG or SHORT immediately. Avoid HOLD."
                 else:
-                    mode_instruction = (
-                        "CRITICAL: You must operate in ULTRA-SECURE INSTITUTIONAL MODE. Be extremely strict and conservative. "
-                        "Only issue a 'LONG' or 'SHORT' signal if the 7-period moving average breakdown and RSI confirmation "
-                        "are absolutely perfect with strong volume support. If there is any uncertainty or range-bound chop, you MUST respond with 'HOLD'."
-                    )
+                    mode_instruction = "CRITICAL: You must operate in ULTRA-SECURE INSTITUTIONAL MODE. Only issue LONG or SHORT if MA-7 breakout and RSI are 100% perfect. Otherwise output HOLD."
                 
                 market_context_prompt = (
-                    f"You are a professional crypto scalping AI trading bot operating on real international feeds.\n"
-                    f"Asset: {target_symbol} | Live Price: {live_price} | RSI (14): {current_rsi:.2f} | MA-7: {last_ma:.6f}\n"
-                    f"International Crypto News Summary: {news_context}\n"
-                    f"User Config Matrix -> Leverage: {leverage}x, TP: {price_jump_target}, SL: {stop_loss_gap}\n"
-                    f"Recent Candlesticks History (5m Matrix Logs): {json.dumps(recent_candles)}\n\n"
+                    f"Asset: {target_symbol} | Live Price: {live_price} | RSI: {current_rsi:.2f} | MA-7: {last_ma:.6f}\n"
+                    f"News Summary: {news_context}\n"
+                    f"Matrix -> Leverage: {leverage}x, TP: {price_jump_target}, SL: {stop_loss_gap}\n"
+                    f"Candlesticks: {json.dumps(recent_candles)}\n\n"
                     f"{mode_instruction}\n\n"
-                    f"RESPOND SYSTEM RULES: You must output EXACTLY ONE UPPERCASE WORD: 'LONG' or 'SHORT' or 'HOLD'. "
-                    f"Do not write any markdown, reasoning, punctuation, or extra words. Just the single word response."
+                    f"RESPOND SYSTEM RULES: Output EXACTLY ONE UPPERCASE WORD: 'LONG' or 'SHORT' or 'HOLD'. No extra words."
                 )
+                headers = {"Authorization": f"Bearer {or_api_key}", "Content-Type": "application/json", "HTTP-Referer": "https://streamlit.io", "X-Title": "Bybit AI Engine"}
+                payload = {"model": or_model_id, "messages": [{"role": "user", "content": market_context_prompt}]}
                 
-                headers = {
-                    "Authorization": f"Bearer {or_api_key}",
-                    "Content-Type": "application/json",
-                    "HTTP-Referer": "https://streamlit.io",
-                    "X-Title": "Bybit AI Scalper Swarm Engine",
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-                }
-                payload = {"model": or_model_id if or_model_id else "google/gemini-2.5-flash:free", "messages": [{"role": "user", "content": market_context_prompt}]}
-                
-                log_prefix = "🚀 [TURBO AI PROMPT]" if is_turbo else "🔒 [SECURE AI PROMPT]"
+                log_prefix = "🚀 [TURBO AI]" if is_turbo else "🔒 [SECURE AI]"
                 st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] {log_prefix} Analyzing Live Feeds...")
                 or_response = requests.post("https://openrouter.ai", headers=headers, json=payload, timeout=10)
 
@@ -497,11 +482,9 @@ if cloud_bot_trigger and allocated_user_id != "NONE":
                         resolved_signal = "HOLD"
                         if "LONG" in ai_raw_word and "SHORT" not in ai_raw_word: resolved_signal = "LONG"
                         elif "SHORT" in ai_raw_word and "LONG" not in ai_raw_word: resolved_signal = "SHORT"
-                        elif "HOLD" in ai_raw_word: resolved_signal = "HOLD"
                         
                         if resolved_signal == "HOLD" and not st.session_state.first_trade_done:
                             resolved_signal = "LONG" if current_rsi < 50 else "SHORT"
-                            st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Turbo Core Signal Assigned via Matrix Verification.")
                         
                         st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Active Signal: '{resolved_signal}'")
                         
@@ -520,11 +503,9 @@ if cloud_bot_trigger and allocated_user_id != "NONE":
                             if not st.session_state.first_trade_done:
                                 st.session_state.first_trade_done = True
                                 db_save(f"first_done_{allocated_user_id}", True)
-                                
-                            st.toast(f"🟢 Real AI Order Triggered ({resolved_signal}): {target_symbol}", icon="🚀")
+                            st.toast(f"🟢 Real AI Order Triggered ({resolved_signal})", icon="🚀")
                             st.rerun()
-                    except Exception as parse_err:
-                        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Sorting Data Packets... Scanning next index.")
+                    except: pass
                 else:
                     st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Router Request Dropped {or_response.status_code}. Activating Local Backup...")
                     local_decision = "HOLD"
@@ -547,62 +528,49 @@ if cloud_bot_trigger and allocated_user_id != "NONE":
                         if not st.session_state.first_trade_done:
                             st.session_state.first_trade_done = True
                             db_save(f"first_done_{allocated_user_id}", True)
-                            
                         st.toast(f"⚡ Technical Latch Executed: {local_decision}", icon="⚙️")
                         st.rerun()
         except Exception as e:
             st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Loop Error Node: {str(e)}")
-    if st.session_state.in_position and live_price > 0:
-        is_long_pos = "LONG" in st.session_state.current_side
-        saved_tp = db_load(f"tp_target_{allocated_user_id}", float(coin_config["default_tp"]))
-        saved_sl = db_load(f"sl_gap_{allocated_user_id}", float(coin_config["default_sl"]))
-        target_tp_price = (st.session_state.buy_price + saved_tp) if is_long_pos else (st.session_state.buy_price - saved_tp)
-        target_sl_price = (st.session_state.buy_price - saved_sl) if is_long_pos else (st.session_state.buy_price + saved_sl)
-        hit_tp = (live_price >= target_tp_price) if is_long_pos else (live_price <= target_tp_price)
-        hit_sl = (live_price <= target_sl_price) if is_long_pos else (live_price >= target_sl_price)
-        
-        if hit_tp or hit_sl:
-            local_final_pnl = ((live_price - st.session_state.buy_price) * (effective_vol / st.session_state.buy_price)) if is_long_pos else ((st.session_state.buy_price - live_price) * (effective_vol / st.session_state.buy_price))
-            net_pnl = local_final_pnl - estimated_fee
-            if is_real_live: st.session_state.real_balance += net_pnl; db_save(f"real_balance_{allocated_user_id}", st.session_state.real_balance)
-            else: st.session_state.demo_balance += net_pnl; db_save(f"balance_{allocated_user_id}", st.session_state.demo_balance)
-            if net_pnl > 0: st.session_state.win_count += 1
-            else: st.session_state.loss_count += 1
-            db_save(f"win_{allocated_user_id}", st.session_state.win_count); db_save(f"loss_{allocated_user_id}", st.session_state.loss_count)
-            st._global_user_pnl_history.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "User ID": allocated_user_id, "Coin": target_symbol, "Action": f"AUTO CLOSE {'TP' if hit_tp else 'SL'}", "Net P&L ($)": f"{net_pnl:.2f}", "Type": "REAL" if is_real_live else "DEMO"})
-            db_save("pnl_history", st._global_user_pnl_history); db_save(f"in_position_{allocated_user_id}", False); db_save(f"buy_price_{allocated_user_id}", 0.0); db_save(f"current_side_{allocated_user_id}", "NONE"); st.session_state.in_position = False; st.rerun()
-# --- 🪐 REAL-TIME LIVE BACKEND TECHNICAL LOG NODE BOX ---
+
+# --- 🪐 LIVE TERMINAL BOX ---
 st.markdown("<b>🖥️ Real-Time AI Swarm Scalper Loop Sequence Log Panel:</b>", unsafe_allow_html=True)
 log_text = "\n".join(st.session_state.engine_logs[-6:])
-st.text_area(label="Live Engine Activity Terminal Window Property Node", value=log_text, height=135, label_visibility="collapsed")
+st.text_area(label="Live Terminal", value=log_text, height=135, label_visibility="collapsed")
 
+# --- 🕹️ RESTORE MANUAL TRADING PANEL MATRIX ---
 if not ai_decision and not st.session_state.in_position:
     st.markdown("<p style='color:#ffcc00; font-weight:bold;'>🕹️ Manual Trading Panel Active</p>", unsafe_allow_html=True)
-
+    m_col1, m_col2 = st.columns(2)
+    with m_col1:
+        if st.button("🟢 EXECUTE BUY / LONG ENTRY", key="manual_long_gate"):
+            db_save(f"in_position_{allocated_user_id}", True); db_save(f"buy_price_{allocated_user_id}", live_price)
+            db_save(f"current_side_{allocated_user_id}", "LONG"); db_save(f"trade_coin_{allocated_user_id}", target_symbol)
+            st.rerun()
+    with m_col2:
+        if st.button("🔴 EXECUTE SELL / SHORT ENTRY", key="manual_short_gate"):
+            db_save(f"in_position_{allocated_user_id}", True); db_save(f"buy_price_{allocated_user_id}", live_price)
+            db_save(f"current_side_{allocated_user_id}", "SHORT"); db_save(f"trade_coin_{allocated_user_id}", target_symbol)
+            st.rerun()
 c1, c2 = st.columns(2)
 with c1:
-    # ফিক্সড হার্ড-ল্যাচ বাটন: ক্লিক করার সাথে সাথে ডাটাবেজে পার্মানেন্ট সত্য (True) বা মিথ্যা (False) লক হয়ে যাবে
-    if not st.session_state.bot_active:
-        if st.button("🟢 START ENGINE SCALPER LOOP SEQUENCE", key="final_latch_start_btn"):
-            st.session_state.bot_active = True
-            db_save(f"bot_active_{allocated_user_id}", True)
-            st.toast("AI Scalper Engine Lock Activated!", icon="🚀")
+    if not cloud_bot_trigger:
+        if st.button(f"🟢 START ENGINE SCALPER LOOP SEQUENCE ({mode_suffix.upper()})", key=f"start_latch_{mode_suffix}"):
+            db_save(f"bot_active_{mode_suffix}_{allocated_user_id}", True)
+            st.session_state[f"bot_active_{mode_suffix}"] = True
             st.rerun()
     else:
-        if st.button("🔴 STOP ENGINE SCALPER LOOP SEQUENCE", key="final_latch_stop_btn"):
-            st.session_state.bot_active = False
-            db_save(f"bot_active_{allocated_user_id}", False)
-            st.toast("AI Scalper Engine Safely Disengaged.", icon="🛑")
+        if st.button(f"🔴 STOP ENGINE SCALPER LOOP SEQUENCE ({mode_suffix.upper()})", key=f"stop_latch_{mode_suffix}"):
+            db_save(f"bot_active_{mode_suffix}_{allocated_user_id}", False)
+            st.session_state[f"bot_active_{mode_suffix}"] = False
             st.rerun()
 with c2:
-    if st.button("🚨 EMERGENCY LIQUIDATE CLOSE ORDER POSITION", disabled=not st.session_state.in_position, key="force_sell_engine_btn"):
-        db_save(f"in_position_{allocated_user_id}", False)
-        st.session_state.in_position = False
-        st.rerun()
+    if st.button("🚨 EMERGENCY LIQUIDATE CLOSE ORDER POSITION", disabled=not st.session_state.in_position, key="force_liquidate_btn"):
+        db_save(f"in_position_{allocated_user_id}", False); st.session_state.in_position = False; st.rerun()
 
-# 1.5 Second Background Heartbeat Refresher Frame Node Loop
 st.markdown("""<iframe src="about:blank" style="display:none;" onload="setTimeout(function(){window.location.reload();}, 1500);"></iframe>""", unsafe_allow_html=True)
-# --- 🌿 DYNAMIC MARKETING NETWORK MODULE PANEL HUB ---
+
+# --- 🌿 RESTORE NETWORK MARKETING MATRIX PANELS ---
 st.markdown("<hr style='border:1px solid #1f2c3f;'>", unsafe_allow_html=True)
 st.markdown(f"<h3 style='color:#f5a623;'>🌿 Network Marketing Matrix Desk ({dashboard_mode_title})</h3>", unsafe_allow_html=True)
 search_uid_input = st.text_input("Enter Target Member UID box input:", value=allocated_user_id, key="custom_uid_search_field_node").strip()
@@ -629,7 +597,7 @@ if search_uid_input:
             pnl_df = pd.DataFrame(st._global_user_pnl_history)
             if not pnl_df.empty and "User ID" in pnl_df.columns:
                 child_real_df = pnl_df[(pnl_df["User ID"] == search_uid_input) & (pnl_df["Type"] == "REAL")]
-                if not child_real_df.empty: 
+                if not child_real_df.empty:
                     child_real_df["Net P&L ($)"] = pd.to_numeric(child_real_df["Net P&L ($)"])
                     st.markdown(f"💰 Real Daily Earnings: <b style='color:#00e676;'>${child_real_df['Net P&L ($)'].sum():.2f} USDT</b>", unsafe_allow_html=True)
                     st.dataframe(child_real_df.iloc[::-1], use_container_width=True)
@@ -640,35 +608,16 @@ if search_uid_input:
             pnl_df = pd.DataFrame(st._global_user_pnl_history)
             if not pnl_df.empty and "User ID" in pnl_df.columns:
                 child_demo_df = pnl_df[(pnl_df["User ID"] == search_uid_input) & (pnl_df["Type"] == "DEMO")]
-                if not child_demo_df.empty: 
+                if not child_demo_df.empty:
                     child_demo_df["Net P&L ($)"] = pd.to_numeric(child_demo_df["Net P&L ($)"])
                     st.markdown(f"💰 Demo Virtual Sandbox Earnings: <b style='color:#29b6f6;'>${child_demo_df['Net P&L ($)'].sum():.2f} USDT</b>", unsafe_allow_html=True)
                     st.dataframe(child_demo_df.iloc[::-1], use_container_width=True)
                 else: st.info("No sandbox simulation records synced yet.")
         else: st.info("Ledger registry is empty.")
 
-def calculate_sub_generations(r_uid, tree):
-    g_map = {"Gen 1": [], "Gen 2": [], "Gen 3": [], "Gen 4": [], "Gen 5": [], "Gen 6": [], "Gen 7": []}
-    actual_search_uid = r_uid
-    for uname, data in st._central_user_creds.items():
-        if uname == r_uid or data.get("uid") == r_uid:
-            actual_search_uid = data.get("uid")
-            break
-    if actual_search_uid in tree: g_map["Gen 1"] = list(tree[actual_search_uid])
-    for idx in range(2, 8):
-        prev_name = f"Gen {idx-1}"
-        current_name = f"Gen {idx}"
-        p_layer = g_map.get(prev_name, [])
-        c_accum = []
-        for p_uid in p_layer:
-            if p_uid in tree:
-                for c_uid in tree[p_uid]:
-                    if c_uid not in c_accum: c_accum.append(c_uid)
-        g_map[current_name] = c_accum
-    return g_map
 st.markdown("<br><b style='color:#f5a623;'>📊 Sub-Downline Network Members Status Grid Management Node:</b>", unsafe_allow_html=True)
-mapped_gens = calculate_sub_generations(search_uid_input, st._global_referral_tree)
 sub_tree_records = []
+mapped_gens = calculate_sub_generations(search_uid_input, st._global_referral_tree)
 for g_key, sub_uids in mapped_gens.items():
     for sub_uid in sub_uids:
         demo_pnl, real_pnl = 0.0, 0.0
@@ -702,7 +651,6 @@ with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Pane
                 if "Real" in edit_mode_sel: db_save(f"real_balance_{target_edit_uid}", float(new_edit_value))
                 else: db_save(f"balance_{target_edit_uid}", float(new_edit_value))
                 st.success("User configuration funds updated inside database successfully!"); st.rerun()
-        
         st.markdown("<h3>🌿 Global User Registry Network Map:</h3>", unsafe_allow_html=True)
         full_mapped_tree = {}
         for parent_uid in list(st._global_referral_tree.keys()):
