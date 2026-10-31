@@ -434,12 +434,31 @@ if st.session_state.bot_active:
                 recent_candles = df_kline.tail(5).to_dict(orient="records")
                 ma_series = df_kline['close'].rolling(window=7).mean()
                 last_ma = float(ma_series.iloc[-1]) if not ma_series.empty else live_price
+                                # প্রথম ট্রেডের জন্য প্রম্পট লজিককে ফাস্ট স্ক্যাল্পিং ডিরেকশন দেওয়া হচ্ছে, পরের গুলোর জন্য আল্ট্রা-সিকিউর
+                is_turbo = not st.session_state.first_trade_done
+                
+                if is_turbo:
+                    mode_instruction = (
+                        "CRITICAL: You must operate in TURBO SCALPING MODE. Analyze the minor 1-minute candlestick movements, "
+                        "RSI velocity, and news sentiment right now. Your priority is speed. Find the immediate next micro-trend "
+                        "breakout or breakdown and issue a 'LONG' or 'SHORT' signal immediately. Avoid 'HOLD' unless the market is completely dead."
+                    )
+                else:
+                    mode_instruction = (
+                        "CRITICAL: You must operate in ULTRA-SECURE INSTITUTIONAL MODE. Be extremely strict and conservative. "
+                        "Only issue a 'LONG' or 'SHORT' signal if the 7-period moving average breakdown and RSI confirmation "
+                        "are absolutely perfect with strong volume support. If there is any uncertainty or range-bound chop, you MUST respond with 'HOLD'."
+                    )
+                
                 market_context_prompt = (
-                    f"Asset: {target_symbol} | Live Price: {live_price} | RSI: {current_rsi:.2f} | MA-7: {last_ma:.6f}\n"
+                    f"You are a professional crypto scalping AI trading bot operating on real international feeds.\n"
+                    f"Asset: {target_symbol} | Live Price: {live_price} | RSI (14): {current_rsi:.2f} | MA-7: {last_ma:.6f}\n"
                     f"International Crypto News Summary: {news_context}\n"
-                    f"Config Matrix -> Leverage: {leverage}x, TP: {price_jump_target}, SL: {stop_loss_gap}\n"
-                    f"Candlesticks: {json.dumps(recent_candles)}\n\n"
-                    f"INSTRUCTION: You are a professional crypto scalping bot. Respond with EXACTLY ONE UPPERCASE WORD: 'LONG' or 'SHORT'. If the market is chop or sideways, respond with 'HOLD'. No explanation, no punctuation, no markdown."
+                    f"User Config Matrix -> Leverage: {leverage}x, TP: {price_jump_target}, SL: {stop_loss_gap}\n"
+                    f"Recent Candlesticks History (5m Matrix Logs): {json.dumps(recent_candles)}\n\n"
+                    f"{mode_instruction}\n\n"
+                    f"RESPOND SYSTEM RULES: You must output EXACTLY ONE UPPERCASE WORD: 'LONG' or 'SHORT' or 'HOLD'. "
+                    f"Do not write any markdown, reasoning, punctuation, or extra words. Just the single word response."
                 )
                 
                 headers = {
@@ -447,39 +466,41 @@ if st.session_state.bot_active:
                     "Content-Type": "application/json",
                     "HTTP-Referer": "https://streamlit.io",
                     "X-Title": "Bybit AI Scalper Swarm Engine",
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                    "Accept": "application/json"
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
                 }
+                payload = {"model": or_model_id if or_model_id else "google/gemini-2.5-flash:free", "messages": [{"role": "user", "content": market_context_prompt}]}
                 
-                payload = {
-                    "model": or_model_id if or_model_id else "google/gemini-2.5-flash:free",
-                    "messages": [{"role": "user", "content": market_context_prompt}]
-                }
-                
-                st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Connecting DeepSeek Brain over OpenRouter...")
+                log_prefix = "🚀 [TURBO AI PROMPT]" if is_turbo else "🔒 [SECURE AI PROMPT]"
+                st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] {log_prefix} Analyzing Live Feeds...")
                 or_response = requests.post("https://openrouter.ai", headers=headers, json=payload, timeout=10)
                 if or_response.status_code == 200:
                     try:
                         res_json = or_response.json()
                         ai_raw_word = res_json['choices']['message']['content'].strip().upper()
                         
-                        # এআই-এর বড় রেসপন্সের ভেতর থেকে সুনির্দিষ্ট সিগন্যাল ফিল্টার করা হচ্ছে
                         resolved_signal = "HOLD"
                         if "LONG" in ai_raw_word: resolved_signal = "LONG"
                         elif "SHORT" in ai_raw_word: resolved_signal = "SHORT"
                         
-                        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Brain Signal: '{resolved_signal}'")
+                        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] AI Brain Decision: '{resolved_signal}'")
                         
-                        if resolved_signal == "LONG":
-                            db_save(f"in_position_{allocated_user_id}", True); db_save(f"buy_price_{allocated_user_id}", live_price); db_save(f"current_side_{allocated_user_id}", "LONG"); db_save(f"trade_coin_{allocated_user_id}", target_symbol)
+                        if resolved_signal in ["LONG", "SHORT"]:
+                            db_save(f"in_position_{allocated_user_id}", True); db_save(f"buy_price_{allocated_user_id}", live_price); db_save(f"current_side_{allocated_user_id}", resolved_signal); db_save(f"trade_coin_{allocated_user_id}", target_symbol)
                             db_save(f"tp_target_{allocated_user_id}", price_jump_target); db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
-                            st.toast(f"🟢 Auto Long Opened: {target_symbol}", icon="🚀"); st.rerun()
-                        elif resolved_signal == "SHORT":
-                            db_save(f"in_position_{allocated_user_id}", True); db_save(f"buy_price_{allocated_user_id}", live_price); db_save(f"current_side_{allocated_user_id}", "SHORT"); db_save(f"trade_coin_{allocated_user_id}", target_symbol)
-                            db_save(f"tp_target_{allocated_user_id}", price_jump_target); db_save(f"sl_gap_{allocated_user_id}", stop_loss_gap)
-                            st.toast(f"🔴 Auto Short Opened: {target_symbol}", icon="🚨"); st.rerun()
-                    except Exception as parse_err:
-                        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Signal Blank or Range-bound. Waiting...")
+                            
+                            # প্রথম রিয়েল এআই ট্রেড সাকসেসফুলি প্লে হলে স্টেট ডাটাবেজে পার্মানেন্ট লক হবে
+                            if not st.session_state.first_trade_done:
+                                st.session_state.first_trade_done = True
+                                db_save(f"first_done_{allocated_user_id}", True)
+                                
+                            st.toast(f"🟢 Real AI Order Opened ({resolved_signal}): {target_symbol}", icon="🚀")
+                            st.rerun()
+                    except:
+                        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Pattern Scanning... Retrying next loop.")
+                else:
+                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Router Offline Code {or_response.status_code}. Retrying...")
+        except Exception as e:
+            st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Loop Error Node: {str(e)}")
                 else:
                     # ওপেনরাউটার ব্লক বা এরর থাকলে লোকাল এআই অ্যালগরিদম ব্যাকআপ মোড চালু হবে
                     st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Cloud Error {or_response.status_code}. Activating Local Backup Brain...")
