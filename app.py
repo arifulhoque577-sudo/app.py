@@ -179,6 +179,9 @@ YOUR_SECRET_MASTER_CODE = "ADMIN1234"
 # ==========================================
 # 🧱 ULTIMATE CYBERPUNK DARK ENGINE, ARROW RESTORE & FLOATING WINDOW
 # ==========================================
+# ==========================================
+# 🧱 ULTIMATE CYBERPUNK DARK ENGINE, ARROW RESTORE & FLOATING WINDOW
+# ==========================================
 st.markdown(
     """
     <style>
@@ -190,7 +193,7 @@ st.markdown(
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
     }
     
-    /* 🔵 ২. কর্নারের অ্যারো বাটনটি শতভাগ পুনরুদ্ধার (১ নম্বর স্ক্রিনশটের ফিক্স) */
+    /* 🔵 ২. কর্নারের অ্যারো বাটনটি শতভাগ পুনরুদ্ধার */
     [data-testid="stSidebarCollapseWrapper"] {
         display: block !important;
         visibility: visible !important;
@@ -272,7 +275,7 @@ st.markdown(
     <script>
     const parentDoc = window.parent.document;
     
-    // ১. স্মার্ট মোবাইল স্ক্রিন সোয়াইপ ডিটেকশন (বাম থেকে টান দিলে সাইডবার ওপেন হবে)
+    // ১. スマート মোবাইল স্ক্রিন সোয়াইপ ডিটেকশন (বাম থেকে টান দিলে সাইডবার ওপেন হবে)
     let startTouchX = 0;
     parentDoc.addEventListener('touchstart', e => {
         startTouchX = e.changedTouches.screenX;
@@ -309,8 +312,8 @@ st.markdown(
         parentDoc.addEventListener('touchmove', onDrag, {passive: false});
 
         function onDragStart(e) {
-            xInitial = e.touches[0].clientX - offsetX;
-            yInitial = e.touches[0].clientY - offsetY;
+            xInitial = e.touches.clientX - offsetX;
+            yInitial = e.touches.clientY - offsetY;
             if (e.target === targetElement || targetElement.contains(e.target)) {
                 dragActive = true;
             }
@@ -325,8 +328,8 @@ st.markdown(
         function onDrag(e) {
             if (dragActive) {
                 e.preventDefault();
-                xCurrent = e.touches[0].clientX - xInitial;
-                yCurrent = e.touches[0].clientY - yInitial;
+                xCurrent = e.touches.clientX - xInitial;
+                yCurrent = e.touches.clientY - yInitial;
                 offsetX = xCurrent;
                 offsetY = yCurrent;
                 targetElement.style.transform = `translate3d(${xCurrent}px, ${yCurrent}px, 0)`;
@@ -339,16 +342,18 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# 🖥️ সবুজ নিয়ন বক্স ও রিয়েল-টাইম গ্লোবাল মেমোরি আনফ্রিজার পাইপলাইন
+# 🖥️ সবুজ নিয়ন বক্স পুনরুদ্ধার
 st.markdown(f"<div class='custom-box-grid'><div class='matrix-neon-text'>🧬 <b>DEEPSEEK REAL-TIME SWARM INTERFACE LAYER:</b><br>🔮 DEEPEST OPENROUTER ROUTER SCALPER LABELS ACTIVATED ({target_symbol})</div></div>", unsafe_allow_html=True)
 
-# 🖥️ ডাইনামিক ফ্লোটিং উইন্ডো ডাটা প্রসেসর (একটিভ পজিশনের লাভ-লস সরাসরি রিড করার গেট)
+# 🖥️ ডাইনামিক ফ্লোটিং উইন্ডো ডাটা প্রসেসর (NameError: mode_suffix গার্ড লেয়ার ফিক্স গেট)
+is_real_live = "Live" in bot_mode if 'bot_mode' in locals() else False
+mode_suffix = "real" if is_real_live else "demo"
+
 floating_pnl_val = 0.0
 leverage = db_load(f"leverage_lock_{mode_suffix}_{allocated_user_id}", 20)
 trade_amount = db_load(f"margin_lock_{mode_suffix}_{allocated_user_id}", 20)
 effective_vol = trade_amount * leverage
 
-# একটিভ ট্রেড ট্র্যাকার রিয়েল ডাটা সিঙ্ক ইঞ্জিন (০.০০০০ আনফ্রিজ ফিক্স)
 current_in_pos = db_load(f"in_position_{mode_suffix}_{allocated_user_id}", st.session_state.get("in_position", False))
 current_buy_price = db_load(f"buy_price_{mode_suffix}_{allocated_user_id}", st.session_state.get("buy_price", 0.0))
 current_side_str = db_load(f"current_side_{mode_suffix}_{allocated_user_id}", st.session_state.get("current_side", "NONE"))
