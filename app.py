@@ -345,39 +345,7 @@ st.markdown(
 # 🖥️ সবুজ নিয়ন বক্স পুনরুদ্ধার
 st.markdown(f"<div class='custom-box-grid'><div class='matrix-neon-text'>🧬 <b>DEEPSEEK REAL-TIME SWARM INTERFACE LAYER:</b><br>🔮 DEEPEST OPENROUTER ROUTER SCALPER LABELS ACTIVATED ({target_symbol})</div></div>", unsafe_allow_html=True)
 
-# 🖥️ ডাইনামিক ফ্লোটিং উইন্ডো ডাটা প্রসেসর (NameError: mode_suffix গার্ড লেয়ার ফিক্স গেট)
-is_real_live = "Live" in bot_mode if 'bot_mode' in locals() else False
-mode_suffix = "real" if is_real_live else "demo"
 
-floating_pnl_val = 0.0
-leverage = db_load(f"leverage_lock_{mode_suffix}_{allocated_user_id}", 20)
-trade_amount = db_load(f"margin_lock_{mode_suffix}_{allocated_user_id}", 20)
-effective_vol = trade_amount * leverage
-
-current_in_pos = db_load(f"in_position_{mode_suffix}_{allocated_user_id}", st.session_state.get("in_position", False))
-current_buy_price = db_load(f"buy_price_{mode_suffix}_{allocated_user_id}", st.session_state.get("buy_price", 0.0))
-current_side_str = db_load(f"current_side_{mode_suffix}_{allocated_user_id}", st.session_state.get("current_side", "NONE"))
-
-if current_in_pos and live_price > 0 and current_buy_price > 0:
-    if "LONG" in current_side_str:
-        floating_pnl_val = ((live_price - current_buy_price) * (effective_vol / current_buy_price))
-    else:
-        floating_pnl_val = ((current_buy_price - live_price) * (effective_vol / current_buy_price))
-
-# ড্র্যাগেবল কাস্টম ফ্লোটিং উইন্ডো রেন্ডারিং এইচটিএমএল উইজেট
-pnl_color = "#00ff87" if floating_pnl_val >= 0 else "#ff3366"
-pnl_sign = "+" if floating_pnl_val >= 0 else ""
-
-st.markdown(
-    f"""
-    <div class="crypto-floating-window">
-        <div style="font-size: 10px; color: #94a3b8; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">{target_symbol}</div>
-        <div style="font-size: 15px; color: #ffffff; font-weight: bold; margin: 4px 0;">${live_price:.4f}</div>
-        <div style="font-size: 11px; color: {pnl_color}; font-weight: bold;">P&L: {pnl_sign}{floating_pnl_val:.4f}$</div>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
 if st.session_state.logged_in_user is None:
     st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
     st.subheader("🔑 Account Identity Gateway Control Panel")
