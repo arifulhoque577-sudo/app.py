@@ -1,7 +1,7 @@
-pybit
-pandas
 streamlit
-plotly
 firebase-admin
-gcloud
+pandas
+plotly
+pybit
 requests
+streamlit-autorefresh
