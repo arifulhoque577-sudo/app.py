@@ -341,11 +341,6 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-
-# 🖥️ সবুজ নিয়ন বক্স পুনরুদ্ধার
-st.markdown(f"<div class='custom-box-grid'><div class='matrix-neon-text'>🧬 <b>DEEPSEEK REAL-TIME SWARM INTERFACE LAYER:</b><br>🔮 DEEPEST OPENROUTER ROUTER SCALPER LABELS ACTIVATED ({target_symbol})</div></div>", unsafe_allow_html=True)
-
-
 if st.session_state.logged_in_user is None:
     st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
     st.subheader("🔑 Account Identity Gateway Control Panel")
