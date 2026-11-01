@@ -173,23 +173,95 @@ def fetch_bybit_future_coins():
 
 BYBYT_DATABASE_CORE = fetch_bybit_future_coins()
 YOUR_SECRET_MASTER_CODE = "ADMIN1234"
+# ==========================================
+# 🧱 UPGRADED ULTRA-PREMIUM CYBERPUNK DARK THEME LAYER
+# ==========================================
 st.markdown(
     """
     <style>
-    html, body, [data-testid="stAppViewContainer"] {
-        background: #06090e !important;
-        background-image: radial-gradient(circle at 50% 20%, #0d1527 0%, #06090e 80%) !important;
-        overflow-y: auto !important; overflow-x: hidden !important; box-sizing: border-box !important;
+    /* ১. গ্লোবাল ব্যাকগ্রাউন্ড এবং বডি থিম লক (লাইট মোড ফোর্স ব্লক) */
+    html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
+        background-color: #06090e !important;
+        background-image: radial-gradient(circle at 50% 15%, #0b1528 0%, #06090e 75%) !important;
+        color: #f1f5f9 !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
     }
-    div[data-testid="stSidebar"] { background-color: #0c1017 !important; border-right: 1px solid #1e293b; }
-    div.stButton > button:first-child { width: 100%; border-radius: 8px; font-weight: bold; font-size: 16px; height: 46px; }
-    .stDataFrame, .stTable, div[data-testid="stDataFrame"] { max-width: 100% !important; overflow-x: auto !important; display: block !important; }
-    div[data-testid="stMarkdownContainer"] p, span, label, h1, h2, h3, b, code { 
-        word-wrap: break-word !important; white-space: normal !important; word-break: break-word !important; max-width: 100% !important;
+    
+    /* ২. সাইডবার প্রিমিয়াম ডার্কনেস এবং বর্ডার আর্কিটেকচার */
+    div[data-testid="stSidebar"], section[data-testid="stSidebarView"] {
+        background-color: #0b0f17 !important;
+        background-image: linear-gradient(180deg, #0b0f17 0%, #05070a 100%) !important;
+        border-right: 1px solid #1e293b !important;
     }
-    .custom-box-grid { background-color: #141a24; padding: 15px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #1f2c3f; }
-    .matrix-neon-text { font-family: 'Courier New', monospace; color: #00e676; text-shadow: 0 0 8px #00e676; font-size: 13px; line-height: 1.6; }
-    div[data-testid="stSlider"] div { flex-direction: column !important; align-items: flex-start !important; }
+    div[data-testid="stSidebar"] * {
+        color: #f1f5f9 !important;
+    }
+
+    /* ৩. অল ইনপুট বক্স, সিলেক্টবক্স এবং টেক্সট এরিয়া লাইট-মোড প্রোটেকশন */
+    div[data-baseweb="select"], div[data-baseweb="input"], input, .stTextArea textarea, div[role="radiogroup"] {
+        background-color: #0f172a !important;
+        color: #ffffff !important;
+        border: 1px solid #1e2c3f !important;
+        border-radius: 8px !important;
+    }
+    /* ইনপুট ফোকাস স্টেট গ্লো */
+    div[data-baseweb="select"]:focus-within, input:focus, textarea:focus {
+        border-color: #38bdf8 !important;
+        box-shadow: 0 0 8px rgba(56, 189, 248, 0.2) !important;
+    }
+
+    /* ৪. প্রিমিয়াম কার্ডস এবং ইনফরমেশন গ্রিডবক্স কন্টেইনারস */
+    .custom-box-grid {
+        background: linear-gradient(145deg, #111827 0%, #0f172a 100%) !important;
+        padding: 16px !important;
+        border-radius: 10px !important;
+        margin-bottom: 12px !important;
+        border: 1px solid #1f2c3f !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2) !important;
+    }
+    .matrix-neon-text {
+        font-family: 'Courier New', monospace !important;
+        color: #00e676 !important;
+        text-shadow: 0 0 6px rgba(0, 230, 118, 0.4) !important;
+        font-size: 13px !important;
+    }
+
+    /* ৫. অ্যাকশন বাটন এবং গ্লোবাল অ্যাক্টিভেশন কন্ট্রোলস */
+    div.stButton > button:first-child {
+        width: 100% !important;
+        border-radius: 8px !important;
+        font-weight: bold !important;
+        font-size: 15px !important;
+        height: 44px !important;
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
+        color: #ffffff !important;
+        border: 1px solid #334155 !important;
+        transition: all 0.2s ease-in-out !important;
+    }
+    div.stButton > button:first-child:hover {
+        border-color: #38bdf8 !important;
+        color: #38bdf8 !important;
+        box-shadow: 0 0 12px rgba(56, 189, 248, 0.2) !important;
+        transform: translateY(-1px);
+    }
+
+    /* ৬. ট্যাব এবং ডাটাফ্রেম টেবিল লাইট মোড বাইপাস লকিং */
+    button[data-baseweb="tab"] {
+        color: #94a3b8 !important;
+    }
+    button[data-baseweb="tab"][aria-selected="true"] {
+        color: #38bdf8 !important;
+        border-bottom-color: #38bdf8 !important;
+    }
+    .stDataFrame, [data-testid="stDataFrame"] {
+        background-color: #0b0f17 !important;
+        border: 1px solid #1e2c3f !important;
+        border-radius: 8px !important;
+    }
+
+    /* ৭. মাস্টার রিমুভাল: স্ট্রীমলিট ডিফল্ট ফুটার এবং হ্যামবার্গার মেনু ট্র্যাশ */
+    #MainMenu, footer {visibility: hidden !important;}
     </style>
     """,
     unsafe_allow_html=True,
