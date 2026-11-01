@@ -646,7 +646,37 @@ with c1:
             st.rerun()
 with c2:
     if st.button("🚨 EMERGENCY LIQUIDATE CLOSE ORDER POSITION", disabled=not st.session_state.in_position, key="force_liquidate_btn"):
-        db_save(f"in_position_{mode_suffix}_{allocated_user_id}", False); st.session_state.in_position = False; st.rerun()
+        # 🔄 ক্লোজ করার মুহূর্তে সর্বশেষ লাইভ ফ্লোটিং P&L হিসাব করে মূল ব্যালেন্সে যোগ/বিয়োগ করা হচ্ছে
+        current_base_balance = db_load(f"real_balance_{allocated_user_id}" if is_real_live else f"balance_{allocated_user_id}", 5000.0)
+        updated_new_balance = current_base_balance + floating_pnl
+        
+        # ডাটাবেজে নতুন ব্যালেন্স স্থায়ীভাবে আপডেট ও সেভ
+        if is_real_live:
+            db_save(f"real_balance_{allocated_user_id}", float(updated_new_balance))
+            st.session_state.real_balance = updated_new_balance
+        else:
+            db_save(f"balance_{allocated_user_id}", float(updated_new_balance))
+            st.session_state.demo_balance = updated_new_balance
+            
+        # 📊 উইন-লস কাউন্টার আপডেট লজিক
+        if floating_pnl >= 0:
+            current_win = db_load(f"win_{allocated_user_id}", 0)
+            db_save(f"win_{allocated_user_id}", current_win + 1)
+            st.session_state.win_count = current_win + 1
+        else:
+            current_loss = db_load(f"loss_{allocated_user_id}", 0)
+            db_save(f"loss_{allocated_user_id}", current_loss + 1)
+            st.session_state.loss_count = current_loss + 1
+
+        # 🔓 পজিশন স্টেট রিলিজ ও সম্পূর্ণ মেমোরি আনলক
+        db_save(f"in_position_{mode_suffix}_{allocated_user_id}", False)
+        db_save(f"buy_price_{mode_suffix}_{allocated_user_id}", 0.0)
+        db_save(f"current_side_{mode_suffix}_{allocated_user_id}", "NONE")
+        db_save(f"trade_coin_{mode_suffix}_{allocated_user_id}", "NONE")
+        st.session_state.in_position = False
+        
+        st.toast("🚨 Position Liquidated & Balance Synced!", icon="⚡")
+        st.rerun()
 
 st.markdown("""<iframe src="about:blank" style="display:none;" onload="setTimeout(function(){window.location.reload();}, 1500);"></iframe>""", unsafe_allow_html=True)
 # --- 🧬 100% RESTORE NAMEERROR: RE-DEFINED LOST CALCULATOR FUNCTION ---
