@@ -176,58 +176,76 @@ YOUR_SECRET_MASTER_CODE = "ADMIN1234"
 # ==========================================
 # 🧱 UPGRADED ULTRA-PREMIUM CYBERPUNK DARK THEME LAYER
 # ==========================================
+# ==========================================
+# 🧱 ULTIMATE CYBERPUNK DEEP-DARK ENGINE LAYER (LIGHT-MODE FORCED LOCK)
+# ==========================================
 st.markdown(
     """
     <style>
-    /* ১. গ্লোবাল ব্যাকগ্রাউন্ড এবং বডি থিম লক (লাইট মোড ফোর্স ব্লক) */
-    html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
-        background-color: #06090e !important;
-        background-image: radial-gradient(circle at 50% 15%, #0b1528 0%, #06090e 75%) !important;
-        color: #f1f5f9 !important;
-        overflow-y: auto !important;
-        overflow-x: hidden !important;
+    /* 🔴 ১. গ্লোবাল ব্যাকগ্রাউন্ড এবং বডি থিম হার্ড-লক (নতুন ইউজার প্রোটেকশন) */
+    html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stApp"] {
+        background-color: #04070a !important;
+        background-image: radial-gradient(circle at 50% 10%, #0d1627 0%, #04070a 80%) !important;
+        color: #e2e8f0 !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
     }
     
-    /* ২. সাইডবার প্রিমিয়াম ডার্কনেস এবং বর্ডার আর্কিটেকচার */
-    div[data-testid="stSidebar"], section[data-testid="stSidebarView"] {
-        background-color: #0b0f17 !important;
-        background-image: linear-gradient(180deg, #0b0f17 0%, #05070a 100%) !important;
+    /* 🔴 ২. ১০ নম্বর স্ক্রিনশটের ডিফল্ট রানিং/স্টপ আইকন হাইড এবং স্মুথ রেন্ডারিং বুস্ট */
+    [data-testid="stStatusWidget"], #MainMenu + div, header button {
+        display: none !important;
+        visibility: hidden !important;
+    }
+    
+    /* 🔴 ৩. সাইডবার সুপার-ডার্ক ম্যাট ফিনিশিং ও বর্ডার ইন্টারফেস */
+    div[data-testid="stSidebar"], section[data-testid="stSidebarView"], [data-testid="stSidebarCollapseWrapper"] {
+        background-color: #080c14 !important;
+        background-image: linear-gradient(180deg, #080c14 0%, #030508 100%) !important;
         border-right: 1px solid #1e293b !important;
     }
     div[data-testid="stSidebar"] * {
-        color: #f1f5f9 !important;
+        color: #f8fafc !important;
     }
 
-    /* ৩. অল ইনপুট বক্স, সিলেক্টবক্স এবং টেক্সট এরিয়া লাইট-মোড প্রোটেকশন */
+    /* 🔴 ৪. অল ইনপুট বক্স, সিলেক্টবক্স এবং টেক্সট এরিয়া লাইট-মোড প্রোটেকশন */
     div[data-baseweb="select"], div[data-baseweb="input"], input, .stTextArea textarea, div[role="radiogroup"] {
-        background-color: #0f172a !important;
+        background-color: #0b1322 !important;
         color: #ffffff !important;
         border: 1px solid #1e2c3f !important;
         border-radius: 8px !important;
     }
-    /* ইনপুট ফোকাস স্টেট গ্লো */
+    /* ইনপুট একটিভ স্টেট গ্লো */
     div[data-baseweb="select"]:focus-within, input:focus, textarea:focus {
         border-color: #38bdf8 !important;
-        box-shadow: 0 0 8px rgba(56, 189, 248, 0.2) !important;
+        box-shadow: 0 0 10px rgba(56, 189, 248, 0.25) !important;
+    }
+    
+    /* 🔴 ৫. স্লাইডার ট্র্যাক এবং রেড গ্লোইং এক্সিস ওল্ড থ্রেট ফিক্স */
+    div[data-testid="stSlider"] [role="slider"] {
+        background-color: #ff3366 !important;
+        border: 2px solid #ffffff !important;
+        box-shadow: 0 0 8px #ff3366 !important;
+    }
+    div[data-testid="stSlider"] div {
+        color: #94a3b8 !important;
     }
 
-    /* ৪. প্রিমিয়াম কার্ডস এবং ইনফরমেশন গ্রিডবক্স কন্টেইনারস */
+    /* 🔴 ৬. প্রিমিয়াম কার্ডস এবং গ্লোয়িং ইনফরমেশন গ্রিডবক্স কন্টেইনারস */
     .custom-box-grid {
-        background: linear-gradient(145deg, #111827 0%, #0f172a 100%) !important;
-        padding: 16px !important;
-        border-radius: 10px !important;
+        background: linear-gradient(145deg, #0d1527 0%, #070b14 100%) !important;
+        padding: 18px !important;
+        border-radius: 12px !important;
         margin-bottom: 12px !important;
-        border: 1px solid #1f2c3f !important;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2) !important;
+        border: 1px solid #17253a !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
     }
     .matrix-neon-text {
         font-family: 'Courier New', monospace !important;
-        color: #00e676 !important;
-        text-shadow: 0 0 6px rgba(0, 230, 118, 0.4) !important;
+        color: #00ff87 !important;
+        text-shadow: 0 0 8px rgba(0, 255, 135, 0.4) !important;
         font-size: 13px !important;
     }
 
-    /* ৫. অ্যাকশন বাটন এবং গ্লোবাল অ্যাক্টিভেশন কন্ট্রোলস */
+    /* 🔴 ৭. অ্যাকশন বাটন এবং গ্লোবাল অ্যাক্টিভেশন কন্ট্রোলস */
     div.stButton > button:first-child {
         width: 100% !important;
         border-radius: 8px !important;
@@ -236,32 +254,35 @@ st.markdown(
         height: 44px !important;
         background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
         color: #ffffff !important;
-        border: 1px solid #334155 !important;
+        border: 1px solid #2d3748 !important;
         transition: all 0.2s ease-in-out !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
     }
     div.stButton > button:first-child:hover {
         border-color: #38bdf8 !important;
         color: #38bdf8 !important;
-        box-shadow: 0 0 12px rgba(56, 189, 248, 0.2) !important;
+        box-shadow: 0 0 14px rgba(56, 189, 248, 0.3) !important;
         transform: translateY(-1px);
     }
 
-    /* ৬. ট্যাব এবং ডাটাফ্রেম টেবিল লাইট মোড বাইপাস লকিং */
+    /* 🔴 ৮. ট্যাব এবং ডাটাফ্রেম টেবিল লাইট মোড বাইপাস লকিং */
     button[data-baseweb="tab"] {
-        color: #94a3b8 !important;
+        color: #64748b !important;
     }
     button[data-baseweb="tab"][aria-selected="true"] {
         color: #38bdf8 !important;
         border-bottom-color: #38bdf8 !important;
+        font-weight: bold !important;
     }
-    .stDataFrame, [data-testid="stDataFrame"] {
-        background-color: #0b0f17 !important;
-        border: 1px solid #1e2c3f !important;
-        border-radius: 8px !important;
+    .stDataFrame, [data-testid="stDataFrame"], div[data-testid="stTable"] {
+        background-color: #070b14 !important;
+        border: 1px solid #17253a !important;
+        border-radius: 10px !important;
+        color: #ffffff !important;
     }
-
-    /* ৭. মাস্টার রিমুভাল: স্ট্রীমলিট ডিফল্ট ফুটার এবং হ্যামবার্গার মেনু ট্র্যাশ */
-    #MainMenu, footer {visibility: hidden !important;}
+    
+    /* 🔴 ৯. মাস্টার রিমুভাল: স্ট্রীমলিট ডিফল্ট ফুটার এবং হ্যামবার্গার মেনু ট্র্যাশ */
+    #MainMenu, footer { visibility: hidden !important; display: none !important; }
     </style>
     """,
     unsafe_allow_html=True,
