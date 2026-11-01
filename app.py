@@ -637,6 +637,68 @@ with position_overlay_container:
         """, unsafe_allow_html=True)
 
 # ------------------------------------------
+# 🔥 নতুন সংযোজন: REAL-TIME DRAGGABLE FLOATING WINDOW ENGINE (ব্র্যাকেট এরর ফিক্সড)
+# ------------------------------------------
+floating_pnl_val = floating_pnl if 'floating_pnl' in locals() else 0.0
+resolved_live_price = live_price if ('live_price' in locals() and live_price > 0) else 0.0
+resolved_symbol = target_symbol if 'target_symbol' in locals() else "MARKET FEED"
+
+pnl_color = "#00ff87" if floating_pnl_val >= 0 else "#ff3366"
+pnl_sign = "+" if floating_pnl_val >= 0 else ""
+
+st.markdown(
+    f"""
+    <div class="crypto-floating-window" id="dragWin">
+        <div style="font-size: 10px; color: #94a3b8; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">{resolved_symbol}</div>
+        <div style="font-size: 15px; color: #ffffff; font-weight: bold; margin: 4px 0;">${resolved_live_price:.4f}</div>
+        <div style="font-size: 11px; color: {pnl_color}; font-weight: bold;">P&L: {pnl_sign}{floating_pnl_val:.4f}$</div>
+    </div>
+
+    <script>
+    function makeWindowDraggable() {{
+        const pDoc = window.parent.document;
+        const fWin = pDoc.getElementById('dragWin') || pDoc.querySelector('.crypto-floating-window');
+        if (!fWin) {{
+            setTimeout(makeWindowDraggable, 300);
+            return;
+        }}
+        
+        let activeDrag = false;
+        let currentX, currentY, initialX, initialY;
+        let xOffset = 0, yOffset = 0;
+
+        fWin.addEventListener('touchstart', (e) => {{
+            initialX = e.touches[0].clientX - xOffset;
+            initialY = e.touches[0].clientY - yOffset;
+            if (e.target === fWin || fWin.contains(e.target)) {{
+                activeDrag = true;
+            }}
+        }}, {{passive: false}});
+
+        pDoc.addEventListener('touchend', () => {{
+            initialX = currentX;
+            initialY = currentY;
+            activeDrag = false;
+        }}, {{passive: true}});
+
+        pDoc.addEventListener('touchmove', (e) => {{
+            if (activeDrag) {{
+                e.preventDefault();
+                currentX = e.touches[0].clientX - initialX;
+                currentY = e.touches[0].clientY - initialY;
+                xOffset = currentX;
+                yOffset = currentY;
+                fWin.style.transform = "translate3d(" + currentX + "px, " + currentY + "px, 0)";
+            }}
+        }}, {{passive: false}});
+    }}
+    setTimeout(makeWindowDraggable, 500);
+    </script>
+    """,
+    unsafe_allow_html=True
+)
+
+# ------------------------------------------
 # 🔥 নতুন সংযোজন: REAL-TIME DRAGGABLE FLOATING WINDOW ENGINE (এখানে এড করা হলো)
 # ------------------------------------------
 floating_pnl_val = floating_pnl if 'floating_pnl' in locals() else 0.0
