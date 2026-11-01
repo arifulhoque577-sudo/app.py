@@ -177,12 +177,13 @@ YOUR_SECRET_MASTER_CODE = "ADMIN1234"
 # 🧱 UPGRADED ULTRA-PREMIUM CYBERPUNK DARK THEME LAYER
 # ==========================================
 # ==========================================
-# 🧱 ULTIMATE CYBERPUNK DEEP-DARK ENGINE LAYER (LIGHT-MODE FORCED LOCK)
+# ==========================================
+# 🧱 ULTIMATE CYBERPUNK DARK ENGINE & SWIPE SIDEBAR FIX LAYER
 # ==========================================
 st.markdown(
     """
     <style>
-    /* 🔴 ১. গ্লোবাল ব্যাকগ্রাউন্ড এবং বডি থিম হার্ড-লক (নতুন ইউজার প্রোটেকশন) */
+    /* 🔴 ১. গ্লোবাল ব্যাকগ্রাউন্ড এবং বডি থিম হার্ড-লক */
     html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stApp"] {
         background-color: #04070a !important;
         background-image: radial-gradient(circle at 50% 10%, #0d1627 0%, #04070a 80%) !important;
@@ -190,36 +191,54 @@ st.markdown(
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
     }
     
-    /* 🔴 ২. ১০ নম্বর স্ক্রিনশটের ডিফল্ট রানিং/স্টপ আইকন হাইড এবং স্মুথ রেন্ডারিং বুস্ট */
-    [data-testid="stStatusWidget"], #MainMenu + div, header button {
+    /* 🔴 ২. রানিং/স্টপ ডিফল্ট আইকন হাইড প্রোটেকশন */
+    [data-testid="stStatusWidget"], #MainMenu + div, header button:not([data-testid="stSidebarCollapseWrapper"] button) {
         display: none !important;
         visibility: hidden !important;
     }
     
-    /* 🔴 ৩. সাইডবার সুপার-ডার্ক ম্যাট ফিনিশিং ও বর্ডার ইন্টারফেস */
-    div[data-testid="stSidebar"], section[data-testid="stSidebarView"], [data-testid="stSidebarCollapseWrapper"] {
+    /* 🔴 ৩. সাইডবার অটো-ওপেন ও মোবাইল সোয়াইপ গ্রাউন্ড ফিক্স */
+    div[data-testid="stSidebar"], section[data-testid="stSidebarView"] {
         background-color: #080c14 !important;
         background-image: linear-gradient(180deg, #080c14 0%, #030508 100%) !important;
         border-right: 1px solid #1e293b !important;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
+    
+    /* ৪. সাইডবারের ভেতরের অল এলিমেন্ট লাইট মোড বাইপাস লকিং */
     div[data-testid="stSidebar"] * {
         color: #f8fafc !important;
     }
+    
+    /* 🔴 ৫. মোবাইল স্ক্রিনে সাইডবার বাটন ও সোয়াইপ ট্র্যাকার ভিজিবিলিটি পুনরুদ্ধার */
+    [data-testid="stSidebarCollapseWrapper"] {
+        display: flex !important;
+        visibility: visible !important;
+        left: 10px !important;
+        top: 10px !important;
+        z-index: 999999 !important;
+    }
+    [data-testid="stSidebarCollapseWrapper"] button {
+        background-color: #1e293b !important;
+        color: #38bdf8 !important;
+        border: 1px solid #38bdf8 !important;
+        border-radius: 6px !important;
+        box-shadow: 0 0 8px rgba(56, 189, 248, 0.3) !important;
+    }
 
-    /* 🔴 ৪. অল ইনপুট বক্স, সিলেক্টবক্স এবং টেক্সট এরিয়া লাইট-মোড প্রোটেকশন */
+    /* 🔴 ৬. অল ইনপুট বক্স, সিলেক্টবক্স এবং টেক্সট এরিয়া লাইট-মোড প্রোটেকশন */
     div[data-baseweb="select"], div[data-baseweb="input"], input, .stTextArea textarea, div[role="radiogroup"] {
         background-color: #0b1322 !important;
         color: #ffffff !important;
         border: 1px solid #1e2c3f !important;
         border-radius: 8px !important;
     }
-    /* ইনপুট একটিভ স্টেট গ্লো */
     div[data-baseweb="select"]:focus-within, input:focus, textarea:focus {
         border-color: #38bdf8 !important;
         box-shadow: 0 0 10px rgba(56, 189, 248, 0.25) !important;
     }
     
-    /* 🔴 ৫. স্লাইডার ট্র্যাক এবং রেড গ্লোইং এক্সিস ওল্ড থ্রেট ফিক্স */
+    /* 🔴 ৭. স্লাইডার ট্র্যাক এবং রেড গ্লোইং এক্সিস ফিক্স */
     div[data-testid="stSlider"] [role="slider"] {
         background-color: #ff3366 !important;
         border: 2px solid #ffffff !important;
@@ -229,7 +248,7 @@ st.markdown(
         color: #94a3b8 !important;
     }
 
-    /* 🔴 ৬. প্রিমিয়াম কার্ডস এবং গ্লোয়িং ইনফরমেশন গ্রিডবক্স কন্টেইনারস */
+    /* 🔴 ৮. প্রিমিয়াম কার্ডস এবং গ্লোয়িং ইনফরমেশন গ্রিডবক্স কন্টেইনারস */
     .custom-box-grid {
         background: linear-gradient(145deg, #0d1527 0%, #070b14 100%) !important;
         padding: 18px !important;
@@ -245,7 +264,7 @@ st.markdown(
         font-size: 13px !important;
     }
 
-    /* 🔴 ৭. অ্যাকশন বাটন এবং গ্লোবাল অ্যাক্টিভেশন কন্ট্রোলস */
+    /* 🔴 ৯. অ্যাকশন বাটন এবং গ্লোবাল অ্যাক্টিভেশন কন্ট্রোলস */
     div.stButton > button:first-child {
         width: 100% !important;
         border-radius: 8px !important;
@@ -265,7 +284,7 @@ st.markdown(
         transform: translateY(-1px);
     }
 
-    /* 🔴 ৮. ট্যাব এবং ডাটাফ্রেম টেবিল লাইট মোড বাইপাস লকিং */
+    /* 🔴 ১০. ট্যাব এবং ডাটাফ্রেম টেবিল লাইট মোড বাইপাস লকিং */
     button[data-baseweb="tab"] {
         color: #64748b !important;
     }
@@ -281,7 +300,7 @@ st.markdown(
         color: #ffffff !important;
     }
     
-    /* 🔴 ৯. মাস্টার রিমুভাল: স্ট্রীমলিট ডিফল্ট ফুটার এবং হ্যামবার্গার মেনু ট্র্যাশ */
+    /* 🔴 ১১. মাস্টার রিমুভাল: স্ট্রীমলিট ডিফল্ট ফুটার এবং হ্যামবার্গার মেনু ট্র্যাশ */
     #MainMenu, footer { visibility: hidden !important; display: none !important; }
     </style>
     """,
