@@ -177,12 +177,12 @@ YOUR_SECRET_MASTER_CODE = "ADMIN1234"
 # 🧱 UPGRADED ULTRA-PREMIUM CYBERPUNK DARK THEME LAYER
 # ==========================================
 # ==========================================
-# 🧱 ULTIMATE CYBERPUNK DEEP-DARK ENGINE & SMART INTERFACE LAYER
+# 🧱 ULTIMATE CYBERPUNK DARK ENGINE, ARROW RESTORE & FLOATING WINDOW
 # ==========================================
 st.markdown(
     """
     <style>
-    /* 🟢 ১. গ্লোবাল ব্যাকগ্রাউন্ড এবং বডি থিম হার্ড-লক */
+    /* 🔵 ১. গ্লোবাল ব্যাকগ্রাউন্ড এবং বডি থিম হার্ড-লক (লাইট মোড ফোর্স ব্লক) */
     html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stApp"] {
         background-color: #04070a !important;
         background-image: radial-gradient(circle at 50% 10%, #0d1627 0%, #04070a 80%) !important;
@@ -190,21 +190,30 @@ st.markdown(
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
     }
     
-    /* 🟢 ২. রানিং/স্টপ ডিফল্ট আইকন হাইড প্রোটেকশন */
-    [data-testid="stStatusWidget"], #MainMenu + div, header button:not([data-testid="stSidebarCollapseWrapper"] button) {
-        display: none !important;
-        visibility: hidden !important;
+    /* 🔵 ২. কর্নারের অ্যারো বাটনটি শতভাগ পুনরুদ্ধার (১ নম্বর স্ক্রিনশটের ফিক্স) */
+    [data-testid="stSidebarCollapseWrapper"] {
+        display: block !important;
+        visibility: visible !important;
+        left: 8px !important;
+        top: 8px !important;
+        z-index: 999999 !important;
+    }
+    [data-testid="stSidebarCollapseWrapper"] button {
+        background-color: #0f172a !important;
+        color: #38bdf8 !important;
+        border: 1px solid #1e2c3f !important;
+        box-shadow: 0 0 10px rgba(56, 189, 248, 0.3) !important;
     }
     
-    /* 🟢 ৩. সাইডবার সুপার-ডার্ক ম্যাট ফিনিশিং ও স্মুথ ট্রানজিশন */
-    div[data-testid="stSidebar"], section[data-testid="stSidebarView"], [data-testid="stSidebarCollapseWrapper"] {
+    /* ৩. সাইডবার সুপার-ডার্ক ম্যাট ফিনিশিং ও স্মুথ ট্রানজিশন */
+    div[data-testid="stSidebar"], section[data-testid="stSidebarView"] {
         background-color: #080c14 !important;
         background-image: linear-gradient(180deg, #080c14 0%, #030508 100%) !important;
         border-right: 1px solid #1e293b !important;
     }
     div[data-testid="stSidebar"] * { color: #f8fafc !important; }
 
-    /* 🟢 ৪. অল ইনপুট বক্স, সিলেক্টবক্স এবং টেক্সট এরিয়া লাইট-মোড প্রোটেকশন */
+    /* ৪. অল ইনপুট বক্স, সিলেক্টবক্স এবং টেক্সট এরিয়া লাইট-মোড প্রোটেকশন */
     div[data-baseweb="select"], div[data-baseweb="input"], input, .stTextArea textarea, div[role="radiogroup"] {
         background-color: #0b1322 !important;
         color: #ffffff !important;
@@ -212,7 +221,7 @@ st.markdown(
         border-radius: 8px !important;
     }
 
-    /* 🟢 ৫. আপনার স্ক্রিনশট ২ এর সেই হারিয়ে যাওয়া অরিজিনাল সুন্দর সবুজ গ্লোয়িং ম্যাট্রিক্স বক্স (Custom Box Grid) */
+    /* 🟢 ৫. আপনার স্ক্রিনশট ২ এর সেই অরিজিনাল সুন্দর সবুজ গ্লোয়িং ম্যাտրিক্স বক্স */
     .custom-box-grid {
         background: #050a12 !important;
         padding: 22px !important;
@@ -229,32 +238,29 @@ st.markdown(
         line-height: 1.6 !important;
     }
 
-    /* 🟢 ৬. হাত দিয়ে টেনে নাড়ানোর মতো আল্ট্রা-প্রিমিয়াম গ্লোয়িং ফ্লোটিং উইন্ডো উইজেট (Touch Draggable Floating Window UI) */
+    /* 🔵 💻 ৬. হাত দিয়ে টেনে নাড়ানোর মতো আল্ট্রা-প্রিমিয়াম সচল ফ্লোটিং উইন্ডো (Touch Draggable UI) */
     .crypto-floating-window {
         position: fixed !important;
-        bottom: 80px !important;
+        bottom: 120px !important;
         right: 20px !important;
-        width: 150px !important;
-        background: rgba(13, 21, 39, 0.85) !important;
-        backdrop-filter: blur(10px) !important;
-        border: 1px solid #38bdf8 !important;
+        width: 155px !important;
+        background: rgba(11, 19, 34, 0.9) !important;
+        backdrop-filter: blur(12px) !important;
+        border: 2px solid #38bdf8 !important;
         border-radius: 12px !important;
-        padding: 10px !important;
-        box-shadow: 0 0 15px rgba(56, 189, 248, 0.3) !important;
-        z-index: 999999 !important;
+        padding: 12px !important;
+        box-shadow: 0 0 20px rgba(56, 189, 248, 0.4) !important;
+        z-index: 9999999 !important;
         font-family: monospace !important;
         text-align: center !important;
         cursor: move !important;
-        touch-action: none !important; /* মোবাইল ড্র্যাগিং প্রোটেকশন */
+        touch-action: none !important;
     }
 
-    /* গ্লোবাল বাটন সেটিংস লক */
     div.stButton > button:first-child {
         width: 100% !important;
         border-radius: 8px !important;
         font-weight: bold !important;
-        font-size: 15px !important;
-        height: 44px !important;
         background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
         color: #ffffff !important;
         border: 1px solid #2d3748 !important;
@@ -262,73 +268,110 @@ st.markdown(
     #MainMenu, footer { visibility: hidden !important; display: none !important; }
     </style>
 
-    <!-- 🌐 জাভাস্ক্রিপ্ট সোয়াইপ এবং হাত দিয়ে ফ্লোটিং উইন্ডো ড্র্যাগ করার ইন্টেলিজেন্ট ইঞ্জিন -->
+    <!-- 🌐 জাভাস্ক্রিপ্ট সোয়াইপ এবং হাত দিয়ে ফ্লোটিং উইন্ডো ড্র্যাগ করার কিলার ইঞ্জিন -->
     <script>
-    const winDoc = window.parent.document;
+    const parentDoc = window.parent.document;
     
-    // ১. স্মার্ট মোবাইল স্ক্রিন সোয়াইপ ডিটেকশন (বাম পাশ থেকে টান দিলে সাইডবার ওপেন হবে)
-    let touchStartX = 0;
-    winDoc.addEventListener('touchstart', e => {
-        touchStartX = e.changedTouches[0].screenX;
+    // ১. স্মার্ট মোবাইল স্ক্রিন সোয়াইপ ডিটেকশন (বাম থেকে টান দিলে সাইডবার ওপেন হবে)
+    let startTouchX = 0;
+    parentDoc.addEventListener('touchstart', e => {
+        startTouchX = e.changedTouches.screenX;
     }, {passive: true});
 
-    winDoc.addEventListener('touchend', e => {
-        let touchEndX = e.changedTouches[0].screenX;
-        const sidebarBtn = winDoc.querySelector('section[data-testid="stSidebar"] ~ button, [data-testid="stSidebarCollapseWrapper"] button');
+    parentDoc.addEventListener('touchend', e => {
+        let endTouchX = e.changedTouches.screenX;
+        const sideBtn = parentDoc.querySelector('section[data-testid="stSidebar"] ~ button, [data-testid="stSidebarCollapseWrapper"] button');
         
-        // বাম থেকে ডানে সোয়াইপ টান (Swipe Right)
-        if (touchEndX - touchStartX > 130) {
-            const isCollapsed = winDoc.querySelector('section[data-testid="stSidebar"]').parentElement.getAttribute('aria-expanded') === 'false';
-            if (isCollapsed && sidebarBtn) sidebarBtn.click();
+        if (endTouchX - startTouchX > 130) {
+            const isCollapsed = parentDoc.querySelector('section[data-testid="stSidebar"]').parentElement.getAttribute('aria-expanded') === 'false';
+            if (isCollapsed && sideBtn) sideBtn.click();
         }
-        // ডান থেকে বামে সোয়াইপ টান (Swipe Left)
-        if (touchStartX - touchEndX > 130) {
-            const isOpen = winDoc.querySelector('section[data-testid="stSidebar"]').parentElement.getAttribute('aria-expanded') === 'true';
-            if (isOpen && sidebarBtn) sidebarBtn.click();
+        if (startTouchX - endTouchX > 130) {
+            const isOpen = parentDoc.querySelector('section[data-testid="stSidebar"]').parentElement.getAttribute('aria-expanded') === 'true';
+            if (isOpen && sideBtn) sideBtn.click();
         }
     }, {passive: true});
 
-    // ২. ফ্লোটিং উইন্ডো হাত দিয়ে স্ক্রিনের যেকোনো জায়গায় টেনে নাড়ানোর (Touch Draggable) জাভাস্ক্রিপ্ট লুপ
-    setTimeout(() => {
-        const floatWin = winDoc.querySelector('.crypto-floating-window');
-        if (!floatWin) return;
+    // ২. ফ্লোটিং উইন্ডো হাত দিয়ে স্ক্রিনের যেকোনো জায়গায় টেনে নাড়ানোর (Touch Draggable) অবিকল মেকানিজম
+    function initDraggableWindow() {
+        const targetElement = parentDoc.querySelector('.crypto-floating-window');
+        if (!targetElement) {
+            setTimeout(initDraggableWindow, 500);
+            return;
+        }
         
-        let isDragging = false;
-        let currentX, currentY, initialX, initialY;
-        let xOffset = 0, yOffset = 0;
+        let dragActive = false;
+        let xCurrent, yCurrent, xInitial, yInitial;
+        let offsetX = 0, offsetY = 0;
 
-        floatWin.addEventListener('touchstart', dragStart, {passive: false});
-        winDoc.addEventListener('touchend', dragEnd, {passive: true});
-        winDoc.addEventListener('touchmove', drag, {passive: false});
+        targetElement.addEventListener('touchstart', onDragStart, {passive: false});
+        parentDoc.addEventListener('touchend', onDragEnd, {passive: true});
+        parentDoc.addEventListener('touchmove', onDrag, {passive: false});
 
-        function dragStart(e) {
-            initialX = e.touches[0].clientX - xOffset;
-            initialY = e.touches[0].clientY - yOffset;
-            if (e.target === floatWin || floatWin.contains(e.target)) {
-                isDragging = true;
+        function onDragStart(e) {
+            xInitial = e.touches[0].clientX - offsetX;
+            yInitial = e.touches[0].clientY - offsetY;
+            if (e.target === targetElement || targetElement.contains(e.target)) {
+                dragActive = true;
             }
         }
 
-        function dragEnd() {
-            initialX = currentX;
-            initialY = currentY;
-            isDragging = false;
+        function onDragEnd() {
+            xInitial = xCurrent;
+            yInitial = yCurrent;
+            dragActive = false;
         }
 
-        function drag(e) {
-            if (isDragging) {
+        function onDrag(e) {
+            if (dragActive) {
                 e.preventDefault();
-                currentX = e.touches[0].clientX - initialX;
-                currentY = e.touches[0].clientY - initialY;
-                xOffset = currentX;
-                yOffset = currentY;
-                floatWin.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+                xCurrent = e.touches[0].clientX - xInitial;
+                yCurrent = e.touches[0].clientY - yInitial;
+                offsetX = xCurrent;
+                offsetY = yCurrent;
+                targetElement.style.transform = `translate3d(${xCurrent}px, ${yCurrent}px, 0)`;
             }
         }
-    }, 1500);
+    }
+    setTimeout(initDraggableWindow, 1000);
     </script>
     """,
     unsafe_allow_html=True,
+)
+
+# 🖥️ সবুজ নিয়ন বক্স ও রিয়েল-টাইম গ্লোবাল মেমোরি আনফ্রিজার পাইপলাইন
+st.markdown(f"<div class='custom-box-grid'><div class='matrix-neon-text'>🧬 <b>DEEPSEEK REAL-TIME SWARM INTERFACE LAYER:</b><br>🔮 DEEPEST OPENROUTER ROUTER SCALPER LABELS ACTIVATED ({target_symbol})</div></div>", unsafe_allow_html=True)
+
+# 🖥️ ডাইনামিক ফ্লোটিং উইন্ডো ডাটা প্রসেসর (একটিভ পজিশনের লাভ-লস সরাসরি রিড করার গেট)
+floating_pnl_val = 0.0
+leverage = db_load(f"leverage_lock_{mode_suffix}_{allocated_user_id}", 20)
+trade_amount = db_load(f"margin_lock_{mode_suffix}_{allocated_user_id}", 20)
+effective_vol = trade_amount * leverage
+
+# একটিভ ট্রেড ট্র্যাকার রিয়েল ডাটা সিঙ্ক ইঞ্জিন (০.০০০০ আনফ্রিজ ফিক্স)
+current_in_pos = db_load(f"in_position_{mode_suffix}_{allocated_user_id}", st.session_state.get("in_position", False))
+current_buy_price = db_load(f"buy_price_{mode_suffix}_{allocated_user_id}", st.session_state.get("buy_price", 0.0))
+current_side_str = db_load(f"current_side_{mode_suffix}_{allocated_user_id}", st.session_state.get("current_side", "NONE"))
+
+if current_in_pos and live_price > 0 and current_buy_price > 0:
+    if "LONG" in current_side_str:
+        floating_pnl_val = ((live_price - current_buy_price) * (effective_vol / current_buy_price))
+    else:
+        floating_pnl_val = ((current_buy_price - live_price) * (effective_vol / current_buy_price))
+
+# ড্র্যাগেবল কাস্টম ফ্লোটিং উইন্ডো রেন্ডারিং এইচটিএমএল উইজেট
+pnl_color = "#00ff87" if floating_pnl_val >= 0 else "#ff3366"
+pnl_sign = "+" if floating_pnl_val >= 0 else ""
+
+st.markdown(
+    f"""
+    <div class="crypto-floating-window">
+        <div style="font-size: 10px; color: #94a3b8; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">{target_symbol}</div>
+        <div style="font-size: 15px; color: #ffffff; font-weight: bold; margin: 4px 0;">${live_price:.4f}</div>
+        <div style="font-size: 11px; color: {pnl_color}; font-weight: bold;">P&L: {pnl_sign}{floating_pnl_val:.4f}$</div>
+    </div>
+    """,
+    unsafe_allow_html=True
 )
 if st.session_state.logged_in_user is None:
     st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
