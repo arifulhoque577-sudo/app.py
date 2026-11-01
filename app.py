@@ -190,7 +190,7 @@ st.markdown(
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
     }
     
-    /* ২. রানিং/স্টপ ডিফল্ট আইকন হাইд প্রোটেকশন */
+    /* ২. রানিং/স্টপ ডিফল্ট আইকন হাইড প্রোটেকশন */
     [data-testid="stStatusWidget"], #MainMenu + div, header button {
         display: none !important;
         visibility: hidden !important;
@@ -264,22 +264,20 @@ st.markdown(
     let touchEndX = 0;
 
     doc.addEventListener('touchstart', e => {
-        touchStartX = e.changedTouches[0].screenX;
+        touchStartX = e.changedTouches.screenX;
     }, false);
 
     doc.addEventListener('touchend', e => {
-        touchEndX = e.changedTouches[0].screenX;
+        touchEndX = e.changedTouches.screenX;
         handleSwipe();
     }, false);
 
     function handleSwipe() {
         const sidebarButton = doc.querySelector('section[data-testid="stSidebar"] ~ button, [data-testid="stSidebarCollapseWrapper"] button');
-        // বাম থেকে ডানে সোয়াইপ করলে সাইডবার ওপেন হবে
         if (touchEndX - touchStartX > 120) {
             const isCollapsed = doc.querySelector('section[data-testid="stSidebar"]').parentElement.getAttribute('aria-expanded') === 'false';
             if (isCollapsed && sidebarButton) sidebarButton.click();
         }
-        // ডান থেকে বামে সোয়াইপ করলে সাইডবার বন্ধ হবে
         if (touchStartX - touchEndX > 120) {
             const isOpen = doc.querySelector('section[data-testid="stSidebar"]').parentElement.getAttribute('aria-expanded') === 'true';
             if (!isOpen && sidebarButton) sidebarButton.click();
@@ -288,6 +286,25 @@ st.markdown(
     </script>
     """,
     unsafe_allow_html=True,
+)
+
+# 🖥️ ফ্লোটিং উইন্ডো ডাটা সেফগার্ড প্রসেসর (NameError প্রোটেকশন গেট ফিক্স)
+floating_pnl_val = floating_pnl if 'floating_pnl' in locals() else 0.0
+resolved_live_price = live_price if ('live_price' in locals() and live_price > 0) else 0.0
+resolved_symbol = target_symbol if 'target_symbol' in locals() else "MARKET FEED"
+
+pnl_color = "#00ff87" if floating_pnl_val >= 0 else "#ff3366"
+pnl_sign = "+" if floating_pnl_val >= 0 else ""
+
+st.markdown(
+    f"""
+    <div class="crypto-floating-window">
+        <div style="font-size: 10px; color: #94a3b8; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">{resolved_symbol}</div>
+        <div style="font-size: 15px; color: #ffffff; font-weight: bold; margin: 4px 0;">${resolved_live_price:.4f}</div>
+        <div style="font-size: 11px; color: {pnl_color}; font-weight: bold;">P&L: {pnl_sign}{floating_pnl_val:.4f}$</div>
+    </div>
+    """,
+    unsafe_allow_html=True
 )
 
 # 🖥️ ফ্লোটিং উইন্ডো ডাটা প্রসেসর রেন্ডারিং (লাইভ প্রাইস ও P&L সহ ফ্লোটিং উইন্ডো উইজেট)
