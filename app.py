@@ -306,22 +306,6 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-
-# 🖥️ ফ্লোটিং উইন্ডো ডাটা প্রসেসর রেন্ডারিং (লাইভ প্রাইস ও P&L সহ ফ্লোটিং উইন্ডো উইজেট)
-floating_pnl_val = floating_pnl if 'floating_pnl' in locals() else 0.0
-pnl_color = "#00ff87" if floating_pnl_val >= 0 else "#ff3366"
-pnl_sign = "+" if floating_pnl_val >= 0 else ""
-
-st.markdown(
-    f"""
-    <div class="crypto-floating-window">
-        <div style="font-size: 10px; color: #94a3b8; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">{target_symbol}</div>
-        <div style="font-size: 15px; color: #ffffff; font-weight: bold; margin: 4px 0;">${live_price:.4f}</div>
-        <div style="font-size: 11px; color: {pnl_color}; font-weight: bold;">P&L: {pnl_sign}{floating_pnl_val:.2f}$</div>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
 if st.session_state.logged_in_user is None:
     st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
     st.subheader("🔑 Account Identity Gateway Control Panel")
