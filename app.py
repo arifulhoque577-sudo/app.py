@@ -177,13 +177,12 @@ YOUR_SECRET_MASTER_CODE = "ADMIN1234"
 # 🧱 UPGRADED ULTRA-PREMIUM CYBERPUNK DARK THEME LAYER
 # ==========================================
 # ==========================================
-# ==========================================
-# 🧱 ULTIMATE CYBERPUNK DARK ENGINE & SWIPE SIDEBAR FIX LAYER
+# 🧱 ULTIMATE CYBERPUNK DARK ENGINE, SWIPE SIDEBAR & FLOATING WINDOW LAYER
 # ==========================================
 st.markdown(
     """
     <style>
-    /* 🔴 ১. গ্লোবাল ব্যাকগ্রাউন্ড এবং বডি থিম হার্ড-লক */
+    /* ১. গ্লোবাল ব্যাকগ্রাউন্ড এবং বডি থিম হার্ড-লক */
     html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stApp"] {
         background-color: #04070a !important;
         background-image: radial-gradient(circle at 50% 10%, #0d1627 0%, #04070a 80%) !important;
@@ -191,80 +190,54 @@ st.markdown(
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
     }
     
-    /* 🔴 ২. রানিং/স্টপ ডিফল্ট আইকন হাইড প্রোটেকশন */
-    [data-testid="stStatusWidget"], #MainMenu + div, header button:not([data-testid="stSidebarCollapseWrapper"] button) {
+    /* ২. রানিং/স্টপ ডিফল্ট আইকন হাইд প্রোটেকশন */
+    [data-testid="stStatusWidget"], #MainMenu + div, header button {
         display: none !important;
         visibility: hidden !important;
     }
     
-    /* 🔴 ৩. সাইডবার অটো-ওপেন ও মোবাইল সোয়াইপ গ্রাউন্ড ফিক্স */
+    /* ৩. সাইডবার সুপার-ডার্ক ম্যাট ফিনিশিং ও স্মুথ ট্রানজিশন */
     div[data-testid="stSidebar"], section[data-testid="stSidebarView"] {
         background-color: #080c14 !important;
         background-image: linear-gradient(180deg, #080c14 0%, #030508 100%) !important;
         border-right: 1px solid #1e293b !important;
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
-    
-    /* ৪. সাইডবারের ভেতরের অল এলিমেন্ট লাইট মোড বাইপাস লকিং */
     div[data-testid="stSidebar"] * {
         color: #f8fafc !important;
     }
-    
-    /* 🔴 ৫. মোবাইল স্ক্রিনে সাইডবার বাটন ও সোয়াইপ ট্র্যাকার ভিজিবিলিটি পুনরুদ্ধার */
-    [data-testid="stSidebarCollapseWrapper"] {
-        display: flex !important;
-        visibility: visible !important;
-        left: 10px !important;
-        top: 10px !important;
-        z-index: 999999 !important;
-    }
-    [data-testid="stSidebarCollapseWrapper"] button {
-        background-color: #1e293b !important;
-        color: #38bdf8 !important;
-        border: 1px solid #38bdf8 !important;
-        border-radius: 6px !important;
-        box-shadow: 0 0 8px rgba(56, 189, 248, 0.3) !important;
-    }
 
-    /* 🔴 ৬. অল ইনপুট বক্স, সিলেক্টবক্স এবং টেক্সট এরিয়া লাইট-মোড প্রোটেকশন */
+    /* ৪. অল ইনপুট বক্স, সিলেক্টবক্স এবং টেক্সট এরিয়া লাইট-মোড প্রোটেকশন */
     div[data-baseweb="select"], div[data-baseweb="input"], input, .stTextArea textarea, div[role="radiogroup"] {
         background-color: #0b1322 !important;
         color: #ffffff !important;
         border: 1px solid #1e2c3f !important;
         border-radius: 8px !important;
     }
-    div[data-baseweb="select"]:focus-within, input:focus, textarea:focus {
-        border-color: #38bdf8 !important;
-        box-shadow: 0 0 10px rgba(56, 189, 248, 0.25) !important;
-    }
-    
-    /* 🔴 ৭. স্লাইডার ট্র্যাক এবং রেড গ্লোইং এক্সিস ফিক্স */
-    div[data-testid="stSlider"] [role="slider"] {
-        background-color: #ff3366 !important;
-        border: 2px solid #ffffff !important;
-        box-shadow: 0 0 8px #ff3366 !important;
-    }
-    div[data-testid="stSlider"] div {
-        color: #94a3b8 !important;
-    }
 
-    /* 🔴 ৮. প্রিমিয়াম কার্ডস এবং গ্লোয়িং ইনফরমেশন গ্রিডবক্স কন্টেইনারস */
-    .custom-box-grid {
-        background: linear-gradient(145deg, #0d1527 0%, #070b14 100%) !important;
-        padding: 18px !important;
+    /* 📊 ৫. আল্ট্রা-প্রিমিয়াম গ্লোয়িং ফ্লোটিং উইন্ডো উইজেট (Floating Window Custom UI) */
+    .crypto-floating-window {
+        position: fixed !important;
+        bottom: 20px !important;
+        right: 20px !important;
+        width: 160px !important;
+        background: rgba(13, 21, 39, 0.85) !important;
+        backdrop-filter: blur(10px) !important;
+        border: 1px solid #38bdf8 !important;
         border-radius: 12px !important;
-        margin-bottom: 12px !important;
-        border: 1px solid #17253a !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+        padding: 10px !important;
+        box-shadow: 0 8px 32px rgba(56, 189, 248, 0.25) !important;
+        z-index: 999999 !important;
+        font-family: monospace !important;
+        text-align: center !important;
+        animation: floatingGlow 3s ease-in-out infinite alternate !important;
     }
-    .matrix-neon-text {
-        font-family: 'Courier New', monospace !important;
-        color: #00ff87 !important;
-        text-shadow: 0 0 8px rgba(0, 255, 135, 0.4) !important;
-        font-size: 13px !important;
+    @keyframes floatingGlow {
+        0% { transform: translateY(0px); box-shadow: 0 8px 32px rgba(56, 189, 248, 0.2); }
+        100% { transform: translateY(-6px); box-shadow: 0 12px 32px rgba(56, 189, 248, 0.4); }
     }
 
-    /* 🔴 ৯. অ্যাকশন বাটন এবং গ্লোবাল অ্যাক্টিভেশন কন্ট্রোলস */
+    /* ৬. গ্লোবাল বাটন এবং কার্ড সেটিংস লক */
     div.stButton > button:first-child {
         width: 100% !important;
         border-radius: 8px !important;
@@ -274,37 +247,63 @@ st.markdown(
         background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
         color: #ffffff !important;
         border: 1px solid #2d3748 !important;
-        transition: all 0.2s ease-in-out !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
     }
-    div.stButton > button:first-child:hover {
-        border-color: #38bdf8 !important;
-        color: #38bdf8 !important;
-        box-shadow: 0 0 14px rgba(56, 189, 248, 0.3) !important;
-        transform: translateY(-1px);
-    }
-
-    /* 🔴 ১০. ট্যাব এবং ডাটাফ্রেম টেবিল লাইট মোড বাইপাস লকিং */
-    button[data-baseweb="tab"] {
-        color: #64748b !important;
-    }
-    button[data-baseweb="tab"][aria-selected="true"] {
-        color: #38bdf8 !important;
-        border-bottom-color: #38bdf8 !important;
-        font-weight: bold !important;
-    }
-    .stDataFrame, [data-testid="stDataFrame"], div[data-testid="stTable"] {
-        background-color: #070b14 !important;
+    .custom-box-grid {
+        background: linear-gradient(145deg, #0d1527 0%, #070b14 100%) !important;
+        padding: 18px !important;
+        border-radius: 12px !important;
         border: 1px solid #17253a !important;
-        border-radius: 10px !important;
-        color: #ffffff !important;
     }
-    
-    /* 🔴 ১১. মাস্টার রিমুভাল: স্ট্রীমলিট ডিফল্ট ফুটার এবং হ্যামবার্গার মেনু ট্র্যাশ */
     #MainMenu, footer { visibility: hidden !important; display: none !important; }
     </style>
+
+    <!-- 🌐 জাভাস্ক্রিপ্ট সোয়াইপ ডিটেকশন লেয়ার (মোবাইল স্ক্রিন সোয়াইপ করে সাইডবার খোলার ইঞ্জিন) -->
+    <script>
+    const doc = window.parent.document;
+    let touchStartX = 0;
+    let touchEndX = 0;
+
+    doc.addEventListener('touchstart', e => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, false);
+
+    doc.addEventListener('touchend', e => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+    }, false);
+
+    function handleSwipe() {
+        const sidebarButton = doc.querySelector('section[data-testid="stSidebar"] ~ button, [data-testid="stSidebarCollapseWrapper"] button');
+        // বাম থেকে ডানে সোয়াইপ করলে সাইডবার ওপেন হবে
+        if (touchEndX - touchStartX > 120) {
+            const isCollapsed = doc.querySelector('section[data-testid="stSidebar"]').parentElement.getAttribute('aria-expanded') === 'false';
+            if (isCollapsed && sidebarButton) sidebarButton.click();
+        }
+        // ডান থেকে বামে সোয়াইপ করলে সাইডবার বন্ধ হবে
+        if (touchStartX - touchEndX > 120) {
+            const isOpen = doc.querySelector('section[data-testid="stSidebar"]').parentElement.getAttribute('aria-expanded') === 'true';
+            if (!isOpen && sidebarButton) sidebarButton.click();
+        }
+    }
+    </script>
     """,
     unsafe_allow_html=True,
+)
+
+# 🖥️ ফ্লোটিং উইন্ডো ডাটা প্রসেসর রেন্ডারিং (লাইভ প্রাইস ও P&L সহ ফ্লোটিং উইন্ডো উইজেট)
+floating_pnl_val = floating_pnl if 'floating_pnl' in locals() else 0.0
+pnl_color = "#00ff87" if floating_pnl_val >= 0 else "#ff3366"
+pnl_sign = "+" if floating_pnl_val >= 0 else ""
+
+st.markdown(
+    f"""
+    <div class="crypto-floating-window">
+        <div style="font-size: 10px; color: #94a3b8; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">{target_symbol}</div>
+        <div style="font-size: 15px; color: #ffffff; font-weight: bold; margin: 4px 0;">${live_price:.4f}</div>
+        <div style="font-size: 11px; color: {pnl_color}; font-weight: bold;">P&L: {pnl_sign}{floating_pnl_val:.2f}$</div>
+    </div>
+    """,
+    unsafe_allow_html=True
 )
 if st.session_state.logged_in_user is None:
     st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
