@@ -586,9 +586,9 @@ if st.session_state.in_position and live_price > 0 and st.session_state.buy_pric
 
 
 # ==========================================
-# 🧱 BOX 15: GLOBAL PIPELINE SYNC & REAL-TIME FLOATING OVERLAY ENGINE
+# 🧱 BOX 15: GLOBAL PIPELINE SYNC, REAL-TIME FLOATING OVERLAY & DRAGGABLE WINDOW
 # ==========================================
-# গ্লোবাল সেশন এবং মোড আইসোলেশন লেয়ার সিঙ্ক্রোনাইজেশন
+# (১) গ্লোবাল সেশন এবং মোড আইসোলেশন লেয়ার সিঙ্ক্রোনাইজেশন (পুরাতন ফাংশন অক্ষুণ্ণ)
 st.session_state.in_position = db_load(f"in_position_{mode_suffix}_{allocated_user_id}", False)
 st.session_state.buy_price = db_load(f"buy_price_{mode_suffix}_{allocated_user_id}", 0.0)
 st.session_state.current_side = db_load(f"current_side_{mode_suffix}_{allocated_user_id}", "NONE")
@@ -601,7 +601,7 @@ price_jump_target = db_load(f"tp_target_{mode_suffix}_{allocated_user_id}", 0.01
 stop_loss_gap = db_load(f"sl_gap_{mode_suffix}_{allocated_user_id}", 0.02)
 effective_vol = trade_amount * leverage
 
-# 🔄 রিয়েল-টাইম লাইভ টিকের ট্র্যাকিং আনফ্রিজার (০.০০০০ বাগ ফিক্স গেট)
+# রিয়েল-টাইম লাইভ টিকের ট্র্যাকিং আনফ্রিজার
 floating_pnl = 0.0
 if st.session_state.in_position and live_price > 0 and st.session_state.buy_price > 0:
     if "LONG" in st.session_state.current_side:
@@ -609,10 +609,11 @@ if st.session_state.in_position and live_price > 0 and st.session_state.buy_pric
     else:
         floating_pnl = ((st.session_state.buy_price - live_price) * (effective_vol / st.session_state.buy_price))
 
-# একক সিকিউর এভেলেবল ব্যালেন্স উইজেট (লাইভ ফ্লোটিং P&L সহ)
+# একক সিকিউর এভেলেবল ব্যালেন্স উইজেট (পুরাতন ফাংশন অক্ষুণ্ণ)
 balance_usd_text = f"${(st.session_state.get('real_balance' if is_real_live else 'demo_balance', 5000.0) + floating_pnl):,.2f} USDT"
 st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}):</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:14px; color:{'#00e676' if floating_pnl >= 0 else '#ff1744'}; font-weight:bold;'>Live Floating P&L Indicator: {floating_pnl:+.4f} USDT</p></div>", unsafe_allow_html=True)
 
+# একটিভ অর্ডার পজিশন প্যারামিটার ডিসপ্লে ম্যাտրিক্স - নীল বর্ডার বক্স (পুরাতন ফাংশন অক্ষুণ্ণ)
 position_overlay_container = st.container()
 with position_overlay_container:
     if st.session_state.in_position:
@@ -634,6 +635,68 @@ with position_overlay_container:
             <span style="font-size:14px; color:#ff1744; font-weight:bold; font-family: monospace;">Stop Loss Boundary Node: {live_sl:.6f} (Estimated Loss: -${est_loss_dollars:.2f} USDT)</span>
         </div>
         """, unsafe_allow_html=True)
+
+# ------------------------------------------
+# 🔥 নতুন সংযোজন: REAL-TIME DRAGGABLE FLOATING WINDOW ENGINE (এখানে এড করা হলো)
+# ------------------------------------------
+floating_pnl_val = floating_pnl if 'floating_pnl' in locals() else 0.0
+resolved_live_price = live_price if ('live_price' in locals() and live_price > 0) else 0.0
+resolved_symbol = target_symbol if 'target_symbol' in locals() else "MARKET FEED"
+
+pnl_color = "#00ff87" if floating_pnl_val >= 0 else "#ff3366"
+pnl_sign = "+" if floating_pnl_val >= 0 else ""
+
+st.markdown(
+    f"""
+    <div class="crypto-floating-window" id="dragWin">
+        <div style="font-size: 10px; color: #94a3b8; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">{resolved_symbol}</div>
+        <div style="font-size: 15px; color: #ffffff; font-weight: bold; margin: 4px 0;">${resolved_live_price:.4f}</div>
+        <div style="font-size: 11px; color: {pnl_color}; font-weight: bold;">P&L: {pnl_sign}{floating_pnl_val:.4f}$</div>
+    </div>
+
+    <script>
+    function makeWindowDraggable() {
+        const pDoc = window.parent.document;
+        const fWin = pDoc.getElementById('dragWin') || pDoc.querySelector('.crypto-floating-window');
+        if (!fWin) {{
+            setTimeout(makeWindowDraggable, 300);
+            return;
+        }}
+        
+        let activeDrag = false;
+        let currentX, currentY, initialX, initialY;
+        let xOffset = 0, yOffset = 0;
+
+        fWin.addEventListener('touchstart', (e) => {{
+            initialX = e.touches.clientX - xOffset;
+            initialY = e.touches.clientY - yOffset;
+            if (e.target === fWin || fWin.contains(e.target)) {{
+                activeDrag = true;
+            }
+        }}, {{passive: false}});
+
+        pDoc.addEventListener('touchend', () => {{
+            initialX = currentX;
+            initialY = currentY;
+            activeDrag = false;
+        }}, {{passive: true}});
+
+        pDoc.addEventListener('touchmove', (e) => {{
+            if (activeDrag) {{
+                e.preventDefault();
+                currentX = e.touches.clientX - initialX;
+                currentY = e.touches.clientY - initialY;
+                xOffset = currentX;
+                yOffset = currentY;
+                fWin.style.transform = `translate3d(${{currentX}}px, ${{currentY}}px, 0)`;
+            }
+        }}, {{passive: false}});
+    }
+    setTimeout(makeWindowDraggable, 500);
+    </script>
+    """,
+    unsafe_allow_html=True
+)
 # 🔥 FULLY ACCURATE ISOLATION CHANNELS FOR DEMO & REAL TRADES
 mode_suffix = "real" if is_real_live else "demo"
 cloud_bot_trigger = db_load(f"bot_active_{mode_suffix}_{allocated_user_id}", False) if (allocated_user_id and allocated_user_id != "NONE") else st.session_state.get(f"bot_active_{mode_suffix}", False)
