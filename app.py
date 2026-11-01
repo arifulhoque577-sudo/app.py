@@ -177,12 +177,12 @@ YOUR_SECRET_MASTER_CODE = "ADMIN1234"
 # 🧱 UPGRADED ULTRA-PREMIUM CYBERPUNK DARK THEME LAYER
 # ==========================================
 # ==========================================
-# 🧱 ULTIMATE CYBERPUNK DARK ENGINE, SWIPE SIDEBAR & FLOATING WINDOW LAYER
+# 🧱 ULTIMATE CYBERPUNK DEEP-DARK ENGINE & SMART INTERFACE LAYER
 # ==========================================
 st.markdown(
     """
     <style>
-    /* ১. গ্লোবাল ব্যাকগ্রাউন্ড এবং বডি থিম হার্ড-লক */
+    /* 🟢 ১. গ্লোবাল ব্যাকগ্রাউন্ড এবং বডি থিম হার্ড-লক */
     html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stApp"] {
         background-color: #04070a !important;
         background-image: radial-gradient(circle at 50% 10%, #0d1627 0%, #04070a 80%) !important;
@@ -190,24 +190,21 @@ st.markdown(
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
     }
     
-    /* ২. রানিং/স্টপ ডিফল্ট আইকন হাইড প্রোটেকশন */
-    [data-testid="stStatusWidget"], #MainMenu + div, header button {
+    /* 🟢 ২. রানিং/স্টপ ডিফল্ট আইকন হাইড প্রোটেকশন */
+    [data-testid="stStatusWidget"], #MainMenu + div, header button:not([data-testid="stSidebarCollapseWrapper"] button) {
         display: none !important;
         visibility: hidden !important;
     }
     
-    /* ৩. সাইডবার সুপার-ডার্ক ম্যাট ফিনিশিং ও স্মুথ ট্রানজিশন */
-    div[data-testid="stSidebar"], section[data-testid="stSidebarView"] {
+    /* 🟢 ৩. সাইডবার সুপার-ডার্ক ম্যাট ফিনিশিং ও স্মুথ ট্রানজিশন */
+    div[data-testid="stSidebar"], section[data-testid="stSidebarView"], [data-testid="stSidebarCollapseWrapper"] {
         background-color: #080c14 !important;
         background-image: linear-gradient(180deg, #080c14 0%, #030508 100%) !important;
         border-right: 1px solid #1e293b !important;
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
-    div[data-testid="stSidebar"] * {
-        color: #f8fafc !important;
-    }
+    div[data-testid="stSidebar"] * { color: #f8fafc !important; }
 
-    /* ৪. অল ইনপুট বক্স, সিলেক্টবক্স এবং টেক্সট এরিয়া লাইট-মোড প্রোটেকশন */
+    /* 🟢 ৪. অল ইনপুট বক্স, সিলেক্টবক্স এবং টেক্সট এরিয়া লাইট-মোড প্রোটেকশন */
     div[data-baseweb="select"], div[data-baseweb="input"], input, .stTextArea textarea, div[role="radiogroup"] {
         background-color: #0b1322 !important;
         color: #ffffff !important;
@@ -215,29 +212,43 @@ st.markdown(
         border-radius: 8px !important;
     }
 
-    /* 📊 ৫. আল্ট্রা-প্রিমিয়াম গ্লোয়িং ফ্লোটিং উইন্ডো উইজেট (Floating Window Custom UI) */
+    /* 🟢 ৫. আপনার স্ক্রিনশট ২ এর সেই হারিয়ে যাওয়া অরিজিনাল সুন্দর সবুজ গ্লোয়িং ম্যাট্রিক্স বক্স (Custom Box Grid) */
+    .custom-box-grid {
+        background: #050a12 !important;
+        padding: 22px !important;
+        border-radius: 12px !important;
+        margin-bottom: 12px !important;
+        border: 1px solid #00e676 !important;
+        box-shadow: 0 0 15px rgba(0, 230, 118, 0.15) !important;
+    }
+    .matrix-neon-text {
+        font-family: 'Courier New', monospace !important;
+        color: #00ff87 !important;
+        text-shadow: 0 0 8px rgba(0, 255, 135, 0.4) !important;
+        font-size: 14px !important;
+        line-height: 1.6 !important;
+    }
+
+    /* 🟢 ৬. হাত দিয়ে টেনে নাড়ানোর মতো আল্ট্রা-প্রিমিয়াম গ্লোয়িং ফ্লোটিং উইন্ডো উইজেট (Touch Draggable Floating Window UI) */
     .crypto-floating-window {
         position: fixed !important;
-        bottom: 20px !important;
+        bottom: 80px !important;
         right: 20px !important;
-        width: 160px !important;
+        width: 150px !important;
         background: rgba(13, 21, 39, 0.85) !important;
         backdrop-filter: blur(10px) !important;
         border: 1px solid #38bdf8 !important;
         border-radius: 12px !important;
         padding: 10px !important;
-        box-shadow: 0 8px 32px rgba(56, 189, 248, 0.25) !important;
+        box-shadow: 0 0 15px rgba(56, 189, 248, 0.3) !important;
         z-index: 999999 !important;
         font-family: monospace !important;
         text-align: center !important;
-        animation: floatingGlow 3s ease-in-out infinite alternate !important;
-    }
-    @keyframes floatingGlow {
-        0% { transform: translateY(0px); box-shadow: 0 8px 32px rgba(56, 189, 248, 0.2); }
-        100% { transform: translateY(-6px); box-shadow: 0 12px 32px rgba(56, 189, 248, 0.4); }
+        cursor: move !important;
+        touch-action: none !important; /* মোবাইল ড্র্যাগিং প্রোটেকশন */
     }
 
-    /* ৬. গ্লোবাল বাটন এবং কার্ড সেটিংস লক */
+    /* গ্লোবাল বাটন সেটিংস লক */
     div.stButton > button:first-child {
         width: 100% !important;
         border-radius: 8px !important;
@@ -248,63 +259,76 @@ st.markdown(
         color: #ffffff !important;
         border: 1px solid #2d3748 !important;
     }
-    .custom-box-grid {
-        background: linear-gradient(145deg, #0d1527 0%, #070b14 100%) !important;
-        padding: 18px !important;
-        border-radius: 12px !important;
-        border: 1px solid #17253a !important;
-    }
     #MainMenu, footer { visibility: hidden !important; display: none !important; }
     </style>
 
-    <!-- 🌐 জাভাস্ক্রিপ্ট সোয়াইপ ডিটেকশন লেয়ার (মোবাইল স্ক্রিন সোয়াইপ করে সাইডবার খোলার ইঞ্জিন) -->
+    <!-- 🌐 জাভাস্ক্রিপ্ট সোয়াইপ এবং হাত দিয়ে ফ্লোটিং উইন্ডো ড্র্যাগ করার ইন্টেলিজেন্ট ইঞ্জিন -->
     <script>
-    const doc = window.parent.document;
+    const winDoc = window.parent.document;
+    
+    // ১. স্মার্ট মোবাইল স্ক্রিন সোয়াইপ ডিটেকশন (বাম পাশ থেকে টান দিলে সাইডবার ওপেন হবে)
     let touchStartX = 0;
-    let touchEndX = 0;
+    winDoc.addEventListener('touchstart', e => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, {passive: true});
 
-    doc.addEventListener('touchstart', e => {
-        touchStartX = e.changedTouches.screenX;
-    }, false);
-
-    doc.addEventListener('touchend', e => {
-        touchEndX = e.changedTouches.screenX;
-        handleSwipe();
-    }, false);
-
-    function handleSwipe() {
-        const sidebarButton = doc.querySelector('section[data-testid="stSidebar"] ~ button, [data-testid="stSidebarCollapseWrapper"] button');
-        if (touchEndX - touchStartX > 120) {
-            const isCollapsed = doc.querySelector('section[data-testid="stSidebar"]').parentElement.getAttribute('aria-expanded') === 'false';
-            if (isCollapsed && sidebarButton) sidebarButton.click();
+    winDoc.addEventListener('touchend', e => {
+        let touchEndX = e.changedTouches[0].screenX;
+        const sidebarBtn = winDoc.querySelector('section[data-testid="stSidebar"] ~ button, [data-testid="stSidebarCollapseWrapper"] button');
+        
+        // বাম থেকে ডানে সোয়াইপ টান (Swipe Right)
+        if (touchEndX - touchStartX > 130) {
+            const isCollapsed = winDoc.querySelector('section[data-testid="stSidebar"]').parentElement.getAttribute('aria-expanded') === 'false';
+            if (isCollapsed && sidebarBtn) sidebarBtn.click();
         }
-        if (touchStartX - touchEndX > 120) {
-            const isOpen = doc.querySelector('section[data-testid="stSidebar"]').parentElement.getAttribute('aria-expanded') === 'true';
-            if (!isOpen && sidebarButton) sidebarButton.click();
+        // ডান থেকে বামে সোয়াইপ টান (Swipe Left)
+        if (touchStartX - touchEndX > 130) {
+            const isOpen = winDoc.querySelector('section[data-testid="stSidebar"]').parentElement.getAttribute('aria-expanded') === 'true';
+            if (isOpen && sidebarBtn) sidebarBtn.click();
         }
-    }
+    }, {passive: true});
+
+    // ২. ফ্লোটিং উইন্ডো হাত দিয়ে স্ক্রিনের যেকোনো জায়গায় টেনে নাড়ানোর (Touch Draggable) জাভাস্ক্রিপ্ট লুপ
+    setTimeout(() => {
+        const floatWin = winDoc.querySelector('.crypto-floating-window');
+        if (!floatWin) return;
+        
+        let isDragging = false;
+        let currentX, currentY, initialX, initialY;
+        let xOffset = 0, yOffset = 0;
+
+        floatWin.addEventListener('touchstart', dragStart, {passive: false});
+        winDoc.addEventListener('touchend', dragEnd, {passive: true});
+        winDoc.addEventListener('touchmove', drag, {passive: false});
+
+        function dragStart(e) {
+            initialX = e.touches[0].clientX - xOffset;
+            initialY = e.touches[0].clientY - yOffset;
+            if (e.target === floatWin || floatWin.contains(e.target)) {
+                isDragging = true;
+            }
+        }
+
+        function dragEnd() {
+            initialX = currentX;
+            initialY = currentY;
+            isDragging = false;
+        }
+
+        function drag(e) {
+            if (isDragging) {
+                e.preventDefault();
+                currentX = e.touches[0].clientX - initialX;
+                currentY = e.touches[0].clientY - initialY;
+                xOffset = currentX;
+                yOffset = currentY;
+                floatWin.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+            }
+        }
+    }, 1500);
     </script>
     """,
     unsafe_allow_html=True,
-)
-
-# 🖥️ ফ্লোটিং উইন্ডো ডাটা সেফগার্ড প্রসেসর (NameError প্রোটেকশন গেট ফিক্স)
-floating_pnl_val = floating_pnl if 'floating_pnl' in locals() else 0.0
-resolved_live_price = live_price if ('live_price' in locals() and live_price > 0) else 0.0
-resolved_symbol = target_symbol if 'target_symbol' in locals() else "MARKET FEED"
-
-pnl_color = "#00ff87" if floating_pnl_val >= 0 else "#ff3366"
-pnl_sign = "+" if floating_pnl_val >= 0 else ""
-
-st.markdown(
-    f"""
-    <div class="crypto-floating-window">
-        <div style="font-size: 10px; color: #94a3b8; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">{resolved_symbol}</div>
-        <div style="font-size: 15px; color: #ffffff; font-weight: bold; margin: 4px 0;">${resolved_live_price:.4f}</div>
-        <div style="font-size: 11px; color: {pnl_color}; font-weight: bold;">P&L: {pnl_sign}{floating_pnl_val:.4f}$</div>
-    </div>
-    """,
-    unsafe_allow_html=True
 )
 if st.session_state.logged_in_user is None:
     st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
