@@ -437,8 +437,7 @@ if st.session_state.in_position and live_price > 0 and st.session_state.buy_pric
     if "LONG" in st.session_state.current_side: floating_pnl = ((live_price - st.session_state.buy_price) * (effective_vol / st.session_state.buy_price))
     else: floating_pnl = ((st.session_state.buy_price - live_price) * (effective_vol / st.session_state.buy_price))
 
-balance_usd_text = f"${(st.session_state.get('real_balance' if is_real_live else 'demo_balance', 5000.0) + floating_pnl):,.2f} USDT"
-st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}):</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:14px; color:{'#00e676' if floating_pnl >= 0 else '#ff1744'}; font-weight:bold;'>Live Floating P&L Indicator: {floating_pnl:+.4f} USDT</p></div>", unsafe_allow_html=True)
+
 # ==========================================
 # 🧱 BOX 15: GLOBAL PIPELINE SYNC & REAL-TIME FLOATING OVERLAY ENGINE
 # ==========================================
