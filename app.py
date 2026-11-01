@@ -442,19 +442,20 @@ st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}
 # ==========================================
 # 🧱 BOX 15: GLOBAL PIPELINE SYNC & REAL-TIME FLOATING OVERLAY ENGINE
 # ==========================================
-# গলোবাল সেশন এবং মোড আইসোলেশন লেয়ার সিঙ্ক্রোনাইজেশন
+# গ্লোবাল সেশন এবং মোড আইসোলেশন লেয়ার সিঙ্ক্রোনাইজেশন
 st.session_state.in_position = db_load(f"in_position_{mode_suffix}_{allocated_user_id}", False)
 st.session_state.buy_price = db_load(f"buy_price_{mode_suffix}_{allocated_user_id}", 0.0)
 st.session_state.current_side = db_load(f"current_side_{mode_suffix}_{allocated_user_id}", "NONE")
 st.session_state.trade_coin = db_load(f"trade_coin_{mode_suffix}_{allocated_user_id}", target_symbol)
 
-# মোড ভিত্তিক লাইভ ক্যালকুলেটর রান
+# মোড ভিত্তিক লাইভ ক্যালকুলেটর রান এবং গাণিতিক সমীকরণ রিকভারি
 leverage = db_load(f"leverage_lock_{mode_suffix}_{allocated_user_id}", 20)
 trade_amount = db_load(f"margin_lock_{mode_suffix}_{allocated_user_id}", 20)
 price_jump_target = db_load(f"tp_target_{mode_suffix}_{allocated_user_id}", 0.01)
 stop_loss_gap = db_load(f"sl_gap_{mode_suffix}_{allocated_user_id}", 0.02)
 effective_vol = trade_amount * leverage
 
+# 🔄 রিয়েল-টাইম লাইভ টিকের ট্র্যাকিং আনফ্রিজার (০.০০০০ বাগ ফিক্স গেট)
 floating_pnl = 0.0
 if st.session_state.in_position and live_price > 0 and st.session_state.buy_price > 0:
     if "LONG" in st.session_state.current_side:
@@ -462,7 +463,9 @@ if st.session_state.in_position and live_price > 0 and st.session_state.buy_pric
     else:
         floating_pnl = ((st.session_state.buy_price - live_price) * (effective_vol / st.session_state.buy_price))
 
-# একক সিকিউর এভেলেবল ব্যালেন্স উইজেট (ডবল বক্স ফিক্সড)
+# একক সিকিউর এভেলেবল ব্যালেন্স উইজেট (লাইভ ফ্লোটিং P&L সহ)
+balance_usd_text = f"${(st.session_state.get('real_balance' if is_real_live else 'demo_balance', 5000.0) + floating_pnl):,.2f} USDT"
+st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}):</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:14px; color:{'#00e676' if floating_pnl >= 0 else '#ff1744'}; font-weight:bold;'>Live Floating P&L Indicator: {floating_pnl:+.4f} USDT</p></div>", unsafe_allow_html=True)
 
 position_overlay_container = st.container()
 with position_overlay_container:
