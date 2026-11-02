@@ -198,8 +198,8 @@ AI_COOLDOWN_SEC = 60        # AI signal protibar koto sec por por
 AUTO_REFRESH_MS = 5000      # page auto refresh (ms)
 
 @st.cache_data(ttl=8, show_spinner=False)
-def fetch_wallet_cached(_k, _s, _testnet):
-    return BybitEngine(_k, _s, testnet=_testnet).wallet()
+def fetch_wallet_cached(k, s, testnet):   # underscore chhara: nahole cache key e user ba key dhora hoy na
+    return BybitEngine(k, s, testnet=testnet).wallet()
 # ==========================================
 # 🧱 UPGRADED ULTRA-PREMIUM CYBERPUNK DARK THEME LAYER
 # ==========================================
@@ -759,7 +759,10 @@ st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}
 if is_real_live:
     if real_engine_error: st.error(f"Bybit connect error: {real_engine_error}")
     elif real_engine is None: st.info("🔒 Real mode: sidebar e License Password dao, tarpor Bybit API Key + Secret dao. Tahole Bybit er asol balance ekhane ashbe.")
-    else: st.caption(f"🔗 Bybit {'TESTNET 🧪' if use_testnet else 'MAINNET 🔴'} connected | Available: ${real_wallet['available']:,.2f} USDT")
+    else:
+        st.caption(f"🔗 Bybit {'TESTNET 🧪' if use_testnet else 'MAINNET 🔴'} connected | Equity: ${real_wallet['equity']:,.2f} | Available: ${real_wallet['available']:,.2f} USDT")
+        with st.expander("🔍 Bybit wallet raw data (debug)"):
+            st.json(real_wallet.get("raw", {}))
 if live_price > 0 and price_jump_target / live_price <= FEE_RATE_ROUNDTRIP:
     st.warning(f"⚠️ Take Profit ({price_jump_target / live_price * 100:.3f}%) fee ({FEE_RATE_ROUNDTRIP * 100:.2f}%) er cheye chhoto ba shoman. Jitleo loss hobe. TP barao.")
 
@@ -831,21 +834,36 @@ if cloud_bot_trigger and allocated_user_id != "NONE":
                 
                 log_prefix = "🚀 [TURBO AI]" if is_turbo else "🔒 [SECURE AI]"
                 st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] {log_prefix} Analyzing Live Feeds...")
-                or_response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=10)
-                if or_response.status_code == 200:
+                _models = [m.strip() for m in str(or_model_id).replace("\n", ",").split(",") if m.strip()][:3] or [str(or_model_id)]
+                or_response, _last_err = None, "no response"
+                for _m in _models:
+                    payload["model"] = _m
+                    try:
+                        _r = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=12)
+                    except Exception as _e:
+                        _last_err = f"{_m} -> {_e}"
+                        continue
+                    if _r.status_code == 200:
+                        or_response = _r
+                        break
+                    _last_err = f"{_m} -> HTTP {_r.status_code}: {_r.text[:140]}"
+                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] AI model failed: {_last_err}")
+                    if _r.status_code in (401, 402, 403):
+                        break
+                if or_response is not None:
                     try:
                         ai_raw_word = ""
                         try:
                             res_json = or_response.json()
-                            ai_raw_word = res_json['choices'][0]['message']['content'].strip().upper()
+                            ai_raw_word = res_json['choices'][0]['message'].get('content', '').strip().upper()
                         except:
-                            ai_raw_word = or_response.text.strip().upper()
+                            ai_raw_word = ""   # parse fail hole HOLD (error text e "too long" moto shobdo LONG hishebe dhora hobe na)
                         
                         resolved_signal = "HOLD"
                         if "LONG" in ai_raw_word and "SHORT" not in ai_raw_word: resolved_signal = "LONG"
                         elif "SHORT" in ai_raw_word and "LONG" not in ai_raw_word: resolved_signal = "SHORT"
                         
-                        if resolved_signal == "HOLD" and not st.session_state.first_trade_done:
+                        if resolved_signal == "HOLD" and not st.session_state.first_trade_done and not is_real_live:
                             resolved_signal = "LONG" if current_rsi < 50 else "SHORT"
                         
                         st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Active Signal: '{resolved_signal}'")
@@ -858,25 +876,27 @@ if cloud_bot_trigger and allocated_user_id != "NONE":
                                 _rerun_after = True
                     except: pass
                 else:
-                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Router Request Dropped {or_response.status_code}. Activating Local Backup...")
-                    local_decision = "HOLD"
-                    if current_rsi < 45: local_decision = "LONG"
-                    elif current_rsi > 55: local_decision = "SHORT"
-                    
-                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Backup Signal: '{local_decision}' for {target_symbol}")
-                    if local_decision in ["LONG", "SHORT"]:
-                        ok, msg = open_trade(local_decision)
-                        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] {'Order opened' if ok else 'Order blocked'}: {msg}")
-                        if ok:
-                            st.toast(f"⚡ Technical Latch Executed: {local_decision}", icon="⚙️")
-                            _rerun_after = True
+                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] AI unavailable ({_last_err[:150]})")
+                    if is_real_live:
+                        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Real mode: AI uttor dey nai, tai kono trade kora holo na (HOLD).")
+                    else:
+                        local_decision = "HOLD"
+                        if current_rsi < 45: local_decision = "LONG"
+                        elif current_rsi > 55: local_decision = "SHORT"
+                        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Demo RSI backup signal: '{local_decision}' for {target_symbol}")
+                        if local_decision in ["LONG", "SHORT"]:
+                            ok, msg = open_trade(local_decision)
+                            st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] {'Order opened' if ok else 'Order blocked'}: {msg}")
+                            if ok:
+                                st.toast(f"⚡ Technical Latch Executed: {local_decision}", icon="⚙️")
+                                _rerun_after = True
         except Exception as e:
             st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Loop Error Node: {str(e)}")
 if _rerun_after:
     st.rerun()
 # --- 🪐 LIVE TERMINAL BOX ---
 st.markdown("<b>🖥️ Real-Time AI Swarm Scalper Loop Sequence Log Panel:</b>", unsafe_allow_html=True)
-log_text = "\n".join(st.session_state.engine_logs[-6:])
+log_text = "\n".join(st.session_state.engine_logs[-8:])
 st.text_area(label="Live Terminal", value=log_text, height=135, label_visibility="collapsed")
 
 # --- 🕹️ RESTORE FIXED MANUAL TRADING PANEL MATRIX ---
