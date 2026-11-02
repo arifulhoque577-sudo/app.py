@@ -39,19 +39,42 @@ class BybitEngine:
 
     # ---------------------------------------------------------------- wallet
     def wallet(self):
-        try:
-            r = self.session.get_wallet_balance(accountType="UNIFIED")
-        except Exception:
-            r = self.session.get_wallet_balance(accountType="CONTRACT")
-        acct = r["result"]["list"][0]
-        usdt = next((c for c in acct.get("coin", []) if c.get("coin") == "USDT"), {})
-        equity = acct.get("totalEquity") or usdt.get("equity") or 0
-        available = acct.get("totalAvailableBalance") or usdt.get("availableToWithdraw") or 0
-        return {
-            "equity": float(equity or 0),
-            "available": float(available or 0),
-            "usdt_wallet": float(usdt.get("walletBalance") or 0),
-        }
+        """UNIFIED, na hole CONTRACT account er balance. 'raw' = debug er jonno Bybit er uttor (secret chhara)."""
+        def num(v):
+            try:
+                return float(v)
+            except (TypeError, ValueError):
+                return None
+
+        def first(*vals):
+            for v in vals:
+                n = num(v)
+                if n is not None:      # "" ba None skip, kintu "0" ke valid dhori
+                    return n
+            return 0.0
+
+        last_err = None
+        for acct_type in ("UNIFIED", "CONTRACT"):
+            try:
+                r = self.session.get_wallet_balance(accountType=acct_type)
+                lst = r["result"]["list"]
+            except Exception as ex:
+                last_err = ex
+                continue
+            if not lst:
+                last_err = f"{acct_type}: empty list"
+                continue
+            acct = lst[0]
+            usdt = next((c for c in acct.get("coin", []) if c.get("coin") == "USDT"), {})
+            equity = first(acct.get("totalEquity"), acct.get("totalWalletBalance"), usdt.get("equity"), usdt.get("walletBalance"))
+            available = first(acct.get("totalAvailableBalance"), usdt.get("availableToWithdraw"), usdt.get("walletBalance"))
+            raw = {k: v for k, v in acct.items() if k != "coin"}
+            raw["accountTypeQueried"] = acct_type
+            raw["USDT"] = usdt
+            raw["coins_returned"] = [c.get("coin") for c in acct.get("coin", [])]
+            return {"equity": equity, "available": available,
+                    "usdt_wallet": first(usdt.get("walletBalance")), "account_type": acct_type, "raw": raw}
+        raise RuntimeError(f"Wallet fetch failed: {last_err}")
 
     # ------------------------------------------------------------ market info
     def _instrument(self, symbol):
