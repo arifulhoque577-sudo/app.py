@@ -12,6 +12,7 @@ from pybit.unified_trading import HTTP
 import requests
 import streamlit as st
 import copy
+import re
 from bybit_engine import BybitEngine
 try:
     from streamlit_autorefresh import st_autorefresh
@@ -222,11 +223,17 @@ def fetch_free_models():
     r.raise_for_status()
     out = []
     for m in r.json().get("data", []):
+        mid = m.get("id", "")
         p = m.get("pricing") or {}
-        if str(p.get("prompt")) in ("0", "0.0") and str(p.get("completion")) in ("0", "0.0"):
-            out.append((m.get("id", ""), int(m.get("context_length") or 0)))
-    out.sort(key=lambda x: -x[1])
-    return [i for i, _ in out if i][:25]
+        arch = m.get("architecture") or {}
+        out_mods = arch.get("output_modalities") or ["text"]
+        in_mods = arch.get("input_modalities") or ["text"]
+        is_free = mid.endswith(":free") and str(p.get("prompt")) in ("0", "0.0") and str(p.get("completion")) in ("0", "0.0")
+        if is_free and out_mods == ["text"] and "text" in in_mods:   # music/image/audio model baad
+            sz = re.search(r"(\d+(?:\.\d+)?)b", mid.lower())
+            out.append((mid, float(sz.group(1)) if sz else 50.0, int(m.get("context_length") or 0)))
+    out.sort(key=lambda x: (-x[1], -x[2]))   # nam e 'NNb' thakle boro size age (mota-muti proxy)
+    return [i for i, _, _ in out][:25]
 
 @st.cache_data(ttl=8, show_spinner=False)
 def fetch_wallet_cached(k, s, testnet):   # underscore chhara: nahole cache key e user ba key dhora hoy na
@@ -551,6 +558,8 @@ with st.sidebar:
     or_model_id = st.text_input("Model ID:", value=db_load(f"or_model_{allocated_user_id}", "google/gemini-2.5-flash:free"), key="openrouter_model_id_field")
     if st.button("Save AI Router Node Config", key="save_or_config_btn"):
         db_save(f"or_key_{allocated_user_id}", or_api_key); db_save(f"or_model_{allocated_user_id}", or_model_id); st.toast("Config Saved!", icon="💾")
+    ai_interval = st.number_input("AI signal interval (sec):", min_value=30, max_value=900, step=30, value=int(db_load(f"ai_interval_{allocated_user_id}", 120)), key="ai_interval_box")
+    db_save(f"ai_interval_{allocated_user_id}", int(ai_interval))
     if st.button("🆓 Free model list dekhao (live)", key="free_models_btn"):
         try:
             st.session_state.free_models = fetch_free_models()
@@ -865,7 +874,7 @@ if cloud_bot_trigger and allocated_user_id != "NONE":
     or_api_key = db_load(f"or_key_{allocated_user_id}", "")
     or_model_id = db_load(f"or_model_{allocated_user_id}", "google/gemini-2.5-flash:free")
     
-    if not st.session_state.in_position and ai_decision and or_api_key and (time.time() - st.session_state.get("last_ai_ts", 0) > AI_COOLDOWN_SEC):
+    if not st.session_state.in_position and ai_decision and or_api_key and (time.time() - st.session_state.get("last_ai_ts", 0) > ai_interval):
         st.session_state.last_ai_ts = time.time()
         try:
             news_context = "Steady global macro trend line pattern."
@@ -915,16 +924,16 @@ if cloud_bot_trigger and allocated_user_id != "NONE":
                         break
                     _last_err = f"{_m} -> HTTP {_r.status_code}: {_r.text[:140]}"
                     st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] AI model failed: {_last_err}")
-                    if _r.status_code in (401, 402, 403):
+                    if _r.status_code in (401, 403):
                         break
-                if or_response is None and ("HTTP 400" in _last_err or "HTTP 404" in _last_err):
-                    try:   # tomar Model ID invalid: OpenRouter er live free list theke ekta pick kori
+                if or_response is None and any(f"HTTP {c}" in _last_err for c in (400, 402, 404, 429)):
+                    try:   # Model ID invalid / paid / rate-limited: live free list theke ekta pick kori
                         for _m in [x for x in fetch_free_models() if x not in _models][:3]:
                             payload["model"] = _m
                             _r = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=12)
                             if _r.status_code == 200:
                                 or_response = _r
-                                st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] ⚠️ Tomar Model ID invalid. Auto free model use holo: {_m} (sidebar e valo ekta ID boshiye Save koro)")
+                                st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] ⚠️ Tomar Model kaj korena. Auto free model use holo: {_m} (sidebar e valo ekta ID boshiye Save koro)")
                                 break
                             _last_err = f"{_m} -> HTTP {_r.status_code}: {_r.text[:100]}"
                     except Exception as _e:
