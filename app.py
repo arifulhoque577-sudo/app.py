@@ -18,26 +18,34 @@ try:
 except Exception:
     st_autorefresh = None
 # Secure Cloud Firebase Gateway Authentication Layer
-if not firebase_admin._apps:
+# cache_resource = ekbar-i chole (thread-safe), tai duto session ekshathe shuru holeo "already exists" error ashe na
+@st.cache_resource(show_spinner=False)
+def _init_firebase():
+    if firebase_admin._apps:
+        return True
     fb_json = os.environ.get("firebase_json", None)
     if fb_json:
-        try:
-            fb_dict = json.loads(fb_json) if isinstance(fb_json, str) else fb_json
-            cred = credentials.Certificate(fb_dict)
-            firebase_admin.initialize_app(cred)
-        except Exception as e:
-            st.error(f"Sync Error: {str(e)}")
-            st.stop()
+        fb_dict = json.loads(fb_json) if isinstance(fb_json, str) else fb_json
+        cred = credentials.Certificate(fb_dict)
+    elif os.path.exists("firebase_key.json"):
+        cred = credentials.Certificate("firebase_key.json")
     else:
-        if os.path.exists("firebase_key.json"):
-            cred = credentials.Certificate("firebase_key.json")
-            firebase_admin.initialize_app(cred)
-        else:
-            st.error("Missing Config Database Keys Node Property!")
-            st.stop()
+        raise RuntimeError("Missing Config Database Keys Node Property!")
+    try:
+        firebase_admin.initialize_app(cred)
+    except ValueError as e:
+        if "already exists" not in str(e):   # onno session age-i init kore felle thik ache
+            raise
+    return True
+
+try:
+    _init_firebase()
+except Exception as e:
+    st.error(f"Sync Error: {str(e)}")
+    st.stop()
 
 db = firestore.client()
-@st.cache_resource
+@st.cache_resource(show_spinner=False)
 def _db_cache():
     return {}
 DB_CACHE_TTL = 15   # sec: Firestore read free-quota bachanor jonno
@@ -58,6 +66,11 @@ def db_load(key, default_val):
     except: return default_val
 
 def db_save(key, val):
+    cache = _db_cache()
+    hit = cache.get(key)
+    if hit is not None and hit[2] and time.time() - hit[0] < 600 and hit[1] == val:
+        cache[key] = (time.time(), hit[1], True)   # ager-i same value: write dorkar nai
+        return
     try:
         db.collection("scalper_system").document(key).set({"data": val})
         _db_cache()[key] = (time.time(), copy.deepcopy(val), True)
@@ -196,6 +209,24 @@ BYBYT_DATABASE_CORE = fetch_bybit_future_coins()
 YOUR_SECRET_MASTER_CODE = os.environ.get("ADMIN_CODE", "ADMIN1234")   # Render e ADMIN_CODE env variable set koro
 AI_COOLDOWN_SEC = 60        # AI signal protibar koto sec por por
 AUTO_REFRESH_MS = 5000      # page auto refresh (ms)
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_testnet_live_symbols():
+    """Bybit TESTNET e ekhon jei USDT contract gulo asol e live (mainnet er list e onek coin testnet e nei)."""
+    r = requests.get("https://api-testnet.bybit.com/v5/market/instruments-info?category=linear&limit=1000", timeout=10).json()
+    return sorted(i["symbol"] for i in r.get("result", {}).get("list", []) if i.get("status") == "Trading" and i.get("quoteCoin") == "USDT")
+
+def fetch_free_models():
+    """OpenRouter er public model list theke free (price 0) model gulo, boro context age."""
+    r = requests.get("https://openrouter.ai/api/v1/models", timeout=10)
+    r.raise_for_status()
+    out = []
+    for m in r.json().get("data", []):
+        p = m.get("pricing") or {}
+        if str(p.get("prompt")) in ("0", "0.0") and str(p.get("completion")) in ("0", "0.0"):
+            out.append((m.get("id", ""), int(m.get("context_length") or 0)))
+    out.sort(key=lambda x: -x[1])
+    return [i for i, _ in out if i][:25]
 
 @st.cache_data(ttl=8, show_spinner=False)
 def fetch_wallet_cached(k, s, testnet):   # underscore chhara: nahole cache key e user ba key dhora hoy na
@@ -483,13 +514,21 @@ with st.sidebar:
     locked_trade_coin = db_load(f"trade_coin_{mode_suffix}_{allocated_user_id}", "NONE")
     
     coin_list = list(BYBYT_DATABASE_CORE.keys())
+    if is_real_live and st.session_state.get("bybit_testnet_toggle", True):
+        try:   # testnet e jei coin live na, shegulo dropdown e dekhabo na (nahole "contract is not live" error)
+            _live = set(fetch_testnet_live_symbols())
+            _f = [k for k in coin_list if BYBYT_DATABASE_CORE[k]["symbol"] in _live]
+            if _f: coin_list = _f
+        except Exception:
+            pass
     default_coin_idx = 0
     
     last_saved_db_coin = db_load(f"last_selected_coin_{mode_suffix}_{allocated_user_id}", "BTCUSDT")
     if in_position_state and locked_trade_coin != "NONE":
         last_saved_db_coin = locked_trade_coin
 
-    for idx, (k, v) in enumerate(BYBYT_DATABASE_CORE.items()):
+    for idx, k in enumerate(coin_list):
+        v = BYBYT_DATABASE_CORE[k]
         if v["symbol"] == last_saved_db_coin:
             default_coin_idx = idx
             break
@@ -512,6 +551,15 @@ with st.sidebar:
     or_model_id = st.text_input("Model ID:", value=db_load(f"or_model_{allocated_user_id}", "google/gemini-2.5-flash:free"), key="openrouter_model_id_field")
     if st.button("Save AI Router Node Config", key="save_or_config_btn"):
         db_save(f"or_key_{allocated_user_id}", or_api_key); db_save(f"or_model_{allocated_user_id}", or_model_id); st.toast("Config Saved!", icon="💾")
+    if st.button("🆓 Free model list dekhao (live)", key="free_models_btn"):
+        try:
+            st.session_state.free_models = fetch_free_models()
+        except Exception as _e:
+            st.session_state.free_models = []
+            st.caption(f"List ante parlam na: {_e}")
+    if st.session_state.get("free_models"):
+        st.caption("Ekta ID copy kore upore 'Model ID' e boshao (comma diye 2-3 ta dile fallback hobe):")
+        st.code("\n".join(st.session_state.free_models), language=None)
     
     max_leverage_bound = int(coin_config.get('max_leverage', 100))
     
@@ -531,8 +579,12 @@ with st.sidebar:
     else:
         leverage = st.slider("Leverage Scale Selection Array (1x-100x Override):", min_value=1, max_value=max_leverage_bound, value=int(db_load(f"leverage_lock_{mode_suffix}_{allocated_user_id}", 20)), step=1, key="absolute_leverage_node_slider")
         trade_amount = st.number_input("Margin Requirement Block ($):", min_value=1, value=int(db_load(f"margin_lock_{mode_suffix}_{allocated_user_id}", 20)))
-        price_jump_target = st.number_input("Take Profit Target Interval ($):", value=float(db_load(f"tp_target_{mode_suffix}_{allocated_user_id}", float(coin_config["default_tp"]))), format="%.6f", key="tp_input_node_box")
-        stop_loss_gap = st.number_input("Stop Loss Boundary GAP Threshold ($):", value=float(db_load(f"sl_gap_{mode_suffix}_{allocated_user_id}", float(coin_config["default_sl"]))), format="%.6f", key="sl_input_node_box")
+        _tp_db = f"tp_target_{mode_suffix}_{allocated_user_id}_{target_symbol}"
+        _sl_db = f"sl_gap_{mode_suffix}_{allocated_user_id}_{target_symbol}"
+        price_jump_target = st.number_input("Take Profit Target Interval ($):", value=float(db_load(_tp_db, float(coin_config["default_tp"]))), format="%.6f", key=f"tp_input_{mode_suffix}_{target_symbol}")
+        stop_loss_gap = st.number_input("Stop Loss Boundary GAP Threshold ($):", value=float(db_load(_sl_db, float(coin_config["default_sl"]))), format="%.6f", key=f"sl_input_{mode_suffix}_{target_symbol}")
+        db_save(_tp_db, price_jump_target)
+        db_save(_sl_db, stop_loss_gap)
         
         db_save(f"leverage_lock_{mode_suffix}_{allocated_user_id}", leverage)
         db_save(f"margin_lock_{mode_suffix}_{allocated_user_id}", trade_amount)
@@ -761,10 +813,25 @@ if is_real_live:
     elif real_engine is None: st.info("🔒 Real mode: sidebar e License Password dao, tarpor Bybit API Key + Secret dao. Tahole Bybit er asol balance ekhane ashbe.")
     else:
         st.caption(f"🔗 Bybit {'TESTNET 🧪' if use_testnet else 'MAINNET 🔴'} connected | Equity: ${real_wallet['equity']:,.2f} | Available: ${real_wallet['available']:,.2f} USDT")
+        if real_wallet["equity"] == 0 and not real_wallet.get("raw", {}).get("coins_returned"):
+            _uid = (real_wallet.get("raw", {}).get("API_KEY_INFO") or {}).get("userID", "?")
+            st.warning(f"⚠️ Ei API key er Bybit account (UID: {_uid}) e kono coin nei. Jei {'testnet' if use_testnet else 'mainnet'} account e USDT ache, **oi account e login kore** notun API key banao.")
         with st.expander("🔍 Bybit wallet raw data (debug)"):
             st.json(real_wallet.get("raw", {}))
-if live_price > 0 and price_jump_target / live_price <= FEE_RATE_ROUNDTRIP:
-    st.warning(f"⚠️ Take Profit ({price_jump_target / live_price * 100:.3f}%) fee ({FEE_RATE_ROUNDTRIP * 100:.2f}%) er cheye chhoto ba shoman. Jitleo loss hobe. TP barao.")
+if live_price > 0 and effective_vol > 0:
+    _fee = effective_vol * FEE_RATE_ROUNDTRIP
+    _net_win = price_jump_target / live_price * effective_vol - _fee
+    _net_loss = stop_loss_gap / live_price * effective_vol + _fee
+    _be = (_net_loss / (_net_win + _net_loss) * 100) if (_net_win + _net_loss) > 0 else 100.0
+    _sl_pct, _liq_pct = stop_loss_gap / live_price * 100, 80.0 / max(int(leverage), 1)
+    if _sl_pct >= _liq_pct:
+        st.error(f"🛑 Stop Loss ({_sl_pct:.2f}%) liquidation distance (~{_liq_pct:.2f}% @ {leverage}x) er cheye dure. SL trigger hobar age-i position liquidate hobe. Leverage komao ba SL chhoto koro.")
+    if _net_win <= 0:
+        st.error(f"🛑 TP jitleo fee (${_fee:.2f}) kate loss hobe (net {_net_win:+.2f}). TP onek barao.")
+    elif _be > 60:
+        st.warning(f"⚠️ Fee soho: jitle ~+${_net_win:.2f}, harle ~-${_net_loss:.2f}. Break-even korte **{_be:.0f}% trade jitte hobe**. TP barao ba SL komao.")
+    else:
+        st.caption(f"ℹ️ Fee soho: jitle +${_net_win:.2f} | harle -${_net_loss:.2f} | break-even win rate {_be:.0f}%")
 
 position_overlay_container = st.container()
 with position_overlay_container:
@@ -850,6 +917,18 @@ if cloud_bot_trigger and allocated_user_id != "NONE":
                     st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] AI model failed: {_last_err}")
                     if _r.status_code in (401, 402, 403):
                         break
+                if or_response is None and ("HTTP 400" in _last_err or "HTTP 404" in _last_err):
+                    try:   # tomar Model ID invalid: OpenRouter er live free list theke ekta pick kori
+                        for _m in [x for x in fetch_free_models() if x not in _models][:3]:
+                            payload["model"] = _m
+                            _r = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=12)
+                            if _r.status_code == 200:
+                                or_response = _r
+                                st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] ⚠️ Tomar Model ID invalid. Auto free model use holo: {_m} (sidebar e valo ekta ID boshiye Save koro)")
+                                break
+                            _last_err = f"{_m} -> HTTP {_r.status_code}: {_r.text[:100]}"
+                    except Exception as _e:
+                        _last_err = f"auto-pick failed: {_e}"
                 if or_response is not None:
                     try:
                         ai_raw_word = ""
