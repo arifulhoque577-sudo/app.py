@@ -72,6 +72,11 @@ class BybitEngine:
             raw["accountTypeQueried"] = acct_type
             raw["USDT"] = usdt
             raw["coins_returned"] = [c.get("coin") for c in acct.get("coin", [])]
+            try:   # ei API key ta kon Bybit account (UID) er, ar ki permission ache
+                ki = self.session.get_api_key_information()["result"]
+                raw["API_KEY_INFO"] = {k: ki.get(k) for k in ("userID", "parentUid", "readOnly", "permissions", "uta", "ips", "expiredAt") if k in ki}
+            except Exception as ex:
+                raw["API_KEY_INFO_error"] = str(ex)[:200]
             return {"equity": equity, "available": available,
                     "usdt_wallet": first(usdt.get("walletBalance")), "account_type": acct_type, "raw": raw}
         raise RuntimeError(f"Wallet fetch failed: {last_err}")
@@ -85,6 +90,8 @@ class BybitEngine:
         if not lst:
             raise ValueError(f"{symbol} Bybit e paoa jay nai ({'testnet' if self.testnet else 'mainnet'})")
         it = lst[0]
+        if it.get("status") not in (None, "Trading"):
+            raise ValueError(f"{symbol} ekhon {'testnet' if self.testnet else 'mainnet'} e live na (status: {it.get('status')}). Onno coin nao.")
         info = {
             "qty_step": it["lotSizeFilter"]["qtyStep"],
             "min_qty": it["lotSizeFilter"]["minOrderQty"],
@@ -143,9 +150,14 @@ class BybitEngine:
 
         inst = self._instrument(symbol)
         lev = max(1, min(int(leverage), int(inst["max_lev"])))
-        self._set_leverage(symbol, lev)
 
         price = _dec(self.last_price(symbol))
+        sl_frac, tp_frac, liq_frac = _dec(sl_gap) / price, _dec(tp_gap) / price, _dec("0.8") / lev
+        if sl_frac >= liq_frac:
+            raise ValueError(f"SL gap {float(sl_frac)*100:.2f}% > liquidation distance ~{float(liq_frac)*100:.2f}% ({lev}x). SL trigger hobar age-i liquidate hobe. Leverage komao ba SL chhoto koro.")
+        if tp_frac >= _dec("0.5"):
+            raise ValueError(f"TP gap price er {float(tp_frac)*100:.0f}% - onek boro, TP thik koro (coin er price ${float(price):g}).")
+        self._set_leverage(symbol, lev)
         qty = _round_step(_dec(margin_usd) * lev / price, inst["qty_step"])
         if qty < _dec(inst["min_qty"]):
             raise ValueError(f"Qty {qty} < minimum {inst['min_qty']}. Margin ba leverage barao.")
