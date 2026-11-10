@@ -12,6 +12,7 @@ from pybit.unified_trading import HTTP
 import requests
 import streamlit as st
 import copy
+import threading
 import re
 from bybit_engine import BybitEngine
 try:
@@ -234,6 +235,63 @@ def fetch_free_models():
             out.append((mid, float(sz.group(1)) if sz else 50.0, int(m.get("context_length") or 0)))
     out.sort(key=lambda x: (-x[1], -x[2]))   # nam e 'NNb' thakle boro size age (mota-muti proxy)
     return [i for i, _, _ in out][:25]
+
+@st.cache_resource(show_spinner=False)
+def _ai_store():
+    return {}   # "<uid>_<mode>" -> AI job state (process-level, session reconnect holeo thake)
+
+def _ai_job(store, key, api_key, models, prompt, symbol):
+    """Background thread: OpenRouter ke dake. Streamlit (st.*) kono jinish ekhane use kora jabe na."""
+    logs = []
+    def L(m): logs.append(f"[{time.strftime('%H:%M:%S')}] {m}")
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json", "HTTP-Referer": "https://streamlit.io", "X-Title": "Bybit AI Engine"}
+    res = {"status": "done", "symbol": symbol, "consumed": False, "signal": "FAIL", "model": "", "raw": "", "err": "", "daily_exhausted": False}
+    try:
+        tried, box = set(), {"resp": None, "model": "", "fatal": False}
+        def attempt(model_list):
+            for m in model_list:
+                if m in tried or box["resp"] is not None or box["fatal"]:
+                    continue
+                tried.add(m)
+                try:
+                    r = requests.post(url, headers=headers, json={"model": m, "messages": [{"role": "user", "content": prompt}]}, timeout=(5, 40))
+                except Exception as e:
+                    res["err"] = f"{m} -> {type(e).__name__}"
+                    L(f"AI model error: {res['err']}")
+                    continue
+                if r.status_code == 200:
+                    box["resp"], box["model"] = r, m
+                    return
+                res["err"] = f"{m} -> HTTP {r.status_code}: {r.text[:140]}"
+                L(f"AI model failed: {res['err']}")
+                if "free-models-per-day" in r.text:
+                    res["daily_exhausted"] = True; box["fatal"] = True
+                elif r.status_code in (401, 403):
+                    box["fatal"] = True
+        attempt(models)
+        if box["resp"] is None and not box["fatal"]:
+            L("Model kaj korena. OpenRouter er live free list theke try korchi...")
+            try:
+                attempt(fetch_free_models()[:3])
+            except Exception as e:
+                L(f"Free list ante parlam na: {e}")
+        if box["resp"] is not None:
+            try:
+                text = (box["resp"].json()["choices"][0]["message"].get("content") or "").upper()
+            except Exception:
+                text = ""
+            words = re.findall(r"[A-Z]+", text)
+            found = {w for w in words if w in ("LONG", "SHORT", "HOLD")}
+            # uttor chhoto (max 3 shobdo) ar thik ekta signal thakle tobei; nahole HOLD (real money te guess kora hobe na)
+            res["signal"] = next(iter(found)) if (len(found) == 1 and len(words) <= 3) else "HOLD"
+            res["model"], res["raw"] = box["model"], text.strip()[:60]
+            L(f"AI answer ({box['model']}): '{res['raw'] or 'empty'}' -> {res['signal']}")
+    except Exception as e:
+        res["err"] = f"job crashed: {e}"
+        L(res["err"])
+    res["logs"], res["finished"] = logs, time.time()
+    store[key] = res
 
 @st.cache_data(ttl=8, show_spinner=False)
 def fetch_wallet_cached(k, s, testnet):   # underscore chhara: nahole cache key e user ba key dhora hoy na
@@ -872,120 +930,94 @@ st.session_state.buy_price = db_load(f"buy_price_{mode_suffix}_{allocated_user_i
 st.session_state.current_side = db_load(f"current_side_{mode_suffix}_{allocated_user_id}", "NONE")
 if cloud_bot_trigger and allocated_user_id != "NONE":
     or_api_key = db_load(f"or_key_{allocated_user_id}", "")
-    or_model_id = db_load(f"or_model_{allocated_user_id}", "google/gemini-2.5-flash:free")
-    
-    if not st.session_state.in_position and ai_decision and or_api_key and (time.time() - st.session_state.get("last_ai_ts", 0) > ai_interval):
+    or_model_id = db_load(f"or_model_{allocated_user_id}", "")
+    _store = _ai_store()
+    _jk = f"{allocated_user_id}_{mode_suffix}"
+    _job = _store.get(_jk)
+
+    def _try_open(sig, label):
+        ok, msg = open_trade(sig)
+        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] {'Order opened' if ok else 'Order blocked'}: {msg}")
+        if ok: st.toast(f"{label} ({sig})", icon="🚀")
+        return ok
+
+    # (1) background AI job shesh hole tar uttor ekhane nei
+    if _job and _job.get("status") == "done" and not _job.get("consumed"):
+        _job["consumed"] = True
+        for _l in _job.get("logs", []):
+            st.session_state.engine_logs.append(_l)
+        if _job.get("daily_exhausted"):
+            _store[_jk + "_pause"] = (int(time.time() // 86400) + 1) * 86400
+            st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] OpenRouter free DAILY limit shesh. 00:00 UTC (Bangladesh e shokal 6:00) porjonto AI bondho. $10 credit dile 1000/din hoy.")
+        elif not st.session_state.in_position and time.time() - _job.get("finished", 0) < 120 and _job.get("symbol") == target_symbol:
+            _sig = _job.get("signal", "FAIL")
+            if _sig == "FAIL":
+                st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] AI unavailable ({str(_job.get('err', ''))[:150]})")
+                if is_real_live:
+                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Real mode: AI uttor dey nai, tai kono trade kora holo na (HOLD).")
+                else:
+                    _local = "LONG" if current_rsi < 45 else ("SHORT" if current_rsi > 55 else "HOLD")
+                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Demo RSI backup signal: '{_local}' for {target_symbol}")
+                    if _local in ("LONG", "SHORT") and _try_open(_local, "⚡ Technical Latch Executed"):
+                        _rerun_after = True
+            else:
+                _resolved = _sig
+                if _resolved == "HOLD" and not st.session_state.first_trade_done and not is_real_live:
+                    _resolved = "LONG" if current_rsi < 50 else "SHORT"
+                st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Active Signal: '{_resolved}'")
+                if _resolved in ("LONG", "SHORT") and _try_open(_resolved, "🟢 AI Order Triggered"):
+                    _rerun_after = True
+
+    # (2) notun AI job shuru (background thread, page block hobe na)
+    _running = bool(_job) and _job.get("status") == "running" and time.time() - _job.get("started", 0) < 150
+    _paused = time.time() < _store.get(_jk + "_pause", 0)
+    _neutral = bool(st.session_state.first_trade_done) and 45 <= float(current_rsi) <= 55   # RSI neutral: AI ke dakbo na (free limit bachano)
+    if (not st.session_state.in_position and ai_decision and or_api_key and not _running and not _paused and not _neutral
+            and time.time() - st.session_state.get("last_ai_ts", 0) > ai_interval
+            and not df_kline.empty and len(df_kline) >= 5):
         st.session_state.last_ai_ts = time.time()
+        news_context = "Steady global macro trend line pattern."
         try:
-            news_context = "Steady global macro trend line pattern."
-            try:
-                news_res = requests.get(f"https://cryptopanic.com/api/v1/posts/?auth_token={os.environ.get('CRYPTOPANIC_KEY', '')}&public=true", timeout=3) if os.environ.get("CRYPTOPANIC_KEY") else None
-                if news_res is not None and news_res.status_code == 200:
-                    news_data = news_res.json()
-                    news_titles = [post.get('title', '') for post in news_data.get('results', [])[:4]]
-                    if news_titles: news_context = " | ".join(news_titles)
-            except: pass
-            
-            if not df_kline.empty and len(df_kline) >= 5:
-                recent_candles = df_kline.tail(5).to_dict(orient="records")
-                ma_series = df_kline['close'].rolling(window=7).mean()
-                last_ma = float(ma_series.iloc[-1]) if not ma_series.empty else live_price
-                
-                is_turbo = not st.session_state.first_trade_done
-                if is_turbo:
-                    mode_instruction = "CRITICAL: You must operate in TURBO SCALPING MODE. Find immediate next micro-trend breakout/breakdown and issue LONG or SHORT immediately. Avoid HOLD."
-                else:
-                    mode_instruction = "CRITICAL: You must operate in ULTRA-SECURE INSTITUTIONAL MODE. Only issue LONG or SHORT if MA-7 breakout and RSI are 100% perfect. Otherwise output HOLD."
-                
-                market_context_prompt = (
-                    f"Asset: {target_symbol} | Live Price: {live_price} | RSI: {current_rsi:.2f} | MA-7: {last_ma:.6f}\n"
-                    f"News Summary: {news_context}\n"
-                    f"Matrix -> Leverage: {leverage}x, TP: {price_jump_target}, SL: {stop_loss_gap}\n"
-                    f"Candlesticks: {json.dumps(recent_candles)}\n\n"
-                    f"{mode_instruction}\n\n"
-                    f"RESPOND SYSTEM RULES: Output EXACTLY ONE UPPERCASE WORD: 'LONG' or 'SHORT' or 'HOLD'. No extra words."
-                )
-                headers = {"Authorization": f"Bearer {or_api_key}", "Content-Type": "application/json", "HTTP-Referer": "https://streamlit.io", "X-Title": "Bybit AI Engine"}
-                payload = {"model": or_model_id, "messages": [{"role": "user", "content": market_context_prompt}]}
-                
-                log_prefix = "🚀 [TURBO AI]" if is_turbo else "🔒 [SECURE AI]"
-                st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] {log_prefix} Analyzing Live Feeds...")
-                _models = [m.strip() for m in str(or_model_id).replace("\n", ",").split(",") if m.strip()][:3] or [str(or_model_id)]
-                or_response, _last_err = None, "no response"
-                for _m in _models:
-                    payload["model"] = _m
-                    try:
-                        _r = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=12)
-                    except Exception as _e:
-                        _last_err = f"{_m} -> {_e}"
-                        continue
-                    if _r.status_code == 200:
-                        or_response = _r
-                        break
-                    _last_err = f"{_m} -> HTTP {_r.status_code}: {_r.text[:140]}"
-                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] AI model failed: {_last_err}")
-                    if _r.status_code in (401, 403):
-                        break
-                if or_response is None and any(f"HTTP {c}" in _last_err for c in (400, 402, 404, 429)):
-                    try:   # Model ID invalid / paid / rate-limited: live free list theke ekta pick kori
-                        for _m in [x for x in fetch_free_models() if x not in _models][:3]:
-                            payload["model"] = _m
-                            _r = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=12)
-                            if _r.status_code == 200:
-                                or_response = _r
-                                st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] ⚠️ Tomar Model kaj korena. Auto free model use holo: {_m} (sidebar e valo ekta ID boshiye Save koro)")
-                                break
-                            _last_err = f"{_m} -> HTTP {_r.status_code}: {_r.text[:100]}"
-                    except Exception as _e:
-                        _last_err = f"auto-pick failed: {_e}"
-                if or_response is not None:
-                    try:
-                        ai_raw_word = ""
-                        try:
-                            res_json = or_response.json()
-                            ai_raw_word = res_json['choices'][0]['message'].get('content', '').strip().upper()
-                        except:
-                            ai_raw_word = ""   # parse fail hole HOLD (error text e "too long" moto shobdo LONG hishebe dhora hobe na)
-                        
-                        resolved_signal = "HOLD"
-                        if "LONG" in ai_raw_word and "SHORT" not in ai_raw_word: resolved_signal = "LONG"
-                        elif "SHORT" in ai_raw_word and "LONG" not in ai_raw_word: resolved_signal = "SHORT"
-                        
-                        if resolved_signal == "HOLD" and not st.session_state.first_trade_done and not is_real_live:
-                            resolved_signal = "LONG" if current_rsi < 50 else "SHORT"
-                        
-                        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Active Signal: '{resolved_signal}'")
-                        
-                        if resolved_signal in ["LONG", "SHORT"]:
-                            ok, msg = open_trade(resolved_signal)
-                            st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] {'Order opened' if ok else 'Order blocked'}: {msg}")
-                            if ok:
-                                st.toast(f"🟢 AI Order Triggered ({resolved_signal})", icon="🚀")
-                                _rerun_after = True
-                    except: pass
-                else:
-                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] AI unavailable ({_last_err[:150]})")
-                    if is_real_live:
-                        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Real mode: AI uttor dey nai, tai kono trade kora holo na (HOLD).")
-                    else:
-                        local_decision = "HOLD"
-                        if current_rsi < 45: local_decision = "LONG"
-                        elif current_rsi > 55: local_decision = "SHORT"
-                        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Demo RSI backup signal: '{local_decision}' for {target_symbol}")
-                        if local_decision in ["LONG", "SHORT"]:
-                            ok, msg = open_trade(local_decision)
-                            st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] {'Order opened' if ok else 'Order blocked'}: {msg}")
-                            if ok:
-                                st.toast(f"⚡ Technical Latch Executed: {local_decision}", icon="⚙️")
-                                _rerun_after = True
-        except Exception as e:
-            st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Loop Error Node: {str(e)}")
+            if os.environ.get("CRYPTOPANIC_KEY"):
+                _nr = requests.get(f"https://cryptopanic.com/api/v1/posts/?auth_token={os.environ.get('CRYPTOPANIC_KEY')}&public=true", timeout=3)
+                if _nr.status_code == 200:
+                    _titles = [p.get('title', '') for p in _nr.json().get('results', [])[:4]]
+                    if _titles: news_context = " | ".join(_titles)
+        except Exception: pass
+        recent_candles = df_kline.tail(5).to_dict(orient="records")
+        ma_series = df_kline['close'].rolling(window=7).mean()
+        last_ma = float(ma_series.iloc[-1]) if not ma_series.empty else live_price
+        is_turbo = not st.session_state.first_trade_done
+        if is_turbo:
+            mode_instruction = "CRITICAL: You must operate in TURBO SCALPING MODE. Find immediate next micro-trend breakout/breakdown and issue LONG or SHORT immediately. Avoid HOLD."
+        else:
+            mode_instruction = "CRITICAL: You must operate in ULTRA-SECURE INSTITUTIONAL MODE. Only issue LONG or SHORT if MA-7 breakout and RSI are 100% perfect. Otherwise output HOLD."
+        market_context_prompt = (
+            f"Asset: {target_symbol} | Live Price: {live_price} | RSI: {current_rsi:.2f} | MA-7: {last_ma:.6f}\n"
+            f"News Summary: {news_context}\n"
+            f"Matrix -> Leverage: {leverage}x, TP: {price_jump_target}, SL: {stop_loss_gap}\n"
+            f"Candlesticks: {json.dumps(recent_candles)}\n\n"
+            f"{mode_instruction}\n\n"
+            f"RESPOND SYSTEM RULES: Output EXACTLY ONE UPPERCASE WORD: 'LONG' or 'SHORT' or 'HOLD'. No extra words."
+        )
+        _models = [m.strip() for m in str(or_model_id).replace("\n", ",").split(",") if m.strip()][:3]
+        _store[_jk] = {"status": "running", "started": time.time(), "symbol": target_symbol, "consumed": False, "logs": []}
+        threading.Thread(target=_ai_job, args=(_store, _jk, or_api_key, _models, market_context_prompt, target_symbol), daemon=True).start()
+        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] {'🚀 [TURBO AI]' if is_turbo else '🔒 [SECURE AI]'} AI request background e pathano holo...")
 if _rerun_after:
     st.rerun()
 # --- 🪐 LIVE TERMINAL BOX ---
 st.markdown("<b>🖥️ Real-Time AI Swarm Scalper Loop Sequence Log Panel:</b>", unsafe_allow_html=True)
 log_text = "\n".join(st.session_state.engine_logs[-8:])
 st.text_area(label="Live Terminal", value=log_text, height=135, label_visibility="collapsed")
+if allocated_user_id and allocated_user_id != "NONE":
+    _sj, _sk = _ai_store().get(f"{allocated_user_id}_{mode_suffix}"), f"{allocated_user_id}_{mode_suffix}_pause"
+    if time.time() < _ai_store().get(_sk, 0):
+        st.caption("⏸ OpenRouter free daily limit shesh. Kal 00:00 UTC (Bangladesh e shokal 6:00) e abar chalu hobe. (Log er somoy = UTC, Bangladesh = UTC+6)")
+    elif _sj and _sj.get("status") == "running":
+        st.caption(f"⏳ AI uttor opekkha korchi... (shuru {time.strftime('%H:%M:%S', time.localtime(_sj['started']))} UTC)")
+    elif _sj:
+        st.caption(f"{'✅' if _sj.get('signal') != 'FAIL' else '❌'} Last AI: {_sj.get('signal')} | model: {_sj.get('model') or '-'} | {str(_sj.get('err', ''))[:90]}")
 
 # --- 🕹️ RESTORE FIXED MANUAL TRADING PANEL MATRIX ---
 # --- 🕹️ RESTORE FIXED MANUAL TRADING PANEL MATRIX ---
