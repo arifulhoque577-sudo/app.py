@@ -240,6 +240,22 @@ def fetch_free_models():
 def _ai_store():
     return {}   # "<uid>_<mode>" -> AI job state (process-level, session reconnect holeo thake)
 
+AI_MODES = ["Secure (strict)", "Balanced", "Turbo (test: always trade)"]
+
+def pick_ai_mode(selected, is_mainnet_real):
+    """Mainnet (asol taka) e shudhu Secure. Balanced/Turbo shudhu Demo ba Testnet e."""
+    return AI_MODES[0] if is_mainnet_real or selected not in AI_MODES else selected
+
+def build_mode_instruction(mode, first_trade_done):
+    """(log label, AI ke deya instruction)"""
+    turbo = "CRITICAL: You must operate in TURBO SCALPING MODE. Find immediate next micro-trend breakout/breakdown and issue LONG or SHORT immediately. Avoid HOLD."
+    strict = "CRITICAL: You must operate in ULTRA-SECURE INSTITUTIONAL MODE. Only issue LONG or SHORT if MA-7 breakout and RSI are 100% perfect. Otherwise output HOLD."
+    balanced = ("CRITICAL: BALANCED MODE. Issue LONG if the last 3 candle closes are rising, price is above MA-7 and RSI is below 70. "
+                "Issue SHORT if the last 3 candle closes are falling, price is below MA-7 and RSI is above 30. Otherwise output HOLD.")
+    if mode == AI_MODES[2]: return "🚀 [TURBO AI]", turbo
+    if mode == AI_MODES[1]: return "⚖️ [BALANCED AI]", balanced
+    return ("🚀 [TURBO AI]", turbo) if not first_trade_done else ("🔒 [SECURE AI]", strict)
+
 def _ai_job(store, key, api_key, models, prompt, symbol):
     """Background thread: OpenRouter ke dake. Streamlit (st.*) kono jinish ekhane use kora jabe na."""
     logs = []
@@ -610,6 +626,9 @@ with st.sidebar:
         db_save(f"last_selected_coin_{mode_suffix}_{allocated_user_id}", target_symbol)
 
     ai_decision = st.toggle("AI Smart Crossover Filter Matrix", value=True)
+    ai_mode = st.selectbox("AI Mode:", AI_MODES, index=min(int(db_load(f"ai_mode_idx_{allocated_user_id}", 0)), len(AI_MODES) - 1), key="ai_mode_box",
+                           help="Secure: kom trade, 'perfect' setup lagbe. Balanced: trend + RSI mille trade. Turbo: sobsomoy trade (shudhu testnet/demo e pipeline test er jonno). Mainnet e shudhu Secure cholbe.")
+    db_save(f"ai_mode_idx_{allocated_user_id}", AI_MODES.index(ai_mode))
     
     st.markdown("<b style='color:#38bdf8;'>🤖 OpenRouter AI Router Configuration:</b>", unsafe_allow_html=True)
     or_api_key = st.text_input("OpenRouter API Key:", type="password", value=db_load(f"or_key_{allocated_user_id}", ""), key="openrouter_api_key_field")
@@ -938,7 +957,11 @@ if cloud_bot_trigger and allocated_user_id != "NONE":
     def _try_open(sig, label):
         ok, msg = open_trade(sig)
         st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] {'Order opened' if ok else 'Order blocked'}: {msg}")
-        if ok: st.toast(f"{label} ({sig})", icon="🚀")
+        if ok:
+            st.toast(f"{label} ({sig})", icon="🚀")
+            if not st.session_state.first_trade_done:
+                st.session_state.first_trade_done = True
+                db_save(f"first_done_{allocated_user_id}", True)
         return ok
 
     # (1) background AI job shesh hole tar uttor ekhane nei
@@ -971,7 +994,8 @@ if cloud_bot_trigger and allocated_user_id != "NONE":
     # (2) notun AI job shuru (background thread, page block hobe na)
     _running = bool(_job) and _job.get("status") == "running" and time.time() - _job.get("started", 0) < 150
     _paused = time.time() < _store.get(_jk + "_pause", 0)
-    _neutral = bool(st.session_state.first_trade_done) and 45 <= float(current_rsi) <= 55   # RSI neutral: AI ke dakbo na (free limit bachano)
+    _eff_mode = pick_ai_mode(ai_mode, is_real_live and not use_testnet)
+    _neutral = _eff_mode == AI_MODES[0] and bool(st.session_state.first_trade_done) and 45 <= float(current_rsi) <= 55   # RSI neutral: AI ke dakbo na (free limit bachano)
     if (not st.session_state.in_position and ai_decision and or_api_key and not _running and not _paused and not _neutral
             and time.time() - st.session_state.get("last_ai_ts", 0) > ai_interval
             and not df_kline.empty and len(df_kline) >= 5):
@@ -987,11 +1011,7 @@ if cloud_bot_trigger and allocated_user_id != "NONE":
         recent_candles = df_kline.tail(5).to_dict(orient="records")
         ma_series = df_kline['close'].rolling(window=7).mean()
         last_ma = float(ma_series.iloc[-1]) if not ma_series.empty else live_price
-        is_turbo = not st.session_state.first_trade_done
-        if is_turbo:
-            mode_instruction = "CRITICAL: You must operate in TURBO SCALPING MODE. Find immediate next micro-trend breakout/breakdown and issue LONG or SHORT immediately. Avoid HOLD."
-        else:
-            mode_instruction = "CRITICAL: You must operate in ULTRA-SECURE INSTITUTIONAL MODE. Only issue LONG or SHORT if MA-7 breakout and RSI are 100% perfect. Otherwise output HOLD."
+        ai_label, mode_instruction = build_mode_instruction(_eff_mode, bool(st.session_state.first_trade_done))
         market_context_prompt = (
             f"Asset: {target_symbol} | Live Price: {live_price} | RSI: {current_rsi:.2f} | MA-7: {last_ma:.6f}\n"
             f"News Summary: {news_context}\n"
@@ -1003,7 +1023,7 @@ if cloud_bot_trigger and allocated_user_id != "NONE":
         _models = [m.strip() for m in str(or_model_id).replace("\n", ",").split(",") if m.strip()][:3]
         _store[_jk] = {"status": "running", "started": time.time(), "symbol": target_symbol, "consumed": False, "logs": []}
         threading.Thread(target=_ai_job, args=(_store, _jk, or_api_key, _models, market_context_prompt, target_symbol), daemon=True).start()
-        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] {'🚀 [TURBO AI]' if is_turbo else '🔒 [SECURE AI]'} AI request background e pathano holo...")
+        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] {ai_label} AI request background e pathano holo...")
 if _rerun_after:
     st.rerun()
 # --- 🪐 LIVE TERMINAL BOX ---
