@@ -5,3 +5,4 @@ plotly
 pybit
 requests
 streamlit-autorefresh
+ccxt
