@@ -643,7 +643,8 @@ with st.sidebar:
         coin_config = ([v for v in COIN_DB.values() if v["symbol"] == last_saved_db_coin] or list(COIN_DB.values()))[0]
         target_symbol = last_saved_db_coin
     else:
-        selected_display_name = st.selectbox("Select Asset Contract Symbol Dropdown:", coin_list, index=default_coin_idx)
+        selected_display_name = st.selectbox("Select Asset Contract Symbol Dropdown:", coin_list, index=default_coin_idx,
+                                            format_func=lambda k: k.replace("Bybit Futures Market", PLAT.label.split(" (")[0]))
         coin_config = COIN_DB[selected_display_name]
         target_symbol = coin_config["symbol"]
         db_save(f"trade_coin_{mode_suffix}_{allocated_user_id}", target_symbol)
