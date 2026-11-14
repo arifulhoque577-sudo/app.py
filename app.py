@@ -8,13 +8,12 @@ from datetime import datetime
 from firebase_admin import credentials, firestore
 import plotly.graph_objects as go
 import pandas as pd
-from pybit.unified_trading import HTTP
 import requests
 import streamlit as st
 import copy
 import threading
 import re
-from bybit_engine import BybitEngine
+from engines import PLATFORMS, get_engine, FOREX_DATABASE
 try:
     from streamlit_autorefresh import st_autorefresh
 except Exception:
@@ -138,7 +137,7 @@ if "engine_logs" not in st.session_state:
     st.session_state.engine_logs = ["System Swarm Gateway Init... 📡"]
 # --- 🚀 PREMIUM NO-BORDER SPLASH SCREEN ANIMATION TRIGGER ---
 if "splash_done" not in st.session_state:
-    st.set_page_config(page_title="Bybit AI Scalper", page_icon="⚡", layout="centered")
+    st.set_page_config(page_title="AI Multi-Exchange Scalper", page_icon="⚡", layout="centered")
     st.markdown(
         """
         <style>
@@ -153,7 +152,7 @@ if "splash_done" not in st.session_state:
         </style>
         <div class="splash-container">
             <div class="loader-circle"></div>
-            <div class="splash-text">BYBIT AI PRO SCALPER</div>
+            <div class="splash-text">AI PRO SCALPER</div>
             <div class="progress-bar-container"><div class="progress-bar-fill"></div></div>
         </div>
         """,
@@ -213,7 +212,7 @@ AI_COOLDOWN_SEC = 60        # AI signal protibar koto sec por por
 AUTO_REFRESH_MS = 5000      # page auto refresh (ms)
 
 @st.cache_data(ttl=3600, show_spinner=False)
-def fetch_testnet_live_symbols():
+def fetch_testnet_live_symbols():   # (ager function, ekhon live_symbols_cached use hoy)
     """Bybit TESTNET e ekhon jei USDT contract gulo asol e live (mainnet er list e onek coin testnet e nei)."""
     r = requests.get("https://api-testnet.bybit.com/v5/market/instruments-info?category=linear&limit=1000", timeout=10).json()
     return sorted(i["symbol"] for i in r.get("result", {}).get("list", []) if i.get("status") == "Trading" and i.get("quoteCoin") == "USDT")
@@ -310,8 +309,14 @@ def _ai_job(store, key, api_key, models, prompt, symbol):
     store[key] = res
 
 @st.cache_data(ttl=8, show_spinner=False)
-def fetch_wallet_cached(k, s, testnet):   # underscore chhara: nahole cache key e user ba key dhora hoy na
-    return BybitEngine(k, s, testnet=testnet).wallet()
+def fetch_wallet_cached(platform, creds_items, testnet):   # creds tuple = cache key (user/key alada hole alada cache)
+    return get_engine(platform, dict(creds_items), testnet).wallet()
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def live_symbols_cached(platform, testnet):
+    """Oi exchange e ekhon asol e trade-able symbol (None = filter dorkar nai)."""
+    s_ = PLATFORMS[platform].live_symbols(testnet)
+    return sorted(s_) if s_ else None
 # ==========================================
 # 🧱 UPGRADED ULTRA-PREMIUM CYBERPUNK DARK THEME LAYER
 # ==========================================
@@ -481,7 +486,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 if st.session_state.logged_in_user is None:
-    st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
+    st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
     st.subheader("🔑 Account Identity Gateway Control Panel")
     auth_mode = st.radio("Choose Layer:", ["Secure Login Profile", "Mint New Account ID", "Forget Password Profile"])
     
@@ -585,7 +590,7 @@ with st.sidebar:
         st.query_params.clear()
         st.rerun()
         
-    bot_mode = st.radio("Trading Account Mode Settings:", ["Demo Simulation (Virtual Funds)", "Live Exchange (Bybit Mainnet API)"])
+    bot_mode = st.radio("Trading Account Mode Settings:", ["Demo Simulation (Virtual Funds)", "Live Exchange (Real API)"])
     is_real_live = "Live" in bot_mode
     mode_suffix = "real" if is_real_live else "demo"
     dashboard_mode_title = "Real Production Dashboard Mode 🟢" if is_real_live else "Demo Sandbox Dashboard Mode 🔵"
@@ -594,12 +599,31 @@ with st.sidebar:
     in_position_state = db_load(f"in_position_{mode_suffix}_{allocated_user_id}", False)
     locked_trade_coin = db_load(f"trade_coin_{mode_suffix}_{allocated_user_id}", "NONE")
     
-    coin_list = list(BYBYT_DATABASE_CORE.keys())
-    if is_real_live and st.session_state.get("bybit_testnet_toggle", True):
-        try:   # testnet e jei coin live na, shegulo dropdown e dekhabo na (nahole "contract is not live" error)
-            _live = set(fetch_testnet_live_symbols())
-            _f = [k for k in coin_list if BYBYT_DATABASE_CORE[k]["symbol"] in _live]
-            if _f: coin_list = _f
+    # 🌐 PLATFORM SELECT (Live mode e). Position khola thakle platform lock hoye thake.
+    if is_real_live:
+        _locked_plat = db_load(f"real_platform_lock_{allocated_user_id}", "")
+        if in_position_state and _locked_plat in PLATFORMS:
+            platform = _locked_plat
+            st.markdown(f"<div class='custom-box-grid' style='padding:10px; border-left:4px solid #ffcc00;'><b>🔒 Platform:</b> {PLATFORMS[platform].label}</div>", unsafe_allow_html=True)
+        else:
+            _plat_keys = list(PLATFORMS)
+            _last_plat = db_load(f"last_platform_{allocated_user_id}", "bybit")
+            platform = st.selectbox("Exchange / Broker Platform:", _plat_keys,
+                                    index=_plat_keys.index(_last_plat) if _last_plat in _plat_keys else 0,
+                                    format_func=lambda k: PLATFORMS[k].label, key="platform_select")
+            db_save(f"last_platform_{allocated_user_id}", platform)
+    else:
+        platform = "bybit"   # Demo mode: Bybit er public price diye virtual trade
+    PLAT = PLATFORMS[platform]
+    COIN_DB = FOREX_DATABASE if PLAT.market == "forex" else BYBYT_DATABASE_CORE
+
+    coin_list = list(COIN_DB.keys())
+    if is_real_live and PLAT.market == "crypto":
+        try:   # oi exchange e jei coin live na, shegulo dropdown e dekhabo na (nahole "contract is not live" error)
+            _live = live_symbols_cached(platform, bool(PLAT.has_testnet and st.session_state.get("testnet_toggle", True)))
+            if _live:
+                _f = [k for k in coin_list if COIN_DB[k]["symbol"] in set(_live)]
+                if _f: coin_list = _f
         except Exception:
             pass
     default_coin_idx = 0
@@ -609,18 +633,18 @@ with st.sidebar:
         last_saved_db_coin = locked_trade_coin
 
     for idx, k in enumerate(coin_list):
-        v = BYBYT_DATABASE_CORE[k]
+        v = COIN_DB[k]
         if v["symbol"] == last_saved_db_coin:
             default_coin_idx = idx
             break
 
     if in_position_state:
         st.markdown(f"<div class='custom-box-grid' style='padding:10px; border-left:4px solid #38bdf8;'><b>🎯 Active Asset:</b> {last_saved_db_coin}</div>", unsafe_allow_html=True)
-        coin_config = [v for v in BYBYT_DATABASE_CORE.values() if v["symbol"] == last_saved_db_coin][0]
+        coin_config = ([v for v in COIN_DB.values() if v["symbol"] == last_saved_db_coin] or list(COIN_DB.values()))[0]
         target_symbol = last_saved_db_coin
     else:
         selected_display_name = st.selectbox("Select Asset Contract Symbol Dropdown:", coin_list, index=default_coin_idx)
-        coin_config = BYBYT_DATABASE_CORE[selected_display_name]
+        coin_config = COIN_DB[selected_display_name]
         target_symbol = coin_config["symbol"]
         db_save(f"trade_coin_{mode_suffix}_{allocated_user_id}", target_symbol)
         db_save(f"last_selected_coin_{mode_suffix}_{allocated_user_id}", target_symbol)
@@ -663,12 +687,12 @@ with st.sidebar:
         </div>
         """, unsafe_allow_html=True)
     else:
-        leverage = st.slider("Leverage Scale Selection Array (1x-100x Override):", min_value=1, max_value=max_leverage_bound, value=int(db_load(f"leverage_lock_{mode_suffix}_{allocated_user_id}", 20)), step=1, key="absolute_leverage_node_slider")
+        leverage = st.slider(f"Leverage (max {max_leverage_bound}x):", min_value=1, max_value=max_leverage_bound, value=int(db_load(f"leverage_lock_{mode_suffix}_{allocated_user_id}", 20)), step=1, key="absolute_leverage_node_slider")
         trade_amount = st.number_input("Margin Requirement Block ($):", min_value=1, value=int(db_load(f"margin_lock_{mode_suffix}_{allocated_user_id}", 20)))
         _tp_db = f"tp_target_{mode_suffix}_{allocated_user_id}_{target_symbol}"
         _sl_db = f"sl_gap_{mode_suffix}_{allocated_user_id}_{target_symbol}"
-        price_jump_target = st.number_input("Take Profit Target Interval ($):", value=float(db_load(_tp_db, float(coin_config["default_tp"]))), format="%.6f", key=f"tp_input_{mode_suffix}_{target_symbol}")
-        stop_loss_gap = st.number_input("Stop Loss Boundary GAP Threshold ($):", value=float(db_load(_sl_db, float(coin_config["default_sl"]))), format="%.6f", key=f"sl_input_{mode_suffix}_{target_symbol}")
+        price_jump_target = st.number_input(f"Take Profit Target Interval ({'price units' if PLAT.market == 'forex' else '$'}):", value=float(db_load(_tp_db, float(coin_config["default_tp"]))), format="%.6f", key=f"tp_input_{mode_suffix}_{target_symbol}")
+        stop_loss_gap = st.number_input(f"Stop Loss Boundary GAP Threshold ({'price units' if PLAT.market == 'forex' else '$'}):", value=float(db_load(_sl_db, float(coin_config["default_sl"]))), format="%.6f", key=f"sl_input_{mode_suffix}_{target_symbol}")
         db_save(_tp_db, price_jump_target)
         db_save(_sl_db, stop_loss_gap)
         
@@ -677,7 +701,7 @@ with st.sidebar:
         db_save(f"tp_target_{mode_suffix}_{allocated_user_id}", price_jump_target)
         db_save(f"sl_gap_{mode_suffix}_{allocated_user_id}", stop_loss_gap)
 
-    api_key, secret_key = "", ""
+    creds = {}
     license_ok = False
     use_testnet = True
     if is_real_live:
@@ -689,38 +713,46 @@ with st.sidebar:
                 admin_fixed_bonus = float(db_load("admin_fixed_ref_usd", 10.0))
                 st._global_user_pnl_history.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "User ID": my_sponsor_id, "Coin": "REAL_LICENSE_ACTIVATION", "Action": "REF_COMMISSION_DIRECT", "Net P&L ($)": f"{admin_fixed_bonus:.2f}", "Type": "REAL"}); db_save("pnl_history", st._global_user_pnl_history)
             license_ok = True
-            use_testnet = st.checkbox("🧪 Bybit TESTNET (age ekhane test koro)", value=True, key="bybit_testnet_toggle")
-            api_key = st.text_input("Bybit API Key Node Token:", type="password", key="api_field_sidebar")
-            secret_key = st.text_input("Bybit Secret Key Node Token:", type="password", key="sec_field_sidebar")
+            if PLAT.has_testnet:
+                use_testnet = st.checkbox(f"🧪 {PLAT.testnet_label} (age ekhane test koro)", value=True, key="testnet_toggle")
+            else:
+                use_testnet = False
+                st.warning(f"⚠️ {PLAT.label} e testnet nai: eta ASOL TAKA. Chhoto margin diye shuru koro.")
+            for _fk, _fl, _fs, _fr in PLAT.fields:
+                creds[_fk] = st.text_input(f"{_fl}:", type="password" if _fs else "default", key=f"cred_{platform}_{_fk}").strip()
 # 🔥 লোগো ব্যানার পেজের একদম উপরে প্লেস করা হলো
-st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
+st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
 
 effective_vol = trade_amount * leverage
 estimated_fee = effective_vol * 0.0011
 live_price, current_rsi, ai_market_thesis, fig_candlestick = 0.0, 50.0, "SYNCING DATA FEED NODES... 📡", None
-public_session = HTTP(testnet=(is_real_live and use_testnet))
 real_engine, real_wallet, real_engine_error = None, None, ""
-if is_real_live and license_ok and api_key and secret_key:
+_creds_ok = bool(creds) and all(creds.get(_fk) for _fk, _fl, _fs, _fr in PLAT.fields if _fr)
+if is_real_live and license_ok and _creds_ok:
     try:
-        real_wallet = fetch_wallet_cached(api_key, secret_key, use_testnet)
-        real_engine = BybitEngine(api_key, secret_key, testnet=use_testnet)
+        real_wallet = fetch_wallet_cached(platform, tuple(sorted(creds.items())), use_testnet)
+        real_engine = get_engine(platform, creds, use_testnet)
         st.session_state.real_balance = real_wallet["equity"]
     except Exception as e:
         real_engine, real_wallet, real_engine_error = None, None, str(e)
 df_kline = pd.DataFrame()
+# Price/chart feed: real engine thakle seta, na hole (crypto) credential chhara public feed. Forex e credential lagbe.
+feed, feed_error = real_engine, ""
+if feed is None and PLAT.market == "crypto":
+    try:
+        feed = get_engine(platform, {}, bool(is_real_live and PLAT.has_testnet and use_testnet))
+    except Exception as e:
+        feed_error = str(e)
 
 try:
-    ticker_res = public_session.get_tickers(category="linear", symbol=target_symbol)
-    ticker_list = ticker_res.get('result', {}).get('list', [])
-    if ticker_list: live_price = float(ticker_list[0].get('lastPrice', 0))
-except: pass
+    if feed is not None: live_price = float(feed.price(target_symbol))
+except Exception as e: feed_error = feed_error or str(e)
 try:
-    response = public_session.get_kline(category="linear", symbol=target_symbol, interval="1", limit=30)
-    klines = response.get('result', {}).get('list', [])
-    if klines:
-        df_kline = pd.DataFrame(klines, columns=['time', 'open', 'high', 'low', 'close', 'volume', 'turnover']).iloc[::-1].reset_index(drop=True)
-        for c in ['open', 'high', 'low', 'close', 'volume']: df_kline[c] = pd.to_numeric(df_kline[c])
-        if live_price == 0.0: live_price = df_kline['close'].iloc[-1]
+    if feed is not None:
+        df_kline = feed.klines(target_symbol, 30)
+    if not df_kline.empty:
+        df_kline = df_kline.reset_index(drop=True)
+        if live_price == 0.0: live_price = float(df_kline['close'].iloc[-1])
         delta = df_kline['close'].diff()
         gain = delta.where(delta > 0, 0).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
@@ -728,7 +760,7 @@ try:
         fig_candlestick = go.Figure(data=[go.Candlestick(x=df_kline.index, open=df_kline['open'], high=df_kline['high'], low=df_kline['low'], close=df_kline['close'])])
         fig_candlestick.add_trace(go.Scatter(x=df_kline.index, y=df_kline['close'].rolling(window=7).mean(), name="AI Geometric Tracking Vector", line=dict(color='#00e676', width=2, dash='dot')))
         fig_candlestick.update_layout(template="plotly_dark", margin=dict(l=6, r=6, t=6, b=6), height=250, xaxis_rangeslider_visible=False, paper_bgcolor='#06090e', plot_bgcolor='#06090e')
-except: pass
+except Exception as e: feed_error = feed_error or str(e)
 if live_price == 0.0 and not df_kline.empty: live_price = float(df_kline['close'].iloc[-1])
 # ==========================================
 # 🧱 BOX 17: REAL-TIME CHART RENDERING INTERFACE
@@ -790,7 +822,7 @@ if st.session_state.in_position and live_price > 0 and st.session_state.buy_pric
 # 🔁 TRADE ENGINE HELPERS (open / close / TP-SL sync)
 # ==========================================
 _rerun_after = False
-FEE_RATE_ROUNDTRIP = 0.0011   # Bybit taker 0.055% x 2
+FEE_RATE_ROUNDTRIP = PLAT.fee_roundtrip if is_real_live else 0.0011   # taker fee x 2 (forex = 0, spread price e-i ache)
 
 def release_and_record(net_pnl, symbol, reason):
     """Trade bondho hole: balance (demo), win/loss, ledger, position state sob update."""
@@ -827,21 +859,22 @@ def fetch_real_pnl(symbol):
     return 0.0, False
 
 def open_trade(side):
-    """LONG / SHORT position open. Demo = virtual, Real = Bybit e asol order (TP/SL soho). Returns (ok, message)."""
+    """LONG / SHORT position open. Demo = virtual, Real = exchange/broker e asol order (TP/SL soho). Returns (ok, message)."""
     uid = allocated_user_id
     entry = float(live_price)
     if is_real_live:
         if real_engine is None:
-            return False, "Real mode: License key + Bybit API key/secret lagbe."
+            return False, f"Real mode: License key + {PLAT.label} API credentials lagbe."
         if real_wallet and real_wallet["available"] < float(trade_amount):
             return False, f"Available balance ${real_wallet['available']:.2f} < margin ${trade_amount}"
         try:
             res = real_engine.open_position(target_symbol, side, float(trade_amount), int(leverage), float(price_jump_target), float(stop_loss_gap))
         except Exception as e:
-            return False, f"Bybit order failed: {e}"
+            return False, f"{PLAT.label} order failed: {e}"
         entry = float(res["entry_price"])
         st.session_state.real_open_ts = time.time()
         db_save(f"real_open_ms_{uid}", int(time.time() * 1000))
+        db_save(f"real_platform_lock_{uid}", platform)
     elif entry <= 0:
         return False, "Live price ekhono ashe nai."
     db_save(f"in_position_{mode_suffix}_{uid}", True)
@@ -861,7 +894,7 @@ def open_trade(side):
 pos_symbol = st.session_state.trade_coin if st.session_state.trade_coin not in ("NONE", "", None) else target_symbol
 if st.session_state.in_position:
     if is_real_live:
-        # TP/SL Bybit er server e ache. Amra shudhu dekhi position bondho hoyeche kina.
+        # TP/SL exchange/broker er server e ache. Amra shudhu dekhi position bondho hoyeche kina.
         if real_engine is not None:
             try:
                 _rp = real_engine.get_position(pos_symbol)
@@ -869,10 +902,10 @@ if st.session_state.in_position:
                     floating_pnl = _rp["unrealised_pnl"]
                 elif time.time() - st.session_state.get("real_open_ts", 0) > 12:
                     _pnl, _found = fetch_real_pnl(pos_symbol)
-                    release_and_record(_pnl, pos_symbol, "BYBIT_TPSL_CLOSE")
+                    release_and_record(_pnl, pos_symbol, f"{platform.upper()}_TPSL_CLOSE")
                     st.rerun()
             except Exception as e:
-                st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Bybit sync error: {e}")
+                st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] {PLAT.label} sync error: {e}")
     else:
         # Demo: price TP/SL e gele auto close
         _entry = float(st.session_state.buy_price)
@@ -895,15 +928,19 @@ else:
 balance_usd_text = f"${_bal_val:,.2f} USDT"
 st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}):</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:14px; color:{'#00e676' if floating_pnl >= 0 else '#ff1744'}; font-weight:bold;'>Live Floating P&L Indicator: {floating_pnl:+.4f} USDT</p></div>", unsafe_allow_html=True)
 if is_real_live:
-    if real_engine_error: st.error(f"Bybit connect error: {real_engine_error}")
-    elif real_engine is None: st.info("🔒 Real mode: sidebar e License Password dao, tarpor Bybit API Key + Secret dao. Tahole Bybit er asol balance ekhane ashbe.")
+    if real_engine_error: st.error(f"{PLAT.label} connect error: {real_engine_error}")
+    elif real_engine is None: st.info(f"🔒 Real mode: sidebar e License Password dao, tarpor {PLAT.label} er API credentials dao. Tahole asol balance ekhane ashbe.")
     else:
-        st.caption(f"🔗 Bybit {'TESTNET 🧪' if use_testnet else 'MAINNET 🔴'} connected | Equity: ${real_wallet['equity']:,.2f} | Available: ${real_wallet['available']:,.2f} USDT")
-        if real_wallet["equity"] == 0 and not real_wallet.get("raw", {}).get("coins_returned"):
+        st.caption(f"🔗 {PLAT.label} {'TESTNET/DEMO 🧪' if use_testnet else 'LIVE 🔴'} connected | Equity: ${real_wallet['equity']:,.2f} | Available: ${real_wallet['available']:,.2f} USDT")
+        if platform == "bybit" and real_wallet["equity"] == 0 and not real_wallet.get("raw", {}).get("coins_returned"):
             _uid = (real_wallet.get("raw", {}).get("API_KEY_INFO") or {}).get("userID", "?")
             st.warning(f"⚠️ Ei API key er Bybit account (UID: {_uid}) e kono coin nei. Jei {'testnet' if use_testnet else 'mainnet'} account e USDT ache, **oi account e login kore** notun API key banao.")
-        with st.expander("🔍 Bybit wallet raw data (debug)"):
+        with st.expander("🔍 Wallet raw data (debug)"):
             st.json(real_wallet.get("raw", {}))
+if feed is None and PLAT.market == "forex":
+    st.info("🔒 Forex price/chart pete hole age OANDA credentials dao (Live mode + License).")
+elif feed_error and live_price == 0:
+    st.warning(f"📡 Price feed error ({PLAT.label}): {feed_error[:200]}")
 if live_price > 0 and effective_vol > 0:
     _fee = effective_vol * FEE_RATE_ROUNDTRIP
     _net_win = price_jump_target / live_price * effective_vol - _fee
@@ -1072,17 +1109,17 @@ with c2:
     if st.button("🚨 EMERGENCY LIQUIDATE CLOSE ORDER POSITION", disabled=not st.session_state.in_position, key="force_liquidate_btn"):
         if is_real_live:
             if real_engine is None:
-                st.error("Real mode: Bybit API key connect kora nai.")
+                st.error("Real mode: API key connect kora nai.")
             else:
                 try:
                     real_engine.close_position(pos_symbol)
                     time.sleep(1.0)
                     _pnl, _found = fetch_real_pnl(pos_symbol)
                     release_and_record(_pnl, pos_symbol, "MANUAL_CLOSE")
-                    st.toast("🚨 Bybit position closed", icon="⚡")
+                    st.toast(f"🚨 {PLAT.label} position closed", icon="⚡")
                     st.rerun()
                 except Exception as e:
-                    st.error(f"Bybit close failed: {e}")
+                    st.error(f"{PLAT.label} close failed: {e}")
         else:
             _net = floating_pnl - (effective_vol * FEE_RATE_ROUNDTRIP)
             release_and_record(_net, pos_symbol, "MANUAL_CLOSE")
