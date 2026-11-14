@@ -5,7 +5,7 @@ Symbol format: EUR_USD, GBP_USD, USD_JPY, XAU_USD ...
 
 Shimabaddhota (ekhon):
   * Account currency USD hote hobe.
-  * Shudhu USD er sathe pair (EUR_USD, USD_JPY, XAU_USD ...). Cross pair (EUR_GBP) e margin->units hishab ekhono nai.
+  * Cross pair (EUR_GBP, GBP_JPY ...), gold, silver, oil, index o cholbe: units nijei USD hishab kore ber kora hoy.
   * OANDA te leverage account-level (API diye set kora jay na). 'leverage' ekhane shudhu units calculate korte lage.
   * TP/SL gap = price unit (EUR_USD te 0.0020 = 20 pip).
 """
@@ -27,15 +27,37 @@ def _fmt(d):
 
 
 FOREX_DATABASE = {
-    "💶 EUR/USD":  {"symbol": "EUR_USD", "max_leverage": 30, "default_tp": 0.0020, "default_sl": 0.0030, "step": 0.0001},
-    "💷 GBP/USD":  {"symbol": "GBP_USD", "max_leverage": 30, "default_tp": 0.0025, "default_sl": 0.0035, "step": 0.0001},
-    "🦘 AUD/USD":  {"symbol": "AUD_USD", "max_leverage": 30, "default_tp": 0.0015, "default_sl": 0.0025, "step": 0.0001},
-    "🥝 NZD/USD":  {"symbol": "NZD_USD", "max_leverage": 30, "default_tp": 0.0015, "default_sl": 0.0025, "step": 0.0001},
-    "💴 USD/JPY":  {"symbol": "USD_JPY", "max_leverage": 30, "default_tp": 0.20, "default_sl": 0.30, "step": 0.01},
-    "🍁 USD/CAD":  {"symbol": "USD_CAD", "max_leverage": 30, "default_tp": 0.0020, "default_sl": 0.0030, "step": 0.0001},
-    "🇨🇭 USD/CHF": {"symbol": "USD_CHF", "max_leverage": 30, "default_tp": 0.0020, "default_sl": 0.0030, "step": 0.0001},
+    "💶 EUR/USD": {"symbol": "EUR_USD", "max_leverage": 30, "default_tp": 0.002, "default_sl": 0.003, "step": 0.0001},
+    "💷 GBP/USD": {"symbol": "GBP_USD", "max_leverage": 30, "default_tp": 0.0025, "default_sl": 0.0035, "step": 0.0001},
+    "🦘 AUD/USD": {"symbol": "AUD_USD", "max_leverage": 30, "default_tp": 0.0015, "default_sl": 0.0025, "step": 0.0001},
+    "🥝 NZD/USD": {"symbol": "NZD_USD", "max_leverage": 30, "default_tp": 0.0015, "default_sl": 0.0025, "step": 0.0001},
+    "💴 USD/JPY": {"symbol": "USD_JPY", "max_leverage": 30, "default_tp": 0.2, "default_sl": 0.3, "step": 0.01},
+    "🍁 USD/CAD": {"symbol": "USD_CAD", "max_leverage": 30, "default_tp": 0.002, "default_sl": 0.003, "step": 0.0001},
+    "🇨🇭 USD/CHF": {"symbol": "USD_CHF", "max_leverage": 30, "default_tp": 0.002, "default_sl": 0.003, "step": 0.0001},
+    "EUR/GBP": {"symbol": "EUR_GBP", "max_leverage": 30, "default_tp": 0.0015, "default_sl": 0.0025, "step": 0.0001},
+    "EUR/JPY": {"symbol": "EUR_JPY", "max_leverage": 30, "default_tp": 0.25, "default_sl": 0.4, "step": 0.01},
+    "GBP/JPY": {"symbol": "GBP_JPY", "max_leverage": 30, "default_tp": 0.3, "default_sl": 0.5, "step": 0.01},
+    "EUR/CHF": {"symbol": "EUR_CHF", "max_leverage": 30, "default_tp": 0.0015, "default_sl": 0.0025, "step": 0.0001},
+    "EUR/AUD": {"symbol": "EUR_AUD", "max_leverage": 30, "default_tp": 0.0025, "default_sl": 0.004, "step": 0.0001},
+    "EUR/CAD": {"symbol": "EUR_CAD", "max_leverage": 30, "default_tp": 0.0025, "default_sl": 0.004, "step": 0.0001},
+    "GBP/AUD": {"symbol": "GBP_AUD", "max_leverage": 30, "default_tp": 0.003, "default_sl": 0.0045, "step": 0.0001},
+    "GBP/CAD": {"symbol": "GBP_CAD", "max_leverage": 30, "default_tp": 0.003, "default_sl": 0.0045, "step": 0.0001},
+    "GBP/CHF": {"symbol": "GBP_CHF", "max_leverage": 30, "default_tp": 0.0025, "default_sl": 0.004, "step": 0.0001},
+    "AUD/JPY": {"symbol": "AUD_JPY", "max_leverage": 30, "default_tp": 0.2, "default_sl": 0.3, "step": 0.01},
+    "AUD/CAD": {"symbol": "AUD_CAD", "max_leverage": 30, "default_tp": 0.0015, "default_sl": 0.0025, "step": 0.0001},
+    "AUD/NZD": {"symbol": "AUD_NZD", "max_leverage": 30, "default_tp": 0.0015, "default_sl": 0.0025, "step": 0.0001},
+    "NZD/JPY": {"symbol": "NZD_JPY", "max_leverage": 30, "default_tp": 0.2, "default_sl": 0.3, "step": 0.01},
+    "CAD/JPY": {"symbol": "CAD_JPY", "max_leverage": 30, "default_tp": 0.2, "default_sl": 0.3, "step": 0.01},
+    "CHF/JPY": {"symbol": "CHF_JPY", "max_leverage": 30, "default_tp": 0.25, "default_sl": 0.4, "step": 0.01},
     "🥇 XAU/USD (Gold)": {"symbol": "XAU_USD", "max_leverage": 20, "default_tp": 3.0, "default_sl": 5.0, "step": 0.01},
+    "🥈 XAG/USD (Silver)": {"symbol": "XAG_USD", "max_leverage": 10, "default_tp": 0.1, "default_sl": 0.2, "step": 0.001},
+    "🛢️ Brent Oil": {"symbol": "BCO_USD", "max_leverage": 10, "default_tp": 0.3, "default_sl": 0.5, "step": 0.001},
+    "🛢️ WTI Oil": {"symbol": "WTICO_USD", "max_leverage": 10, "default_tp": 0.3, "default_sl": 0.5, "step": 0.001},
+    "📈 US S&P 500": {"symbol": "SPX500_USD", "max_leverage": 20, "default_tp": 5.0, "default_sl": 8.0, "step": 0.1},
+    "📈 US Nasdaq 100": {"symbol": "NAS100_USD", "max_leverage": 20, "default_tp": 20.0, "default_sl": 35.0, "step": 0.1},
+    "📈 US Wall St 30": {"symbol": "US30_USD", "max_leverage": 20, "default_tp": 30.0, "default_sl": 50.0, "step": 1.0},
 }
+# TP/SL default gulo ekta andaj (price unit); pair onujayi nijer moto thik koro.
 
 
 class OandaEngine(BaseEngine):
@@ -102,6 +124,19 @@ class OandaEngine(BaseEngine):
         bid, ask = _dec(p["bids"][0]["price"]), _dec(p["asks"][0]["price"])
         return bid, ask
 
+    def _usd_per(self, ccy, known_mid=None):
+        """1 unit of ccy = koto USD."""
+        if ccy == "USD":
+            return Decimal(1)
+        if known_mid is not None:
+            return known_mid
+        try:
+            b, a = self._quote(f"{ccy}_USD")
+            return (b + a) / 2
+        except RuntimeError:
+            b, a = self._quote(f"USD_{ccy}")
+            return 2 / (b + a)
+
     def price(self, symbol):
         bid, ask = self._quote(symbol)
         return float((bid + ask) / 2)
@@ -143,8 +178,6 @@ class OandaEngine(BaseEngine):
         if self.ccy != "USD":
             raise ValueError(f"OANDA account currency {self.ccy}. Ekhon shudhu USD account support kore.")
         base, quote = symbol.split("_")
-        if quote != "USD" and base != "USD":
-            raise ValueError(f"{symbol}: ekhon shudhu USD er sathe pair support kore (EUR_USD, USD_JPY, XAU_USD ...).")
 
         inst = self._instrument(symbol)
         max_lev = int(1 / inst["margin_rate"])
@@ -160,12 +193,13 @@ class OandaEngine(BaseEngine):
             raise ValueError(f"TP gap price er {float(tp_frac)*100:.0f}% - forex e onek boro, TP thik koro.")
 
         notional = _dec(margin_usd) * lev                      # USD
-        units = notional if base == "USD" else notional / mid  # base currency units
+        usd_per_base = self._usd_per(base, mid if quote == "USD" else None)
+        units = notional / usd_per_base                        # base currency units
         q = Decimal(1).scaleb(-inst["units_prec"])
         units = units.quantize(q, rounding=ROUND_DOWN)
         if units < inst["min_units"]:
             raise ValueError(f"Units {units} < minimum {inst['min_units']}. Margin ba leverage barao.")
-        need = units * mid * inst["margin_rate"]
+        need = units * usd_per_base * inst["margin_rate"]
         if need > _dec(w["available"]):
             raise ValueError(f"Margin lagbe ~${need:.2f}, available ${w['available']:.2f}.")
 
