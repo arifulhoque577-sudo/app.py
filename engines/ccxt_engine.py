@@ -9,13 +9,22 @@ import pandas as pd
 
 from .base import BaseEngine
 
-try:
-    import ccxt
-except Exception:      # ccxt install na thakle shudhu ei engine gulo kaj korbe na, baki app cholbe
-    ccxt = None
-
-_EX_CACHE = {}         # (ccxt_id, testnet, apiKey) -> exchange (markets ekbar load hoy, protibar na)
+ccxt = None            # lazy import: ccxt boro (memory khay), tai shudhu dorkar hole load hoy
+_EX_CACHE = {}         # (ccxt_id, testnet, apiKey) -> exchange
+_MARKETS = {}          # (ccxt_id, testnet) -> markets (shob key er jonno ekbar-i load, memory bachay)
+_FAIL = {}             # (ccxt_id, testnet) -> (time, msg)  : fail hole 60 sec abar try kore na
 _PNL_KEYS = ("realizedPnl", "fillPnl", "profit", "pnl", "closedPnl")
+
+
+def _load_ccxt():
+    global ccxt
+    if ccxt is None:
+        try:
+            import ccxt as _c
+        except Exception:
+            raise RuntimeError("ccxt install kora nai. requirements.txt e 'ccxt' add koro.")
+        ccxt = _c
+    return ccxt
 
 
 def _dec(x):
@@ -34,11 +43,21 @@ class CcxtEngine(BaseEngine):
     tpsl_mode = "attached"       # "attached": order er sathe TP/SL (OKX, Bitget) | "separate": alada reduce-only trigger order (Binance)
     margin_params = {}           # set_leverage er extra params
 
+    def _enable_test_mode(self, ex):
+        # Binance futures er purano testnet bondho; ekhon "Demo Trading" (demo.binance.com er API key lagbe)
+        if self.ccxt_id.startswith("binance") and hasattr(ex, "enable_demo_trading"):
+            ex.enable_demo_trading(True)
+        else:
+            ex.set_sandbox_mode(True)
+
     def __init__(self, creds, testnet=True):
         super().__init__(creds, testnet)
-        if ccxt is None:
-            raise RuntimeError("ccxt install kora nai. requirements.txt e 'ccxt' add koro.")
-        ck = (self.ccxt_id, self.testnet, self.creds.get("api_key", ""))
+        c = _load_ccxt()
+        mk = (self.ccxt_id, self.testnet)
+        f = _FAIL.get(mk)
+        if f and time.time() - f[0] < 60:
+            raise RuntimeError(f[1])
+        ck = mk + (self.creds.get("api_key", ""),)
         ex = _EX_CACHE.get(ck)
         if ex is None:
             cfg = {"enableRateLimit": True, "timeout": 15000, "options": {"defaultType": "swap"}}
@@ -46,10 +65,24 @@ class CcxtEngine(BaseEngine):
                 cfg["apiKey"], cfg["secret"] = self.creds["api_key"], self.creds.get("api_secret", "")
             if self.creds.get("passphrase"):
                 cfg["password"] = self.creds["passphrase"]
-            ex = getattr(ccxt, self.ccxt_id)(cfg)
-            if self.testnet:
-                ex.set_sandbox_mode(True)
-            ex.load_markets()
+            ex = getattr(c, self.ccxt_id)(cfg)
+            try:
+                if self.testnet:
+                    self._enable_test_mode(ex)
+                markets = _MARKETS.get(mk)
+                if markets is None:
+                    markets = ex.load_markets()
+                    _MARKETS[mk] = markets
+                else:
+                    ex.set_markets(markets)
+            except Exception as e:
+                msg = str(e)[:300]
+                if "451" in msg or "restricted" in msg.lower():
+                    msg += " | Server region block korche: Render service er Region Singapore/Frankfurt koro."
+                _FAIL[mk] = (time.time(), msg)
+                raise RuntimeError(msg)
+            if len(_EX_CACHE) > 6:
+                _EX_CACHE.pop(next(iter(_EX_CACHE)))
             _EX_CACHE[ck] = ex
         self.ex = ex
 
@@ -233,7 +266,7 @@ class CcxtEngine(BaseEngine):
 
 class BinanceEngine(CcxtEngine):
     key, label, ccxt_id = "binance", "Binance (USDT-M Futures)", "binanceusdm"
-    testnet_label = "Binance Futures TESTNET"
+    testnet_label = "Binance DEMO trading (demo.binance.com key)"
     tpsl_mode = "separate"
     fee_roundtrip = 0.0009        # taker 0.04% x 2 + slippage
 
