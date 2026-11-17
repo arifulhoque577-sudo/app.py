@@ -178,6 +178,7 @@ class BybitEngine:
         if tp <= 0 or sl <= 0:
             raise ValueError("TP/SL gap onek boro, price negative hoye jacche.")
 
+        opened_ms = int(time.time() * 1000)
         self.session.place_order(
             category="linear", symbol=symbol, side=order_side, orderType="Market",
             qty=_fmt(qty),
@@ -196,8 +197,11 @@ class BybitEngine:
         return {
             "symbol": symbol, "side": side, "qty": float(qty), "leverage": lev,
             "entry_price": entry, "tp_price": float(tp), "sl_price": float(sl),
-            "confirmed": confirmed,
+            "confirmed": confirmed, "opened_ms": opened_ms,
         }
+
+    def after_close(self, symbol):
+        return None   # Bybit e TP/SL position er sathe-i bandha, alada order nei
 
     def close_position(self, symbol):
         pos = self.get_position(symbol)
