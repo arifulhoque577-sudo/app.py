@@ -15,7 +15,7 @@ import copy
 import threading
 import re
 from bybit_engine import BybitEngine
-from exchanges import EXCHANGES, EXCHANGE_IDS, EXCHANGE_NAMES, OANDA_MAJORS, BinanceData, make_data, make_engine
+from exchanges import EXCHANGES, EXCHANGE_IDS, EXCHANGE_NAMES, OANDA_MAJORS, BinanceData, BitgetData, mt5_majors, make_data, make_engine
 try:
     from streamlit_autorefresh import st_autorefresh
 except Exception:
@@ -211,13 +211,17 @@ def fetch_bybit_future_coins():
 BYBYT_DATABASE_CORE = fetch_bybit_future_coins()
 
 @st.cache_data(ttl=600, show_spinner=False)
-def fetch_exchange_coins(exch, testnet):
+def fetch_exchange_coins(exch, testnet, extra=""):
     """Bybit chhara onno exchange er coin/pair list. Fail hole error text ferot (bar bar network call ar block kora hobe na)."""
     try:
         if exch == "binance":
             return BinanceData(testnet).coins()
+        if exch == "bitget":
+            return BitgetData(demo=testnet).coins()
         if exch == "oanda":
             return dict(OANDA_MAJORS)
+        if exch == "mt5":
+            return mt5_majors(extra)
         return dict(BYBYT_DATABASE_CORE)
     except Exception as e:
         return {"__error__": str(e)}
@@ -323,8 +327,8 @@ def _ai_job(store, key, api_key, models, prompt, symbol):
     store[key] = res
 
 @st.cache_data(ttl=8, show_spinner=False)
-def fetch_wallet_cached(exch, k, s, testnet):   # underscore chhara: nahole cache key e user ba key dhora hoy na
-    return make_engine(exch, k, s, testnet).wallet()
+def fetch_wallet_cached(exch, k, s, testnet, extra=""):   # underscore chhara: nahole cache key e user ba key dhora hoy na
+    return make_engine(exch, k, s, testnet, extra).wallet()
 # ==========================================
 # 🧱 UPGRADED ULTRA-PREMIUM CYBERPUNK DARK THEME LAYER
 # ==========================================
@@ -615,10 +619,11 @@ with st.sidebar:
     if exch_id == "bybit":
         CATALOG = BYBYT_DATABASE_CORE
     else:
-        CATALOG = fetch_exchange_coins(exch_id, bool(st.session_state.get(f"testnet_toggle_{exch_id}", True)) if is_real_live else False)
+        CATALOG = fetch_exchange_coins(exch_id, bool(st.session_state.get(f"testnet_toggle_{exch_id}", True)) if is_real_live else False,
+                                       st.session_state.get("mt5_suffix_field", "").strip() if exch_id == "mt5" else "")
         if "__error__" in CATALOG:
             st.error(f"{exchange} coin list ante parlam: {CATALOG['__error__'][:150]}. (Render region Singapore/Frankfurt hole bhalo; US block hote pare)")
-            CATALOG = {k: v for k, v in CATALOG.items() if v["symbol"] in ("BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT")}
+            CATALOG = {k: v for k, v in BYBYT_DATABASE_CORE.items() if v["symbol"] in ("BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT")}
     coin_list = list(CATALOG.keys())
     if exch_id == "bybit" and is_real_live and st.session_state.get("testnet_toggle_bybit", True):
         try:   # testnet e jei coin live na, shegulo dropdown e dekhabo na (nahole "contract is not live" error)
@@ -702,9 +707,10 @@ with st.sidebar:
         db_save(f"tp_target_{mode_suffix}_{allocated_user_id}", price_jump_target)
         db_save(f"sl_gap_{mode_suffix}_{allocated_user_id}", stop_loss_gap)
 
-    api_key, secret_key = "", ""
+    api_key, secret_key, api_pass, mt5_region = "", "", "", "london"
     license_ok = False
     use_testnet = True
+    mainnet_ack = True
     if is_real_live:
         st.markdown("<hr style='border:1px solid #1e293b; margin:10px 0;'><div style='background-color:#ff1744; padding:6px; border-radius:5px; text-align:center; margin-bottom:6px;'><b style='color:#ffffff; font-size:11px;'>🚨 LICENSE GATE ACTIVE</b></div>", unsafe_allow_html=True)
         input_license = st.text_input("License Password:", type="password", key="lic_field_sidebar", label_visibility="collapsed").strip()
@@ -714,11 +720,15 @@ with st.sidebar:
                 admin_fixed_bonus = float(db_load("admin_fixed_ref_usd", 10.0))
                 st._global_user_pnl_history.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "User ID": my_sponsor_id, "Coin": "REAL_LICENSE_ACTIVATION", "Action": "REF_COMMISSION_DIRECT", "Net P&L ($)": f"{admin_fixed_bonus:.2f}", "Type": "REAL"}); db_save("pnl_history", st._global_user_pnl_history)
             license_ok = True
-            if exch_id != "oanda":
+            if exch_id in ("bybit", "binance", "bitget"):
                 _nm = EXCHANGE_NAMES[exch_id]
-                use_testnet = st.checkbox(f"🧪 {_nm} TESTNET (age ekhane test koro)", value=True, key=f"testnet_toggle_{exch_id}")
+                use_testnet = st.checkbox(f"🧪 {_nm} {'DEMO' if exch_id == 'bitget' else 'TESTNET'} (age ekhane test koro)", value=True, key=f"testnet_toggle_{exch_id}")
                 api_key = st.text_input(f"{_nm} API Key:", type="password", key=f"api_field_{exch_id}")
                 secret_key = st.text_input(f"{_nm} Secret Key:", type="password", key=f"sec_field_{exch_id}")
+                if exch_id == "bitget":
+                    api_pass = st.text_input("Bitget API Passphrase:", type="password", key="pass_field_bitget")
+                if not use_testnet:
+                    mainnet_ack = st.checkbox("⚠️ Ami bujhi eta ASOL taka. Loss hole daitto amar.", value=False, key=f"mainnet_ack_{exch_id}")
 # 🔥 লোগো ব্যানার পেজের একদম উপরে প্লেস করা হলো
 if exch_id == "oanda":
     with st.sidebar:
@@ -727,25 +737,40 @@ if exch_id == "oanda":
         use_testnet = st.checkbox("🧪 OANDA PRACTICE account (age ekhane test koro)", value=True, key="testnet_toggle_oanda")
         api_key = st.text_input("OANDA API Token:", type="password", key="api_field_oanda")
         secret_key = st.text_input("OANDA Account ID (jemon 101-001-1234567-001):", key="acct_field_oanda").strip()
+        if is_real_live and not use_testnet:
+            mainnet_ack = st.checkbox("⚠️ Ami bujhi eta ASOL taka. Loss hole daitto amar.", value=False, key="mainnet_ack_oanda")
+if exch_id == "mt5":
+    with st.sidebar:
+        st.markdown("<hr style='border:1px solid #1e293b; margin:10px 0;'><b style='color:#38bdf8;'>📈 MT5 (MetaApi) Credentials</b>", unsafe_allow_html=True)
+        st.caption("Exness/XM/IC Markets MT5 account metaapi.cloud e add kore nao (BETA: age DEMO account e test koro). Price data-o MetaApi theke ashe, tai Demo mode e-o dorkar.")
+        use_testnet = st.checkbox("🧪 Ei MT5 account ta DEMO (age ekhane test koro)", value=True, key="testnet_toggle_mt5")
+        api_key = st.text_input("MetaApi Token:", type="password", key="api_field_mt5")
+        secret_key = st.text_input("MetaApi Account ID:", key="acct_field_mt5").strip()
+        mt5_region = st.text_input("MetaApi Region (jemon london, new-york, singapore):", value="london", key="region_field_mt5").strip() or "london"
+        st.text_input("Symbol suffix (Exness e prai 'm', na hole faka rakho):", key="mt5_suffix_field", help="Exness er onek account e symbol 'EURUSDm' hoy. MT5 er Market Watch e dekho.")
+        if is_real_live and not use_testnet:
+            mainnet_ack = st.checkbox("⚠️ Ami bujhi eta ASOL taka. Loss hole daitto amar.", value=False, key="mainnet_ack_mt5")
 st.markdown(f"<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>{EXCHANGE_NAMES[exch_id].upper()} AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
 
 effective_vol = trade_amount * leverage
 estimated_fee = effective_vol * 0.0011
 live_price, current_rsi, ai_market_thesis, fig_candlestick = 0.0, 50.0, "SYNCING DATA FEED NODES... 📡", None
-md_testnet = bool(use_testnet) if (is_real_live or exch_id == "oanda") else False
-md = make_data(exch_id, md_testnet, api_key if exch_id == "oanda" else "", secret_key if exch_id == "oanda" else "")
+md_testnet = bool(use_testnet) if (is_real_live or exch_id in ("oanda", "mt5")) else False
+exch_extra = api_pass if exch_id == "bitget" else (mt5_region if exch_id == "mt5" else "")
+needs_creds_for_data = exch_id in ("oanda", "mt5")
+md = make_data(exch_id, md_testnet, api_key if needs_creds_for_data else "", secret_key if needs_creds_for_data else "", exch_extra if exch_id == "mt5" else "")
 real_engine, real_wallet, real_engine_error = None, None, ""
-if is_real_live and license_ok and api_key and secret_key:
+if is_real_live and license_ok and api_key and secret_key and (api_pass or exch_id != "bitget") and mainnet_ack:
     try:
-        real_wallet = fetch_wallet_cached(exch_id, api_key, secret_key, use_testnet)
-        real_engine = make_engine(exch_id, api_key, secret_key, use_testnet)
+        real_wallet = fetch_wallet_cached(exch_id, api_key, secret_key, use_testnet, exch_extra)
+        real_engine = make_engine(exch_id, api_key, secret_key, use_testnet, exch_extra)
         st.session_state.real_balance = real_wallet["equity"]
     except Exception as e:
         real_engine, real_wallet, real_engine_error = None, None, str(e)
 df_kline = pd.DataFrame()
 data_error = ""
-if exch_id == "oanda" and not (api_key and secret_key):
-    data_error = "OANDA price data er jonno sidebar e Practice API Token + Account ID dao."
+if needs_creds_for_data and not (api_key and secret_key):
+    data_error = f"{exchange} price data er jonno sidebar e Token + Account ID dao."
 else:
     try:
         live_price = float(md.last_price(target_symbol))
@@ -943,6 +968,8 @@ balance_usd_text = f"${_bal_val:,.2f} USDT"
 st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}):</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:14px; color:{'#00e676' if floating_pnl >= 0 else '#ff1744'}; font-weight:bold;'>Live Floating P&L Indicator: {floating_pnl:+.4f} USDT</p></div>", unsafe_allow_html=True)
 if is_real_live:
     if real_engine_error: st.error(f"{exchange} connect error: {real_engine_error}")
+    elif license_ok and api_key and secret_key and not use_testnet and not mainnet_ack: st.warning("⚠️ ASOL taka (mainnet) mode: sidebar er 'Ami bujhi eta ASOL taka' tick na dile trade shuru hobe na.")
+    elif license_ok and exch_id == "bitget" and api_key and secret_key and not api_pass: st.info("🔑 Bitget er jonno API Passphrase-o dao (key banano-r somoy je password dichhile).")
     elif real_engine is None: st.info(f"🔒 Real mode: sidebar e License Password dao, tarpor {exchange} er API credentials dao. Tahole {exchange} er asol balance ekhane ashbe.")
     else:
         st.caption(f"🔗 {exchange} {'TESTNET/PRACTICE 🧪' if use_testnet else 'LIVE 🔴'} connected | Equity: ${real_wallet['equity']:,.2f} | Available: ${real_wallet['available']:,.2f} USDT")
