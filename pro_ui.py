@@ -133,7 +133,11 @@ _CSS = """
 
 
 def inject(st):
-    st.markdown(_m(_CSS), unsafe_allow_html=True)
+    st.markdown(_m(_CSS + _CSS2), unsafe_allow_html=True)
+
+
+def inject_auth(st):
+    st.markdown(_m(_CSS_AUTH), unsafe_allow_html=True)
 
 
 # ----------------------------------------------------------------- hero
@@ -147,11 +151,11 @@ def hero(balance, mode, exchange, symbol, running, uptime_s=0, wins=0, losses=0,
     <div class="pz-win">
       <div class="pz-chrome">
         <span class="pz-dot" style="background:#ff5f56"></span><span class="pz-dot" style="background:#ffbd2e"></span><span class="pz-dot" style="background:#27c93f"></span>
-        <span class="t">scalper-bot &middot; {_e(exchange)} &middot; {_e(symbol)} &middot; ai swarm</span>
+        <span class="t">scalper &middot; {_e(exchange)} &middot; {_e(symbol)} &middot; ai swarm</span>
         <span class="pz-pill {'live' if live else 'demo'}">{'REAL &bull; LIVE' if live else 'DEMO &bull; PAPER'}</span>
       </div>
       <div class="pz-hero">
-        <div class="pz-orb {state}"></div>
+        <div class="pz-hg {state}">{globe(74)}</div>
         <div>
           <div class="pz-title">AI Scalper <b>Terminal</b></div>
           <div class="pz-sub"><i>{'&#9679; running' if running else '&#9675; stopped'}</i> &middot; {h:02d}:{mn:02d}:{s:02d} &middot; stage: {_e(stage)}</div>
@@ -309,4 +313,150 @@ def equity_chart(points, height=210):
     col = GREEN if acc[-1] >= 0 else RED
     fig = go.Figure(go.Scatter(x=list(range(1, len(acc) + 1)), y=acc, mode="lines", line=dict(color=col, width=2.2),
                                fill="tozeroy", fillcolor="rgba(34,242,160,.08)" if acc[-1] >= 0 else "rgba(255,77,109,.08)"))
+    return _layout(fig, height)
+
+
+# =====================================================================
+#  v2: global theme fix, 3D globe, auth screens, splash, admin helpers
+# =====================================================================
+_CSS2 = """
+<style>
+:root{color-scheme:dark}
+html,body,.stApp,[data-testid="stApp"],[data-testid="stAppViewContainer"],[data-testid="stMain"]{background:#05080f !important}
+.stApp{background:radial-gradient(1100px 560px at 12% -8%,rgba(56,189,248,.11),transparent 60%),
+ radial-gradient(900px 520px at 98% 0%,rgba(167,139,250,.11),transparent 55%),#05080f !important;color:#dbe7f5}
+[data-testid="stHeader"]{background:rgba(5,8,15,.72) !important;backdrop-filter:blur(8px)}
+[data-testid="stHeader"] button,[data-testid="stToolbar"] button,[data-testid="stHeader"] a{color:#9db0cc !important}
+[data-testid="stSidebar"],[data-testid="stSidebar"]>div,[data-testid="stSidebarContent"],[data-testid="stSidebarUserContent"]{
+ background:linear-gradient(180deg,#0a111e,#05080f) !important}
+[data-testid="stSidebar"]{border-right:1px solid #16233a !important}
+[data-testid="stSidebar"] [data-testid="stWidgetLabel"] p,[data-testid="stSidebar"] label p,[data-testid="stSidebar"] .stCaption,
+[data-testid="stWidgetLabel"] p,label p{color:#b7c6dc !important}
+hr{border-color:#16233a !important}
+*{scrollbar-width:thin;scrollbar-color:#22334f transparent}
+[data-baseweb="input"],[data-baseweb="base-input"],[data-baseweb="select"]>div,[data-baseweb="textarea"],textarea,input{
+ background:#0a1322 !important;color:#e6f0ff !important;border-color:#1b2b46 !important;border-radius:10px !important}
+[data-baseweb="input"]:focus-within,[data-baseweb="select"]>div:focus-within{border-color:#38bdf8 !important;box-shadow:0 0 0 3px rgba(56,189,248,.14) !important}
+[data-baseweb="popover"] ul,[data-baseweb="menu"]{background:#0b1220 !important;color:#e6f0ff !important}
+.stButton>button,.stDownloadButton>button{width:100%;border-radius:12px;font:700 13px 'JetBrains Mono',monospace !important;letter-spacing:.3px;
+ padding:.62rem 1rem;background:linear-gradient(180deg,#121e35,#0b1424) !important;color:#e6f0ff !important;border:1px solid #1f3152 !important;transition:all .18s}
+.stButton>button p{color:inherit !important}
+.stButton>button:hover{border-color:#38bdf8 !important;box-shadow:0 0 18px rgba(56,189,248,.25);transform:translateY(-1px)}
+[class*="st-key-start_latch"] button{background:linear-gradient(135deg,#0d9f63,#22f2a0) !important;color:#03140c !important;border:0 !important}
+[class*="st-key-stop_latch"] button,[class*="st-key-force_liquidate"] button{background:linear-gradient(135deg,#b3203d,#ff4d6d) !important;color:#fff !important;border:0 !important}
+[class*="st-key-manual_long"] button{border-color:rgba(34,242,160,.6) !important;color:#22f2a0 !important}
+[class*="st-key-manual_short"] button{border-color:rgba(255,77,109,.6) !important;color:#ff4d6d !important}
+[class*="st-key-log_submit"] button,[class*="st-key-reg_submit"] button,[class*="st-key-submit_forget"] button{
+ background:linear-gradient(135deg,#0ea5e9,#8b5cf6) !important;color:#fff !important;border:0 !important;padding:.8rem 1rem;font-size:14px !important;box-shadow:0 10px 30px -12px rgba(99,102,241,.8)}
+button:disabled{opacity:.45 !important}
+[data-baseweb="tab-list"]{gap:6px;background:#0a1322;border:1px solid #16233a;border-radius:12px;padding:4px}
+[data-baseweb="tab"]{border-radius:9px !important;padding:6px 14px !important;color:#8aa0bf !important;background:transparent !important}
+[data-baseweb="tab"][aria-selected="true"]{background:linear-gradient(135deg,rgba(56,189,248,.2),rgba(167,139,250,.2)) !important;color:#fff !important}
+[data-baseweb="tab-highlight"],[data-baseweb="tab-border"]{display:none !important}
+[data-testid="stExpander"]{background:#0b1220 !important;border:1px solid #16233a !important;border-radius:14px !important}
+[data-testid="stExpander"] summary{color:#dbe7f5 !important}
+[data-testid="stDataFrame"]{border:1px solid #16233a;border-radius:12px;overflow:hidden}
+[data-testid="stAlert"]{border-radius:12px !important;border:1px solid #16233a !important}
+[data-testid="stCode"],pre{background:#04070d !important;border:1px solid #16233a;border-radius:10px}
+.custom-box-grid{background:linear-gradient(180deg,#0b1220,#080d18) !important;border:1px solid #16233a !important;border-radius:14px !important;
+ box-shadow:none !important;padding:16px 18px !important;margin-bottom:12px !important}
+.custom-box-grid span{font:700 10px 'JetBrains Mono',monospace !important;letter-spacing:1px;color:#6b819f}
+.custom-box-grid h4{font:800 24px 'JetBrains Mono',monospace !important;margin:8px 0 0 !important}
+.matrix-neon-text{font-family:'JetBrains Mono',monospace !important;color:#22f2a0 !important;text-shadow:none !important}
+.stTextArea textarea{font-family:'JetBrains Mono',monospace !important}
+/* section header */
+.pz-sec{display:flex;align-items:center;gap:12px;margin:22px 0 12px}
+.pz-sec .bar{width:4px;height:34px;border-radius:4px;background:linear-gradient(180deg,#38bdf8,#a78bfa)}
+.pz-sec .t{font:700 19px 'Space Grotesk',sans-serif;color:#fff}
+.pz-sec .s{font:400 11px 'JetBrains Mono',monospace;color:#6b819f;margin-top:2px}
+/* 3D globe (pure CSS) */
+.pz-globe{--s:120px;width:var(--s);height:var(--s);position:relative;perspective:800px;flex:none;margin:0 auto}
+.pz-globe .glow{position:absolute;inset:-40%;border-radius:50%;background:radial-gradient(circle,rgba(56,189,248,.34),rgba(167,139,250,.18) 45%,transparent 70%);animation:pzglow 4s ease-in-out infinite}
+.pz-globe .core{position:absolute;inset:9%;border-radius:50%;
+ background:radial-gradient(circle at 32% 26%,#fff 0%,#a5f3fc 12%,#38bdf8 32%,#6d28d9 68%,#1e1b4b 100%);
+ box-shadow:inset -12px -16px 28px rgba(0,0,0,.55),0 0 38px rgba(56,189,248,.5)}
+.pz-globe .tilt{position:absolute;inset:0;transform-style:preserve-3d;transform:rotateX(-20deg) rotateZ(14deg)}
+.pz-globe .sph{position:absolute;inset:0;transform-style:preserve-3d;animation:pzspin 16s linear infinite}
+.pz-globe .m{position:absolute;inset:0;border-radius:50%;border:1px solid rgba(125,211,252,.6)}
+.pz-globe .lat{position:absolute;inset:0;border-radius:50%;border:1px solid rgba(196,181,253,.5)}
+.pz-globe .ring{position:absolute;inset:-16%;border-radius:50%;border:1.5px solid rgba(34,242,160,.65);transform:rotateX(74deg);
+ box-shadow:0 0 12px rgba(34,242,160,.35)}
+.pz-globe .ring.r2{inset:-30%;border-color:rgba(167,139,250,.5);transform:rotateX(74deg) rotateY(24deg);box-shadow:0 0 12px rgba(167,139,250,.3)}
+.pz-globe .dotw{position:absolute;inset:-16%;transform-style:preserve-3d;transform:rotateX(74deg);animation:pzorbit 5s linear infinite}
+.pz-globe .dotw i{position:absolute;left:50%;top:-4px;width:8px;height:8px;margin-left:-4px;border-radius:50%;background:#22f2a0;box-shadow:0 0 12px 3px #22f2a0}
+.pz-globe .dotw.d2{inset:-30%;animation-duration:8s;animation-direction:reverse;transform:rotateX(74deg) rotateY(24deg)}
+.pz-globe .dotw.d2 i{background:#c4b5fd;box-shadow:0 0 12px 3px #a78bfa}
+@keyframes pzspin{to{transform:rotateY(360deg)}}
+@keyframes pzorbit{to{transform:rotateX(74deg) rotateZ(360deg)}}
+@keyframes pzglow{0%,100%{opacity:.75;transform:scale(1)}50%{opacity:1;transform:scale(1.08)}}
+.pz-hg{flex:none;width:92px}.pz-hg.off{filter:grayscale(.9) brightness(.55)}
+.pz-hg.off .sph,.pz-hg.off .dotw,.pz-hg.off .glow{animation-play-state:paused}
+@media(prefers-reduced-motion:reduce){.pz-globe *{animation:none !important}}
+</style>
+"""
+
+_CSS_AUTH = """
+<style>
+.block-container{max-width:520px !important;padding-top:1.6rem !important}
+[data-testid="stSidebar"],[data-testid="stSidebarCollapsedControl"],[data-testid="stSidebarCollapseWrapper"]{display:none !important}
+.pz-auth-hero{text-align:center;padding:6px 0 18px}
+.pz-auth-hero .pz-globe{margin:30px auto 34px}
+.pz-auth-title{font:700 40px 'Space Grotesk',sans-serif;color:#fff;letter-spacing:3px}
+.pz-auth-title b{background:linear-gradient(90deg,#38bdf8,#a78bfa,#22f2a0);-webkit-background-clip:text;background-clip:text;color:transparent}
+.pz-auth-sub{font:400 12px 'JetBrains Mono',monospace;color:#6b819f;margin:8px 0 14px;letter-spacing:.5px}
+.pz-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.pz-chips span{font:600 10px 'JetBrains Mono',monospace;color:#9db0cc;border:1px solid #16233a;background:#0a1322;border-radius:999px;padding:5px 11px}
+.pz-online{display:inline-flex;align-items:center;gap:7px;font:700 10px 'JetBrains Mono',monospace;color:#22f2a0;letter-spacing:1.4px;margin-bottom:6px}
+.pz-online i{width:7px;height:7px;border-radius:50%;background:#22f2a0;box-shadow:0 0 10px #22f2a0;animation:pzblink 1.2s steps(2) infinite}
+[data-testid="stRadio"] [role="radiogroup"]{flex-direction:row !important;gap:6px;background:#0a1322 !important;border:1px solid #16233a !important;border-radius:14px !important;padding:5px !important}
+[data-testid="stRadio"] label[data-baseweb="radio"]{flex:1;justify-content:center;border-radius:10px;padding:8px 6px;margin:0 !important;cursor:pointer}
+[data-testid="stRadio"] label[data-baseweb="radio"]>div:first-child{display:none !important}
+[data-testid="stRadio"] label[data-baseweb="radio"] p{font:700 13px 'JetBrains Mono',monospace !important;color:#8aa0bf !important;text-align:center}
+[data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked){background:linear-gradient(135deg,rgba(56,189,248,.22),rgba(167,139,250,.22))}
+[data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) p{color:#fff !important}
+[data-baseweb="input"],[data-baseweb="select"]>div{min-height:46px}
+</style>
+"""
+
+_G = {"m": 6, "lat": (0.5, 0.8)}
+
+
+def globe(size=120):
+    """Pure-CSS 3D wireframe globe: rotating meridians + latitude rings + orbiting dots + glowing core."""
+    R = size / 2
+    mer = "".join(f'<div class="m" style="transform:rotateY({i * 30}deg)"></div>' for i in range(6))
+    lats = ""
+    for h in (-0.62, -0.3, 0.0, 0.3, 0.62):
+        r = (1 - h * h) ** 0.5
+        lats += (f'<div class="lat" style="transform:rotateX(90deg) translateZ({h * R:.1f}px) scale({r:.3f})"></div>')
+    return _m(f"""<div class="pz-globe" style="--s:{size}px"><div class="glow"></div><div class="core"></div>
+      <div class="tilt"><div class="sph">{mer}{lats}</div></div>
+      <div class="ring"></div><div class="ring r2"></div><div class="dotw"><i></i></div><div class="dotw d2"><i></i></div></div>""")
+
+
+def auth_hero():
+    return _m(f"""<div class="pz-auth-hero"><div class="pz-online"><i></i>SYSTEM ONLINE</div>{globe(170)}
+      <div class="pz-auth-title">AI <b>SCALPER</b></div>
+      <div class="pz-auth-sub">smart signals &middot; auto TP / SL &middot; crypto + forex</div>
+      <div class="pz-chips"><span>&#9889; real-time signals</span><span>&#128737; risk-first</span><span>&#127760; multi-exchange</span></div></div>""")
+
+
+def splash_html():
+    return _m(f"""<style>[data-testid="stAppViewContainer"],html,body,.stApp{{background:#05080f !important}}
+      .pz-splash{{display:flex;flex-direction:column;align-items:center;justify-content:center;height:88vh;gap:34px}}
+      .pz-splash .t{{font:700 28px 'Space Grotesk','Courier New',sans-serif;letter-spacing:6px;color:#fff;text-align:center}}
+      .pz-splash .pb{{width:60%;max-width:360px;height:5px;border-radius:5px;background:#101a2d;overflow:hidden}}
+      .pz-splash .pb i{{display:block;height:100%;width:0;background:linear-gradient(90deg,#38bdf8,#a78bfa,#22f2a0);animation:pzfill 1.3s ease-in-out forwards}}
+      @keyframes pzfill{{to{{width:100%}}}}</style>{_CSS2}
+      <div class="pz-splash">{globe(150)}<div class="t">AI PRO SCALPER</div><div class="pb"><i></i></div></div>""")
+
+
+def section(title, sub=""):
+    return _m(f'<div class="pz-sec"><span class="bar"></span><div><div class="t">{_e(title)}</div><div class="s">{_e(sub)}</div></div></div>')
+
+
+def bar_chart(labels, values, height=220, color=CYAN):
+    if go is None or not labels:
+        return None
+    fig = go.Figure(go.Bar(x=list(labels), y=list(values), marker_color=color))
     return _layout(fig, height)
