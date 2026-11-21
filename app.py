@@ -230,27 +230,8 @@ if "engine_logs" not in st.session_state:
     st.session_state.engine_logs = ["System Swarm Gateway Init... 📡"]
 # --- 🚀 PREMIUM NO-BORDER SPLASH SCREEN ANIMATION TRIGGER ---
 if "splash_done" not in st.session_state:
-    st.set_page_config(page_title="Bybit AI Scalper", page_icon="⚡", layout="wide")
-    st.markdown(
-        """
-        <style>
-        [data-testid="stAppViewContainer"], html, body { background-color: #06090e !important; margin: 0 !important; padding: 0 !important; border: none !important; }
-        .splash-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 90vh; background-color: #06090e; color: white; font-family: 'Courier New', monospace; border: none !important; box-shadow: none !important; }
-        .loader-circle { border: 4px solid rgba(255, 255, 255, 0.05); border-radius: 50%; border-top: 4px solid #00e676; border-bottom: 4px solid #ffcc00; width: 100px; height: 100px; animation: spin 1.0s linear infinite; margin-bottom: 35px; box-shadow: 0 0 15px rgba(0, 230, 118, 0.2); }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .progress-bar-container { width: 65%; background-color: #141a24; border-radius: 10px; padding: 2px; border: 1px solid #1f2c3f; }
-        .progress-bar-fill { height: 5px; background: linear-gradient(90deg, #ff9900, #00e676); width: 0%; border-radius: 5px; animation: fillProgress 1.3s ease-in-out forwards; }
-        @keyframes fillProgress { to { width: 100%; } }
-        .splash-text { font-size: 24px; font-weight: 800; letter-spacing: 4px; margin-bottom: 25px; text-align: center; color: #ffffff; text-shadow: 0 0 10px rgba(255,255,255,0.1); }
-        </style>
-        <div class="splash-container">
-            <div class="loader-circle"></div>
-            <div class="splash-text">BYBIT AI PRO SCALPER</div>
-            <div class="progress-bar-container"><div class="progress-bar-fill"></div></div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    st.set_page_config(page_title="AI Scalper", page_icon="⚡", layout="wide")
+    st.markdown(pro_ui.splash_html(), unsafe_allow_html=True)
     time.sleep(1.4)
     st.session_state.splash_done = True
     st.rerun()
@@ -603,13 +584,13 @@ st.markdown(
 )
 pro_ui.inject(st)
 if st.session_state.logged_in_user is None:
-    st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
-    st.subheader("🔑 Account Identity Gateway Control Panel")
-    auth_mode = st.radio("Choose Layer:", ["Secure Login Profile", "Mint New Account ID", "Forget Password Profile"])
+    pro_ui.inject_auth(st)
+    st.markdown(pro_ui.auth_hero(), unsafe_allow_html=True)
+    auth_mode = st.radio("Choose Layer:", ["Login", "Sign Up", "Recover"], horizontal=True, label_visibility="collapsed")
     
-    if auth_mode == "Mint New Account ID":
-        reg_username = st.text_input("Username Handle:", key="reg_u").strip()
-        reg_password = st.text_input("Password Phrase:", type="password", key="reg_p").strip()
+    if auth_mode == "Sign Up":
+        reg_username = st.text_input("Username", key="reg_u").strip()
+        reg_password = st.text_input("Password", type="password", key="reg_p").strip()
         reg_email = st.text_input("Google Mail (Gmail ID):", key="reg_e").strip()
         global_country_list = ["Bangladesh", "United States", "United Kingdom", "United Arab Emirates", "Saudi Arabia", "Malaysia", "India", "Pakistan", "Kuwait", "Qatar", "Oman", "Singapore", "Canada", "Australia", "Germany"]
         reg_country = st.selectbox("Select Profile Country (Mandatory):", global_country_list, index=0)
@@ -618,7 +599,7 @@ if st.session_state.logged_in_user is None:
         reg_phone_raw = st.text_input("Mobile Number (Without Country Code):", key="reg_ph_num_raw").strip()
         reg_school = st.text_input("First School Name? (Security Answer Check):", key="reg_sch").strip()
         reg_sponsor = st.text_input("Sponsor Referral Token ID (Username or UID):", key="reg_s").strip()
-        if st.button("🚀 Register My Handle", key="reg_submit_btn"):
+        if st.button("Create account  →", key="reg_submit_btn"):
             st._central_user_creds = db_load("user_creds", {})
             if reg_username == "" or reg_password == "" or reg_email == "" or reg_school == "" or reg_phone_raw == "":
                 st.error("Mandatory fields are blank! Process blocked.")
@@ -657,8 +638,8 @@ if st.session_state.logged_in_user is None:
                     db_save("pnl_history", st._global_user_pnl_history)
                 st.success(f"Bound Identity Successful! UID Generated: {new_uid}")
         st.stop()
-    elif auth_mode == "Forget Password Profile":
-        st.markdown("<h3>🔒 Recover Password Profile System Node</h3>", unsafe_allow_html=True)
+    elif auth_mode == "Recover":
+        st.caption("Username ar security answer diye account recover koro.")
         f_user = st.text_input("Enter Username Handle to Recover:", key="forget_u_field").strip()
         f_school = st.text_input("Verification: First School Name?", key="forget_sch_field").strip()
         if st.button("⚡ Verify and Reveal Password", key="submit_forget_proc_btn"):
@@ -667,10 +648,10 @@ if st.session_state.logged_in_user is None:
             else: st.error("Verification parameters failed or mismatch!")
         st.stop()
         
-    elif auth_mode == "Secure Login Profile":
-        login_u = st.text_input("Identity Handle Name:", key="log_u").strip()
-        login_p = st.text_input("Password Phrase Entry:", type="password", key="log_p").strip()
-        if st.button("🔓 Authenticate In Dashboard Core", key="log_submit_btn"):
+    elif auth_mode == "Login":
+        login_u = st.text_input("Username", key="log_u").strip()
+        login_p = st.text_input("Password", type="password", key="log_p").strip()
+        if st.button("Sign in  →", key="log_submit_btn"):
             st._central_user_creds = db_load("user_creds", {})
             if login_u in st._central_user_creds and st._central_user_creds[login_u]["password"] == login_p:
                 st.session_state.logged_in_user = login_u
@@ -960,7 +941,7 @@ win_rate = (local_win / total_trades * 100) if total_trades > 0 else 0.0
 # (old WON/LOST bar replaced by pro_ui.stats_panel)
 
 if not is_real_live:
-    st.markdown("<b>⚙️ Sandbox Fund Manager Module Panel:</b>", unsafe_allow_html=True)
+    st.markdown(pro_ui.section('Sandbox Funds', 'demo balance manager'), unsafe_allow_html=True)
     cb_col1, cb_col2 = st.columns(2)
     with cb_col1: custom_balance_input = st.number_input("Input Target Amount to Load:", min_value=1.0, value=float(st.session_state.get('demo_balance', 5000.0)), key="sandbox_balance_changer")
     with cb_col2:
@@ -1359,7 +1340,7 @@ def calculate_sub_generations(r_uid, tree):
     return g_map
 # --- 🌿 RESTORE NETWORK MARKETING MATRIX PANELS ---
 st.markdown("<hr style='border:1px solid #1f2c3f;'>", unsafe_allow_html=True)
-st.markdown(f"<h3 style='color:#f5a623;'>🌿 Network Marketing Matrix Desk ({dashboard_mode_title})</h3>", unsafe_allow_html=True)
+st.markdown(pro_ui.section('Network Marketing Desk', f'referral & 7-generation commissions · {dashboard_mode_title}'), unsafe_allow_html=True)
 search_uid_input = st.text_input("Enter Target Member UID box input:", value=allocated_user_id, key="custom_uid_search_field_node").strip()
 
 mode_filter_string = "REAL" if is_real_live else "DEMO"
@@ -1401,7 +1382,7 @@ if search_uid_input:
                     st.dataframe(child_demo_df.iloc[::-1], use_container_width=True)
                 else: st.info("No sandbox simulation records synced yet.")
         else: st.info("Ledger registry is empty.")
-st.markdown("<br><b style='color:#f5a623;'>📊 Sub-Downline Network Members Status Grid Management Node:</b>", unsafe_allow_html=True)
+st.markdown(pro_ui.section('Downline Members', 'sub-generation status grid'), unsafe_allow_html=True)
 sub_tree_records = []
 mapped_gens = calculate_sub_generations(search_uid_input, st._global_referral_tree)
 for g_key, sub_uids in mapped_gens.items():
@@ -1416,73 +1397,126 @@ for g_key, sub_uids in mapped_gens.items():
         sub_tree_records.append({"Hierarchy Level": g_key, "User ID": sub_uid, "Username": st._uid_to_username.get(sub_uid, f"Node-{sub_uid[:4]}"), "Demo Lifetime Profit": f"${demo_pnl:.2f} USDT", "Real Lifetime Profit": f"${real_pnl:.2f} USDT"})
 if sub_tree_records: st.dataframe(pd.DataFrame(sub_tree_records), use_container_width=True)
 else: st.info("No active downline nodes found.")
-with st.expander("🛠️ Advanced Licensing Cryptographic Hub (Super Admin Panel)"):
+with st.expander("🛠️ Super Admin Panel"):
     master_input = st.text_input("Input Master Security Override Code Password:", type="password", key="supreme_admin_password_node")
     if master_input == YOUR_SECRET_MASTER_CODE:
         st.success("Supreme Controller Access Verified.")
-        st.markdown("<h2>⚙️ Referral Marketing Master Controls Desk:</h2>", unsafe_allow_html=True)
-        old_ref_sys = st._ref_system_active
-        st._ref_system_active = st.toggle("Activate Global Referral Sign-Up Bonus Matrix", value=st._ref_system_active, key="adm_ref_sys_toggle")
-        if old_ref_sys != st._ref_system_active: db_save("ref_sys_active", st._ref_system_active)
-        admin_current_ref_payout = float(db_load("admin_fixed_ref_usd", 10.0))
-        admin_new_ref_payout = st.number_input("🚨 Referral Bonus Fixed Amount Settings ($) Input:", min_value=0.0, value=admin_current_ref_payout, step=1.0, key="adm_fixed_ref_amt_box")
-        if admin_new_ref_payout != admin_current_ref_payout: db_save("admin_fixed_ref_usd", admin_new_ref_payout); st.rerun()
-        st.markdown("<h3>✍️ Manual Balance Override Control (Edit User Funds)</h3>", unsafe_allow_html=True)
-        target_edit_uid = st.text_input("Enter Target Member UID to Edit:", key="adm_edit_target_uid_field").strip()
-        edit_mode_sel = st.selectbox("Select Balance Type to Modify:", ["Demo Simulation Balance", "Real Mainnet Balance"])
-        new_edit_value = st.number_input("Input Absolute New Balance Value Amount ($):", min_value=0.0, value=0.0, step=10.0)
-        if st.button("🚨 Save Hard Fund Override Changes", key="adm_execute_edit_funds_btn"):
-            if target_edit_uid != "":
-                if "Real" in edit_mode_sel: db_save(f"real_balance_{target_edit_uid}", float(new_edit_value))
-                else: db_save(f"balance_{target_edit_uid}", float(new_edit_value))
-                st.success("User configuration funds updated inside database successfully!"); st.rerun()
-        st.markdown("<h3>🌿 Global User Registry Network Map:</h3>", unsafe_allow_html=True)
-        full_mapped_tree = {}
-        for parent_uid in list(st._global_referral_tree.keys()):
-            deep_tree = calculate_sub_generations(parent_uid, st._global_referral_tree)
-            summary_node = {}
-            for gen_name, uid_list in deep_tree.items():
-                if uid_list: summary_node[f"{gen_name} (Total: {len(uid_list)} Active IDs)"] = [f"{st._uid_to_username.get(uid, 'Unknown')} -> {uid}" for uid in uid_list]
-            if summary_node:
-                user_label = st._uid_to_username.get(parent_uid, parent_uid)
-                full_mapped_tree[f"👤 Sponsor Handle: {user_label} [{parent_uid}]"] = summary_node
-        st.json(full_mapped_tree)
-        st.markdown("<h3>📊 Global Live Trade Ledger (All Users Tracking):</h3>", unsafe_allow_html=True)
-        if st._global_user_pnl_history:
-            full_ledger_df = pd.DataFrame(st._global_user_pnl_history)
-            unique_uids_list = list(full_ledger_df["User ID"].unique()) if "User ID" in full_ledger_df.columns else []
-            selected_audit_uid = st.selectbox("🎯 Select Specific Member UID to Filter Details Tree Ledger:", ["ALL USERS"] + unique_uids_list)
-            if selected_audit_uid == "ALL USERS": st.dataframe(full_ledger_df.iloc[::-1], use_container_width=True)
-            else:
-                filtered_ledger_df = full_ledger_df[full_ledger_df["User ID"] == selected_audit_uid]
-                st.dataframe(filtered_ledger_df.iloc[::-1], use_container_width=True)
-        old_val = st._mlm_bonus_enabled
-        st._mlm_bonus_enabled = st.toggle("Activate MLM Multi-Generation Incentive Commissions System", value=st._mlm_bonus_enabled, key="adm_mlm_active_toggle")
-        if old_val != st._mlm_bonus_enabled: db_save("mlm_enabled", st._mlm_bonus_enabled)
-        c_cols = st.columns(2)
-        for g in range(1, 8):
-            with c_cols[(g-1)%2]:
-                st._mlm_gen_rates[str(g)] = st.number_input(f"Gen {g} Share (%):", min_value=0.0, max_value=100.0, value=st._mlm_gen_rates.get(str(g), st._mlm_gen_rates.get(g, 5.0)), key=f"adm_rates_generation_input_g_{g}")
-                st._mlm_id_thresholds[str(g)] = st.number_input(f"Gen {g} Cap:", min_value=1, value=st._mlm_id_thresholds.get(str(g), st._mlm_id_thresholds.get(g, 10)), key=f"adm_thresholds_generation_input_g_{g}")
-        db_save("gen_rates", st._mlm_gen_rates); db_save("id_thresh", st._mlm_id_thresholds)
-        if st.button("Mint New Randomized License Token Key", key="adm_mint_token_trigger_btn"):
-            random_token = "SCLP-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
-            st._central_key_registry[random_token] = "FREE_SLOT"
-            st._license_csv_database.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "License Key": random_token, "Status": "Active (Unused)"})
-            db_save("key_registry", st._central_key_registry); db_save("license_csv", st._license_csv_database); st.code(f"{random_token}"); st.rerun()
-        override_uid = st.text_input("Target User ID (UID) to Hack/Change:", key="adm_override_uid_field").strip()
-        override_new_pass = st.text_input("Set Custom New Password Phrase:", key="adm_override_pass_field").strip()
-        if st.button("Execute Hard Password Override Ban", key="adm_override_pass_submit_btn"):
-            found_account = None
-            for uname, data in st._central_user_creds.items():
-                if data.get("uid") == override_uid: found_account = uname; break
-            if found_account and override_new_pass != "":
-                st._central_user_creds[found_account]["password"] = override_new_pass; db_save("user_creds", st._central_user_creds); st.success(f"Success!"); st.rerun()
-        target_block_key = st.text_input("Paste Target License Token to BAN permanently:", key="adm_ban_token_input_field")
-        if st.button("Execute Permanent Revocation Ban", key="adm_ban_token_trigger_btn"):
-            if target_block_key in st._central_key_registry:
-                st._central_blacklist.append(target_block_key); del st._central_key_registry[target_block_key]
-                db_save("blacklist", st._central_blacklist); db_save("key_registry", st._central_key_registry); st.warning(f"Token blocked permanent."); st.rerun()
-        if st._license_csv_database: st.dataframe(pd.DataFrame(st._license_csv_database).iloc[::-1], use_container_width=True, height=120)
-        all_creds_df = pd.DataFrame.from_dict(st._central_user_creds, orient='index')
-        if not all_creds_df.empty: st.dataframe(all_creds_df, use_container_width=True)
+        _uc = st._central_user_creds or {}
+        _keys = st._central_key_registry or {}
+        _led = st._global_user_pnl_history or []
+        _trade_rows = [r for r in _led if "COMMISSION" not in str(r.get("Action", ""))]
+        def _sumpnl(rows, typ):
+            _t = 0.0
+            for r in rows:
+                try:
+                    if r.get("Type") == typ: _t += float(r.get("Net P&L ($)", 0))
+                except Exception: pass
+            return _t
+        _real_net, _demo_net = _sumpnl(_trade_rows, "REAL"), _sumpnl(_trade_rows, "DEMO")
+        _comm = sum(float(r.get("Net P&L ($)", 0) or 0) for r in _led if "COMMISSION" in str(r.get("Action", "")))
+        _free = sum(1 for v in _keys.values() if v == "FREE_SLOT")
+        st.markdown(pro_ui.kpis([
+            ("Members", f"{len(_uc)}", f"{sum(1 for u in _uc.values() if u.get('license_activated_before'))} licensed", "#38bdf8", ""),
+            ("License keys", f"{len(_keys)}", f"{_free} unused - {len(st._central_blacklist)} banned", "#a78bfa", ""),
+            ("Closed trades", f"{len(_trade_rows)}", "all members", "#f5a623", ""),
+            ("Real net P&L", f"{_real_net:+,.2f}$", "all members", "#22f2a0" if _real_net >= 0 else "#ff4d6d", "pos" if _real_net > 0 else ("neg" if _real_net < 0 else "flat")),
+            ("Demo net P&L", f"{_demo_net:+,.2f}$", "all members", "#22f2a0" if _demo_net >= 0 else "#ff4d6d", "pos" if _demo_net > 0 else ("neg" if _demo_net < 0 else "flat")),
+            ("Commissions", f"{_comm:,.2f}$", "referral + generation", "#243553", ""),
+        ]), unsafe_allow_html=True)
+        _t_ov, _t_ref, _t_fund, _t_net, _t_lic = st.tabs(["Overview", "Referral & MLM", "Funds", "Network & Ledger", "Licenses & Users"])
+        with _t_ov:
+            try:
+                _by_c = {}
+                for _u in _uc.values(): _by_c[_u.get("country", "?")] = _by_c.get(_u.get("country", "?"), 0) + 1
+                _f1 = pro_ui.bar_chart(list(_by_c.keys()), list(_by_c.values()), 230)
+                if _f1 is not None:
+                    st.markdown("<div class='pz-h'><span>MEMBERS BY <b>COUNTRY</b></span></div>", unsafe_allow_html=True); st.plotly_chart(_f1, use_container_width=True)
+                _per = {}
+                for r in _trade_rows:
+                    try: _per[str(r.get("User ID"))] = _per.get(str(r.get("User ID")), 0.0) + float(r.get("Net P&L ($)", 0))
+                    except Exception: pass
+                _top = sorted(_per.items(), key=lambda kv: kv[1], reverse=True)[:10]
+                if _top:
+                    _f2 = pro_ui.bar_chart([st._uid_to_username.get(k, k) for k, _ in _top], [v for _, v in _top], 230, "#22f2a0")
+                    if _f2 is not None:
+                        st.markdown("<div class='pz-h'><span>TOP 10 MEMBERS &middot; <b>NET P&L</b></span></div>", unsafe_allow_html=True); st.plotly_chart(_f2, use_container_width=True)
+                _eq_all = [float(r.get("Net P&L ($)", 0)) for r in _trade_rows if r.get("Type") == ("REAL" if is_real_live else "DEMO")]
+                _f3 = pro_ui.equity_chart(_eq_all) if len(_eq_all) >= 2 else None
+                if _f3 is not None:
+                    st.markdown(f"<div class='pz-h'><span>PLATFORM EQUITY &middot; <b>{'REAL' if is_real_live else 'DEMO'}</b></span></div>", unsafe_allow_html=True); st.plotly_chart(_f3, use_container_width=True)
+            except Exception as _e:
+                st.caption(f"Chart load hoyni: {_e}")
+        with _t_ref:
+            st.markdown("<h2>⚙️ Referral Marketing Master Controls Desk:</h2>", unsafe_allow_html=True)
+            old_ref_sys = st._ref_system_active
+            st._ref_system_active = st.toggle("Activate Global Referral Sign-Up Bonus Matrix", value=st._ref_system_active, key="adm_ref_sys_toggle")
+            if old_ref_sys != st._ref_system_active: db_save("ref_sys_active", st._ref_system_active)
+            admin_current_ref_payout = float(db_load("admin_fixed_ref_usd", 10.0))
+            admin_new_ref_payout = st.number_input("🚨 Referral Bonus Fixed Amount Settings ($) Input:", min_value=0.0, value=admin_current_ref_payout, step=1.0, key="adm_fixed_ref_amt_box")
+            if admin_new_ref_payout != admin_current_ref_payout: db_save("admin_fixed_ref_usd", admin_new_ref_payout); st.rerun()
+            old_val = st._mlm_bonus_enabled
+            st._mlm_bonus_enabled = st.toggle("Activate MLM Multi-Generation Incentive Commissions System", value=st._mlm_bonus_enabled, key="adm_mlm_active_toggle")
+            if old_val != st._mlm_bonus_enabled: db_save("mlm_enabled", st._mlm_bonus_enabled)
+            c_cols = st.columns(2)
+            for g in range(1, 8):
+                with c_cols[(g-1)%2]:
+                    st._mlm_gen_rates[str(g)] = st.number_input(f"Gen {g} Share (%):", min_value=0.0, max_value=100.0, value=st._mlm_gen_rates.get(str(g), st._mlm_gen_rates.get(g, 5.0)), key=f"adm_rates_generation_input_g_{g}")
+                    st._mlm_id_thresholds[str(g)] = st.number_input(f"Gen {g} Cap:", min_value=1, value=st._mlm_id_thresholds.get(str(g), st._mlm_id_thresholds.get(g, 10)), key=f"adm_thresholds_generation_input_g_{g}")
+            db_save("gen_rates", st._mlm_gen_rates); db_save("id_thresh", st._mlm_id_thresholds)
+        with _t_fund:
+            st.markdown("<h3>✍️ Manual Balance Override Control (Edit User Funds)</h3>", unsafe_allow_html=True)
+            target_edit_uid = st.text_input("Enter Target Member UID to Edit:", key="adm_edit_target_uid_field").strip()
+            edit_mode_sel = st.selectbox("Select Balance Type to Modify:", ["Demo Simulation Balance", "Real Mainnet Balance"])
+            new_edit_value = st.number_input("Input Absolute New Balance Value Amount ($):", min_value=0.0, value=0.0, step=10.0)
+            if st.button("🚨 Save Hard Fund Override Changes", key="adm_execute_edit_funds_btn"):
+                if target_edit_uid != "":
+                    if "Real" in edit_mode_sel: db_save(f"real_balance_{target_edit_uid}", float(new_edit_value))
+                    else: db_save(f"balance_{target_edit_uid}", float(new_edit_value))
+                    st.success("User configuration funds updated inside database successfully!"); st.rerun()
+        with _t_net:
+            st.markdown("<h3>🌿 Global User Registry Network Map:</h3>", unsafe_allow_html=True)
+            full_mapped_tree = {}
+            for parent_uid in list(st._global_referral_tree.keys()):
+                deep_tree = calculate_sub_generations(parent_uid, st._global_referral_tree)
+                summary_node = {}
+                for gen_name, uid_list in deep_tree.items():
+                    if uid_list: summary_node[f"{gen_name} (Total: {len(uid_list)} Active IDs)"] = [f"{st._uid_to_username.get(uid, 'Unknown')} -> {uid}" for uid in uid_list]
+                if summary_node:
+                    user_label = st._uid_to_username.get(parent_uid, parent_uid)
+                    full_mapped_tree[f"👤 Sponsor Handle: {user_label} [{parent_uid}]"] = summary_node
+            st.json(full_mapped_tree)
+            st.markdown("<h3>📊 Global Live Trade Ledger (All Users Tracking):</h3>", unsafe_allow_html=True)
+            if st._global_user_pnl_history:
+                full_ledger_df = pd.DataFrame(st._global_user_pnl_history)
+                unique_uids_list = list(full_ledger_df["User ID"].unique()) if "User ID" in full_ledger_df.columns else []
+                selected_audit_uid = st.selectbox("🎯 Select Specific Member UID to Filter Details Tree Ledger:", ["ALL USERS"] + unique_uids_list)
+                if selected_audit_uid == "ALL USERS": st.dataframe(full_ledger_df.iloc[::-1], use_container_width=True)
+                else:
+                    filtered_ledger_df = full_ledger_df[full_ledger_df["User ID"] == selected_audit_uid]
+                    st.dataframe(filtered_ledger_df.iloc[::-1], use_container_width=True)
+        with _t_lic:
+            if st.button("Mint New Randomized License Token Key", key="adm_mint_token_trigger_btn"):
+                random_token = "SCLP-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
+                st._central_key_registry[random_token] = "FREE_SLOT"
+                st._license_csv_database.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "License Key": random_token, "Status": "Active (Unused)"})
+                db_save("key_registry", st._central_key_registry); db_save("license_csv", st._license_csv_database); st.code(f"{random_token}"); st.rerun()
+            override_uid = st.text_input("Target User ID (UID) to Hack/Change:", key="adm_override_uid_field").strip()
+            override_new_pass = st.text_input("Set Custom New Password Phrase:", key="adm_override_pass_field").strip()
+            if st.button("Execute Hard Password Override Ban", key="adm_override_pass_submit_btn"):
+                found_account = None
+                for uname, data in st._central_user_creds.items():
+                    if data.get("uid") == override_uid: found_account = uname; break
+                if found_account and override_new_pass != "":
+                    st._central_user_creds[found_account]["password"] = override_new_pass; db_save("user_creds", st._central_user_creds); st.success(f"Success!"); st.rerun()
+            target_block_key = st.text_input("Paste Target License Token to BAN permanently:", key="adm_ban_token_input_field")
+            if st.button("Execute Permanent Revocation Ban", key="adm_ban_token_trigger_btn"):
+                if target_block_key in st._central_key_registry:
+                    st._central_blacklist.append(target_block_key); del st._central_key_registry[target_block_key]
+                    db_save("blacklist", st._central_blacklist); db_save("key_registry", st._central_key_registry); st.warning(f"Token blocked permanent."); st.rerun()
+            if st._license_csv_database: st.dataframe(pd.DataFrame(st._license_csv_database).iloc[::-1], use_container_width=True, height=120)
+            all_creds_df = pd.DataFrame.from_dict(st._central_user_creds, orient='index')
+            if not all_creds_df.empty:
+                _show_secret = st.checkbox("Password / security answer column-o dekhao", value=False, key="adm_show_secret_cols")
+                if not _show_secret:
+                    all_creds_df = all_creds_df.drop(columns=[c for c in ("password", "school_answer") if c in all_creds_df.columns])
+                st.dataframe(all_creds_df, use_container_width=True)
