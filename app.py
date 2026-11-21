@@ -16,6 +16,7 @@ import threading
 import re
 import base64
 import hashlib
+import exchanges as _exch_mod
 from bybit_engine import BybitEngine
 from exchanges import EXCHANGES, EXCHANGE_IDS, EXCHANGE_NAMES, OANDA_MAJORS, BinanceData, BitgetData, mt5_majors, make_data, make_engine, _check_ban, BINANCE_MAIN
 try:
@@ -131,6 +132,15 @@ def sticky_check(uid, label, key, default=False, **kw):
     db_save(f"sticky_{uid}_{key}", bool(val))
     return val
 
+def _ban_restore():
+    try:
+        for k, v in (db_load("ban_until_state", {}) or {}).items():
+            if float(v) > time.time(): _exch_mod._BAN_UNTIL[k] = max(_exch_mod._BAN_UNTIL.get(k, 0), float(v))
+    except Exception: pass
+
+def _ban_persist():
+    db_save("ban_until_state", {k: v for k, v in _exch_mod._BAN_UNTIL.items() if v > time.time()})
+
 def conn_check():
     """Server er public IP/country + exchange gulo ei server theke reach hocche kina."""
     rows, us = [], False
@@ -150,12 +160,14 @@ def conn_check():
             c = requests.get(url, timeout=8).status_code
             v = "✅ OK" if c == 200 else ("❌ Region/IP block" if c in (403, 451) else ("❌ Rate-limit ban" if c in (418, 429) else f"⚠️ HTTP {c}"))
         except RuntimeError as e:
-            v = "❌ Ban cholche (request pathai nai)"
+            _u = _exch_mod._BAN_UNTIL.get(bankey or "", 0)
+            v = f"❌ IP ban cholche, {datetime.utcfromtimestamp(_u + 6 * 3600).strftime('%d %b %I:%M %p')} (Dhaka somoy) porjonto. Ei somoy request pathai nai, karon ban-e request pathale ban aro lomba hoy."
         except Exception as e:
             v = f"❌ {str(e)[:50]}"
         rows.append((name, v))
     return rows, us
 
+_ban_restore()   # restart/deploy er por-o Binance ban er somoy mone rakhe
 # Initialize Sync Control Registries Persistent Global Cache System
 if "init_sync" not in st.session_state:
     st._central_user_creds = db_load("user_creds", {})
@@ -849,6 +861,12 @@ if exch_id == "mt5":
         secret_key = sticky_text(allocated_user_id, "MetaApi Account ID:", "acct_field_mt5", secret=False)
         mt5_region = sticky_text(allocated_user_id, "MetaApi Region (jemon london, new-york, singapore):", "region_field_mt5", secret=False, default="london") or "london"
         sticky_text(allocated_user_id, "Symbol suffix (Exness e prai 'm', na hole faka rakho):", "mt5_suffix_field", secret=False, help="Exness er onek account e symbol 'EURUSDm' hoy. MT5 er Market Watch e dekho.")
+        _uuid = re.compile(r"^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$")
+        if secret_key.startswith("eyJ") and _uuid.match(api_key):
+            api_key, secret_key = secret_key, api_key
+            st.info("🔄 Token ar Account ID ulte chhilo, ami thik kore nilam. Field gulo shothik jayga-y bosiye dao.")
+        elif secret_key.startswith("eyJ"):
+            st.error("❌ 'MetaApi Account ID' e tumi lomba Token (eyJ... diye shuru) boshiyecho. Account ID chhoto: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.")
         if is_real_live and not use_testnet:
             mainnet_ack = sticky_check(allocated_user_id, "⚠️ Ami bujhi eta ASOL taka. Loss hole daitto amar.", "mainnet_ack_mt5", False)
 st.markdown(f"<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>{EXCHANGE_NAMES[exch_id].upper()} AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
@@ -868,6 +886,7 @@ if is_real_live and license_ok and api_key and secret_key and (api_pass or exch_
         st.session_state.real_balance = real_wallet["equity"]
     except Exception as e:
         real_engine, real_wallet, real_engine_error = None, None, str(e)
+_ban_persist()
 df_kline = pd.DataFrame()
 data_error = ""
 if needs_creds_for_data and not (api_key and secret_key):
