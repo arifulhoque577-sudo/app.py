@@ -14,8 +14,10 @@ import streamlit as st
 import copy
 import threading
 import re
+import base64
+import hashlib
 from bybit_engine import BybitEngine
-from exchanges import EXCHANGES, EXCHANGE_IDS, EXCHANGE_NAMES, OANDA_MAJORS, BinanceData, BitgetData, mt5_majors, make_data, make_engine
+from exchanges import EXCHANGES, EXCHANGE_IDS, EXCHANGE_NAMES, OANDA_MAJORS, BinanceData, BitgetData, mt5_majors, make_data, make_engine, _check_ban, BINANCE_MAIN
 try:
     from streamlit_autorefresh import st_autorefresh
 except Exception:
@@ -78,6 +80,82 @@ def db_save(key, val):
         db.collection("scalper_system").document(key).set({"data": val})
         _db_cache()[key] = (time.time(), copy.deepcopy(val), True)
     except: pass
+# ---------- 🔐 Sticky inputs: License/API key ekbar dile mone thake (Firebase e encrypted), mode/exchange bodlaleo jay na ----------
+_TN_DEFAULT = {"bybit": False, "binance": False, "bitget": False, "oanda": True, "mt5": True}   # crypto = mainnet default, forex = practice default
+_STICKY_KEYS = ["lic_field_sidebar", "pass_field_bitget", "acct_field_oanda", "api_field_mt5", "acct_field_mt5", "region_field_mt5", "mt5_suffix_field"] + \
+               [f"{p}_field_{e}" for e in ("bybit", "binance", "bitget", "oanda") for p in ("api", "sec")]
+
+def _vault():
+    from cryptography.fernet import Fernet
+    seed = os.environ.get("VAULT_SECRET") or os.environ.get("firebase_json") or ""
+    if not seed and os.path.exists("firebase_key.json"):
+        seed = open("firebase_key.json").read()
+    return Fernet(base64.urlsafe_b64encode(hashlib.sha256(seed.encode()).digest()))
+
+def vault_get(uid, name):
+    tok = db_load(f"vault_{uid}_{name}", "")
+    if not tok: return ""
+    try: return _vault().decrypt(tok.encode()).decode()
+    except Exception: return ""
+
+def vault_set(uid, name, val):
+    try: db_save(f"vault_{uid}_{name}", _vault().encrypt(val.encode()).decode())
+    except Exception: pass
+
+def vault_clear(uid):
+    for k in _STICKY_KEYS:
+        try: db.collection("scalper_system").document(f"vault_{uid}_{k}").delete()
+        except Exception: pass
+        _db_cache().pop(f"vault_{uid}_{k}", None)
+        st.session_state.pop(k, None); st.session_state.pop(f"_sv_{k}", None)
+
+def sticky_seed(uid, key, default=""):
+    if key not in st.session_state:
+        st.session_state[key] = vault_get(uid, key) or default
+
+def sticky_text(uid, label, key, secret=True, default="", **kw):
+    sticky_seed(uid, key, default)
+    val = (st.text_input(label, type="password" if secret else "default", key=key, **kw) or "").strip()
+    if val and val != st.session_state.get(f"_sv_{key}"):   # kokhono faka value diye saved key mochha hoy na
+        if val != vault_get(uid, key): vault_set(uid, key, val)
+        st.session_state[f"_sv_{key}"] = val
+    return val
+
+def sticky_init(uid, key, default=False):
+    if key not in st.session_state:
+        st.session_state[key] = bool(db_load(f"sticky_{uid}_{key}", default))
+
+def sticky_check(uid, label, key, default=False, **kw):
+    sticky_init(uid, key, default)
+    val = st.checkbox(label, key=key, **kw)
+    db_save(f"sticky_{uid}_{key}", bool(val))
+    return val
+
+def conn_check():
+    """Server er public IP/country + exchange gulo ei server theke reach hocche kina."""
+    rows, us = [], False
+    try:
+        j = requests.get("https://ipinfo.io/json", timeout=6).json()
+        rows.append(("Server IP", f"{j.get('ip')} | {j.get('city')}, {j.get('country')}"))
+        us = j.get("country") == "US"
+    except Exception as e:
+        rows.append(("Server IP", f"check kora gelo na ({str(e)[:60]})"))
+    tests = [("Bybit mainnet", "https://api.bybit.com/v5/market/time", None),
+             ("Bybit testnet", "https://api-testnet.bybit.com/v5/market/time", None),
+             ("Binance Futures mainnet", "https://fapi.binance.com/fapi/v1/ping", BINANCE_MAIN),
+             ("Bitget mainnet", "https://api.bitget.com/api/v2/public/time", None)]
+    for name, url, bankey in tests:
+        try:
+            if bankey: _check_ban(bankey)
+            c = requests.get(url, timeout=8).status_code
+            v = "✅ OK" if c == 200 else ("❌ Region/IP block" if c in (403, 451) else ("❌ Rate-limit ban" if c in (418, 429) else f"⚠️ HTTP {c}"))
+        except RuntimeError as e:
+            v = "❌ Ban cholche (request pathai nai)"
+        except Exception as e:
+            v = f"❌ {str(e)[:50]}"
+        rows.append((name, v))
+    return rows, us
+
 # Initialize Sync Control Registries Persistent Global Cache System
 if "init_sync" not in st.session_state:
     st._central_user_creds = db_load("user_creds", {})
@@ -325,6 +403,19 @@ def _ai_job(store, key, api_key, models, prompt, symbol):
         L(res["err"])
     res["logs"], res["finished"] = logs, time.time()
     store[key] = res
+
+@st.cache_data(ttl=3, show_spinner=False)
+def feed_snapshot(exch, testnet, symbol, token="", account="", extra=""):
+    """Price + candle: 3 sec cache, tai onek tab/session khola thakleo exchange e ek-i request jay (IP ban er jhunki kome)."""
+    m = make_data(exch, testnet, token, account, extra)
+    price, rows, err = None, [], ""
+    try: price = float(m.last_price(symbol))
+    except Exception as e: err = str(e)
+    try: rows = m.klines(symbol, 30)
+    except Exception as e: err = err or str(e)
+    if price is None and not rows: raise RuntimeError(err or "no data")
+    return {"price": price or 0.0, "rows": rows, "error": err if price is None else "", "cost": m.cost_frac(symbol, price or (rows[-1][4] if rows else 1.0)),
+            "tradeable": getattr(m, "tradeable", True), "spread": getattr(m, "spread", 0.0)}
 
 @st.cache_data(ttl=8, show_spinner=False)
 def fetch_wallet_cached(exch, k, s, testnet, extra=""):   # underscore chhara: nahole cache key e user ba key dhora hoy na
@@ -608,6 +699,8 @@ with st.sidebar:
                             help="Position khola thakle exchange bodlio na. Protita exchange er position/setting alada thake.")
     db_save(f"exchange_idx_{allocated_user_id}", EXCHANGES.index(exchange))
     exch_id = EXCHANGE_IDS[exchange]
+    sticky_init(allocated_user_id, f"testnet_toggle_{exch_id}", _TN_DEFAULT[exch_id])
+    if exch_id == "mt5": sticky_seed(allocated_user_id, "mt5_suffix_field")
     exch_sfx = "" if exch_id == "bybit" else f"_{exch_id}"
     mode_suffix = ("real" if is_real_live else "demo") + exch_sfx
     dashboard_mode_title = "Real Production Dashboard Mode 🟢" if is_real_live else "Demo Sandbox Dashboard Mode 🔵"
@@ -619,13 +712,13 @@ with st.sidebar:
     if exch_id == "bybit":
         CATALOG = BYBYT_DATABASE_CORE
     else:
-        CATALOG = fetch_exchange_coins(exch_id, bool(st.session_state.get(f"testnet_toggle_{exch_id}", True)) if is_real_live else False,
+        CATALOG = fetch_exchange_coins(exch_id, bool(st.session_state.get(f"testnet_toggle_{exch_id}", _TN_DEFAULT[exch_id])) if is_real_live else False,
                                        st.session_state.get("mt5_suffix_field", "").strip() if exch_id == "mt5" else "")
         if "__error__" in CATALOG:
             st.error(f"{exchange} coin list ante parlam: {CATALOG['__error__'][:150]}. (Render region Singapore/Frankfurt hole bhalo; US block hote pare)")
             CATALOG = {k: v for k, v in BYBYT_DATABASE_CORE.items() if v["symbol"] in ("BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT")}
     coin_list = list(CATALOG.keys())
-    if exch_id == "bybit" and is_real_live and st.session_state.get("testnet_toggle_bybit", True):
+    if exch_id == "bybit" and is_real_live and st.session_state.get("testnet_toggle_bybit", False):
         try:   # testnet e jei coin live na, shegulo dropdown e dekhabo na (nahole "contract is not live" error)
             _live = set(fetch_testnet_live_symbols())
             _f = [k for k in coin_list if CATALOG[k]["symbol"] in _live]
@@ -709,11 +802,11 @@ with st.sidebar:
 
     api_key, secret_key, api_pass, mt5_region = "", "", "", "london"
     license_ok = False
-    use_testnet = True
+    use_testnet = _TN_DEFAULT[exch_id]
     mainnet_ack = True
     if is_real_live:
         st.markdown("<hr style='border:1px solid #1e293b; margin:10px 0;'><div style='background-color:#ff1744; padding:6px; border-radius:5px; text-align:center; margin-bottom:6px;'><b style='color:#ffffff; font-size:11px;'>🚨 LICENSE GATE ACTIVE</b></div>", unsafe_allow_html=True)
-        input_license = st.text_input("License Password:", type="password", key="lic_field_sidebar", label_visibility="collapsed").strip()
+        input_license = sticky_text(allocated_user_id, "License Password:", "lic_field_sidebar", label_visibility="collapsed")
         if input_license in st._central_key_registry:
             if not user_data.get("license_activated_before", False) and my_sponsor_id != "None" and st._ref_system_active:
                 st._central_user_creds[st.session_state.logged_in_user]["license_activated_before"] = True; db_save("user_creds", st._central_user_creds)
@@ -722,34 +815,42 @@ with st.sidebar:
             license_ok = True
             if exch_id in ("bybit", "binance", "bitget"):
                 _nm = EXCHANGE_NAMES[exch_id]
-                use_testnet = st.checkbox(f"🧪 {_nm} {'DEMO' if exch_id == 'bitget' else 'TESTNET'} (age ekhane test koro)", value=True, key=f"testnet_toggle_{exch_id}")
-                api_key = st.text_input(f"{_nm} API Key:", type="password", key=f"api_field_{exch_id}")
-                secret_key = st.text_input(f"{_nm} Secret Key:", type="password", key=f"sec_field_{exch_id}")
+                use_testnet = sticky_check(allocated_user_id, f"🧪 {_nm} {'DEMO' if exch_id == 'bitget' else 'TESTNET'} (tick = test account, UNTICK = asol mainnet)", f"testnet_toggle_{exch_id}", _TN_DEFAULT[exch_id])
+                api_key = sticky_text(allocated_user_id, f"{_nm} API Key:", f"api_field_{exch_id}")
+                secret_key = sticky_text(allocated_user_id, f"{_nm} Secret Key:", f"sec_field_{exch_id}")
                 if exch_id == "bitget":
-                    api_pass = st.text_input("Bitget API Passphrase:", type="password", key="pass_field_bitget")
+                    api_pass = sticky_text(allocated_user_id, "Bitget API Passphrase:", "pass_field_bitget")
                 if not use_testnet:
-                    mainnet_ack = st.checkbox("⚠️ Ami bujhi eta ASOL taka. Loss hole daitto amar.", value=False, key=f"mainnet_ack_{exch_id}")
+                    mainnet_ack = sticky_check(allocated_user_id, "⚠️ Ami bujhi eta ASOL taka. Loss hole daitto amar.", f"mainnet_ack_{exch_id}", False)
+with st.sidebar:
+    with st.expander("🩺 Server / Exchange connection check"):
+        if st.button("Ekhon check koro", key="conn_check_btn"):
+            _rows, _us = conn_check()
+            for _n, _v in _rows: st.write(f"**{_n}:** {_v}")
+            if _us: st.warning("Server USA te. Bybit/Binance/Bitget mainnet US IP block kore. Render e notun service banao Region = Singapore diye.")
+    if is_real_live and st.button("🗑️ Saved API/License key muche felo", key="vault_clear_btn"):
+        vault_clear(allocated_user_id); st.rerun()
 # 🔥 লোগো ব্যানার পেজের একদম উপরে প্লেস করা হলো
 if exch_id == "oanda":
     with st.sidebar:
         st.markdown("<hr style='border:1px solid #1e293b; margin:10px 0;'><b style='color:#38bdf8;'>💱 OANDA Credentials</b>", unsafe_allow_html=True)
         st.caption("OANDA te price data-o token chhara ashe na, tai Demo mode e-o dorkar. Free Practice account diye shuru koro.")
-        use_testnet = st.checkbox("🧪 OANDA PRACTICE account (age ekhane test koro)", value=True, key="testnet_toggle_oanda")
-        api_key = st.text_input("OANDA API Token:", type="password", key="api_field_oanda")
-        secret_key = st.text_input("OANDA Account ID (jemon 101-001-1234567-001):", key="acct_field_oanda").strip()
+        use_testnet = sticky_check(allocated_user_id, "🧪 OANDA PRACTICE account (age ekhane test koro)", "testnet_toggle_oanda", True)
+        api_key = sticky_text(allocated_user_id, "OANDA API Token:", "api_field_oanda")
+        secret_key = sticky_text(allocated_user_id, "OANDA Account ID (jemon 101-001-1234567-001):", "acct_field_oanda", secret=False)
         if is_real_live and not use_testnet:
-            mainnet_ack = st.checkbox("⚠️ Ami bujhi eta ASOL taka. Loss hole daitto amar.", value=False, key="mainnet_ack_oanda")
+            mainnet_ack = sticky_check(allocated_user_id, "⚠️ Ami bujhi eta ASOL taka. Loss hole daitto amar.", "mainnet_ack_oanda", False)
 if exch_id == "mt5":
     with st.sidebar:
         st.markdown("<hr style='border:1px solid #1e293b; margin:10px 0;'><b style='color:#38bdf8;'>📈 MT5 (MetaApi) Credentials</b>", unsafe_allow_html=True)
         st.caption("Exness/XM/IC Markets MT5 account metaapi.cloud e add kore nao (BETA: age DEMO account e test koro). Price data-o MetaApi theke ashe, tai Demo mode e-o dorkar.")
-        use_testnet = st.checkbox("🧪 Ei MT5 account ta DEMO (age ekhane test koro)", value=True, key="testnet_toggle_mt5")
-        api_key = st.text_input("MetaApi Token:", type="password", key="api_field_mt5")
-        secret_key = st.text_input("MetaApi Account ID:", key="acct_field_mt5").strip()
-        mt5_region = st.text_input("MetaApi Region (jemon london, new-york, singapore):", value="london", key="region_field_mt5").strip() or "london"
-        st.text_input("Symbol suffix (Exness e prai 'm', na hole faka rakho):", key="mt5_suffix_field", help="Exness er onek account e symbol 'EURUSDm' hoy. MT5 er Market Watch e dekho.")
+        use_testnet = sticky_check(allocated_user_id, "🧪 Ei MT5 account ta DEMO (age ekhane test koro)", "testnet_toggle_mt5", True)
+        api_key = sticky_text(allocated_user_id, "MetaApi Token:", "api_field_mt5")
+        secret_key = sticky_text(allocated_user_id, "MetaApi Account ID:", "acct_field_mt5", secret=False)
+        mt5_region = sticky_text(allocated_user_id, "MetaApi Region (jemon london, new-york, singapore):", "region_field_mt5", secret=False, default="london") or "london"
+        sticky_text(allocated_user_id, "Symbol suffix (Exness e prai 'm', na hole faka rakho):", "mt5_suffix_field", secret=False, help="Exness er onek account e symbol 'EURUSDm' hoy. MT5 er Market Watch e dekho.")
         if is_real_live and not use_testnet:
-            mainnet_ack = st.checkbox("⚠️ Ami bujhi eta ASOL taka. Loss hole daitto amar.", value=False, key="mainnet_ack_mt5")
+            mainnet_ack = sticky_check(allocated_user_id, "⚠️ Ami bujhi eta ASOL taka. Loss hole daitto amar.", "mainnet_ack_mt5", False)
 st.markdown(f"<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>{EXCHANGE_NAMES[exch_id].upper()} AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
 
 effective_vol = trade_amount * leverage
@@ -772,12 +873,14 @@ data_error = ""
 if needs_creds_for_data and not (api_key and secret_key):
     data_error = f"{exchange} price data er jonno sidebar e Token + Account ID dao."
 else:
+    rows = []
     try:
-        live_price = float(md.last_price(target_symbol))
+        _snap = feed_snapshot(exch_id, md_testnet, target_symbol, api_key if needs_creds_for_data else "", secret_key if needs_creds_for_data else "", exch_extra if exch_id == "mt5" else "")
+        md.tradeable, md.spread = _snap["tradeable"], _snap["spread"]
+        live_price, rows, data_error = float(_snap["price"] or 0.0), _snap["rows"], _snap["error"]
     except Exception as _e:
         data_error = str(_e)
     try:
-        rows = md.klines(target_symbol, 30)
         if rows:
             df_kline = pd.DataFrame(rows, columns=['time', 'open', 'high', 'low', 'close', 'volume'])
             if live_price == 0.0: live_price = df_kline['close'].iloc[-1]
@@ -856,7 +959,7 @@ if st.session_state.in_position and live_price > 0 and st.session_state.buy_pric
 # ==========================================
 _rerun_after = False
 try:
-    FEE_RATE_ROUNDTRIP = float(md.cost_frac(target_symbol, live_price))   # Bybit 0.11%, Binance 0.10%, OANDA = spread/price
+    FEE_RATE_ROUNDTRIP = float(md.cost_frac(target_symbol, live_price or 1.0))   # Bybit 0.11%, Binance 0.10%, OANDA = spread/price
 except Exception:
     FEE_RATE_ROUNDTRIP = 0.0011
 
