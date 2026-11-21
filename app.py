@@ -17,6 +17,7 @@ import re
 import base64
 import hashlib
 import exchanges as _exch_mod
+import pro_ui
 from bybit_engine import BybitEngine
 from exchanges import EXCHANGES, EXCHANGE_IDS, EXCHANGE_NAMES, OANDA_MAJORS, BinanceData, BitgetData, mt5_majors, make_data, make_engine, _check_ban, BINANCE_MAIN
 try:
@@ -229,7 +230,7 @@ if "engine_logs" not in st.session_state:
     st.session_state.engine_logs = ["System Swarm Gateway Init... 📡"]
 # --- 🚀 PREMIUM NO-BORDER SPLASH SCREEN ANIMATION TRIGGER ---
 if "splash_done" not in st.session_state:
-    st.set_page_config(page_title="Bybit AI Scalper", page_icon="⚡", layout="centered")
+    st.set_page_config(page_title="Bybit AI Scalper", page_icon="⚡", layout="wide")
     st.markdown(
         """
         <style>
@@ -600,6 +601,7 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+pro_ui.inject(st)
 if st.session_state.logged_in_user is None:
     st.markdown("<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>BYBIT AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
     st.subheader("🔑 Account Identity Gateway Control Panel")
@@ -869,7 +871,7 @@ if exch_id == "mt5":
             st.error("❌ 'MetaApi Account ID' e tumi lomba Token (eyJ... diye shuru) boshiyecho. Account ID chhoto: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.")
         if is_real_live and not use_testnet:
             mainnet_ack = sticky_check(allocated_user_id, "⚠️ Ami bujhi eta ASOL taka. Loss hole daitto amar.", "mainnet_ack_mt5", False)
-st.markdown(f"<div style='background: linear-gradient(135deg, #ff9900 0%, #ffcc00 100%); padding: 18px; border-radius: 12px; margin-bottom: 25px; text-align: center;'><h1 style='margin: 0; color: #0b0e14; font-size: 26px; font-weight: bold;'>{EXCHANGE_NAMES[exch_id].upper()} AI PRO SCALPER</h1></div>", unsafe_allow_html=True)
+# (old banner replaced by pro_ui.hero below)
 
 effective_vol = trade_amount * leverage
 estimated_fee = effective_vol * 0.0011
@@ -922,7 +924,32 @@ if not getattr(md, "tradeable", True):
 # ==========================================
 chart_display_box = st.container()
 with chart_display_box:
-    if fig_candlestick: 
+    _pz_dec = 2 if live_price >= 1000 else (4 if live_price >= 1 else 6)
+    _pz_bal = float(real_wallet["equity"]) if (is_real_live and real_wallet) else float(st.session_state.get("real_balance" if is_real_live else "demo_balance", 0.0))
+    st.session_state.setdefault("_pz_t0", time.time())
+    st.session_state.setdefault("_pz_bal0", _pz_bal)
+    _pz_job = _ai_store().get(f"{allocated_user_id}_{mode_suffix}") or {}
+    _pz_run = bool(db_load(f"bot_active_{mode_suffix}_{allocated_user_id}", False))
+    _pz_in = bool(st.session_state.get("in_position", False))
+    _pz_tp, _pz_sl = float(globals().get("price_jump_target", 0) or 0), float(globals().get("stop_loss_gap", 0) or 0)
+    _pz_ai_state, _pz_ai_txt = ("idle", "off") if not ai_decision else (("active", "thinking...") if _pz_job.get("status") == "running" else (("bad", "FAIL") if _pz_job.get("signal") == "FAIL" else (("ok", str(_pz_job.get("signal"))) if _pz_job else ("idle", "waiting"))))
+    st.markdown(pro_ui.hero(_pz_bal, "REAL" if is_real_live else "DEMO", EXCHANGE_NAMES[exch_id], target_symbol, _pz_run,
+                            time.time() - st.session_state["_pz_t0"], st.session_state.get("win_count", 0), st.session_state.get("loss_count", 0),
+                            _pz_bal - st.session_state["_pz_bal0"], "IN TRADE" if _pz_in else ("SCANNING" if _pz_run else "IDLE")), unsafe_allow_html=True)
+    st.markdown(pro_ui.pipeline([
+        ("feed", "DATA FEED", "ok" if (live_price > 0 and not data_error) else ("warn" if live_price > 0 else "bad"), f"{live_price:,.{_pz_dec}f}" if live_price > 0 else "no data"),
+        ("signal", "INDICATORS", "warn" if (current_rsi >= 70 or current_rsi <= 30) else ("ok" if not df_kline.empty else "idle"), f"RSI {current_rsi:.1f}"),
+        ("ai", "AI SWARM", _pz_ai_state, _pz_ai_txt),
+        ("exec", "EXECUTOR", "active" if _pz_in else ("ok" if _pz_run else "idle"), f"{st.session_state.get('current_side', '')} open" if _pz_in else ("armed" if _pz_run else "stopped")),
+        ("risk", "RISK", "ok", f"TP {_pz_tp:g} - SL {_pz_sl:g}"),
+        ("log", "LOGGER", "ok", f"#{len(st.session_state.engine_logs)}"),
+    ]), unsafe_allow_html=True)
+    _pz_entry = float(st.session_state.get("buy_price", 0) or 0) if _pz_in else 0.0
+    _pz_sg = 1 if "LONG" in str(st.session_state.get("current_side", "")) else -1
+    _pz_fig = pro_ui.pro_chart(df_kline, _pz_entry, (_pz_entry + _pz_sg * _pz_tp) if _pz_entry else None, (_pz_entry - _pz_sg * _pz_sl) if _pz_entry else None) if not df_kline.empty else None
+    if _pz_fig is not None:
+        st.plotly_chart(_pz_fig, use_container_width=True)
+    elif fig_candlestick:
         st.plotly_chart(fig_candlestick, use_container_width=True)
 st.markdown(f"<div class='custom-box-grid' style='background-color:#050a12; border:1px solid #00e676; padding: 22px;'><div class='matrix-neon-text' style='font-size:14px;'>🧬 <b>DEEPSEEK REAL-TIME SWARM INTERFACE LAYER:</b><br>🔮 DEEPEST OPENROUTER ROUTER SCALPER LABELS ACTIVATED ({target_symbol})</div></div>", unsafe_allow_html=True)
 local_win = st.session_state.get('win_count', 0)
@@ -930,10 +957,7 @@ local_loss = st.session_state.get('loss_count', 0)
 total_trades = local_win + local_loss
 win_rate = (local_win / total_trades * 100) if total_trades > 0 else 0.0
 
-st.markdown(f"""<div style="background-color:#141a24; padding:12px; border-radius:10px; margin-bottom:15px; border: 1px solid #1f2c3f; display: flex; justify-content: space-between;">
-    <span style="color:#ffffff; font-weight:bold;">🏆 WON: <b style="color:#00e676;">{local_win}</b></span>
-    <span style="color:#ffffff; font-weight:bold;">❌ LOST: <b style="color:#ff1744;">{local_loss}</b></span>
-    <span style="color:#ffffff; font-weight:bold;">🎯 WIN RATE: <b style="color:#29b6f6;">{win_rate:.1f}%</b></span></div>""", unsafe_allow_html=True)
+# (old WON/LOST bar replaced by pro_ui.stats_panel)
 
 if not is_real_live:
     st.markdown("<b>⚙️ Sandbox Fund Manager Module Panel:</b>", unsafe_allow_html=True)
@@ -1222,10 +1246,34 @@ if cloud_bot_trigger and allocated_user_id != "NONE":
         st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] {ai_label} AI request background e pathano holo...")
 if _rerun_after:
     st.rerun()
-# --- 🪐 LIVE TERMINAL BOX ---
-st.markdown("<b>🖥️ Real-Time AI Swarm Scalper Loop Sequence Log Panel:</b>", unsafe_allow_html=True)
-log_text = "\n".join(st.session_state.engine_logs[-8:])
-st.text_area(label="Live Terminal", value=log_text, height=135, label_visibility="collapsed")
+# --- 🪐 PRO HUD: KPIs + position + stats + equity + terminal ---
+_k_bal = float(real_wallet["equity"]) if (is_real_live and real_wallet) else float(st.session_state.get("real_balance" if is_real_live else "demo_balance", 0.0))
+_k_w, _k_l = st.session_state.get("win_count", 0), st.session_state.get("loss_count", 0)
+_k_wr = (_k_w / (_k_w + _k_l) * 100) if (_k_w + _k_l) else 0.0
+_k_dec = 2 if live_price >= 1000 else (4 if live_price >= 1 else 6)
+st.markdown(pro_ui.kpis([
+    ("Balance", f"${_k_bal:,.2f}", "real wallet" if is_real_live else "demo wallet", "#38bdf8", ""),
+    ("Floating PnL", f"{floating_pnl:+.2f}$", "open trade" if st.session_state.in_position else "no position", "#22f2a0" if floating_pnl >= 0 else "#ff4d6d", "pos" if floating_pnl > 0 else ("neg" if floating_pnl < 0 else "flat")),
+    ("Win rate", f"{_k_wr:.1f}%", f"{_k_w}W / {_k_l}L", "#a78bfa", ""),
+    ("Leverage", f"{leverage}x", f"margin ${trade_amount}", "#f5a623", ""),
+    ("Live price", f"{live_price:,.{_k_dec}f}", target_symbol, "#243553", ""),
+]), unsafe_allow_html=True)
+_pc1, _pc2 = st.columns([2, 1])
+with _pc1:
+    st.markdown(pro_ui.position_card(pos_symbol, bool(st.session_state.in_position), st.session_state.current_side, float(st.session_state.buy_price or 0), live_price,
+                                     float(price_jump_target), float(stop_loss_gap), floating_pnl, effective_vol, leverage, _k_dec), unsafe_allow_html=True)
+with _pc2:
+    st.markdown(pro_ui.stats_panel(_k_w, _k_l, float(current_rsi), f"spread {getattr(md, 'spread', 0) or 0:g}"), unsafe_allow_html=True)
+try:
+    _eq = [float(r.get("Net P&L ($)", 0)) for r in (st._global_user_pnl_history or [])
+           if str(r.get("User ID")) == str(allocated_user_id) and r.get("Type") == ("REAL" if is_real_live else "DEMO") and "COMMISSION" not in str(r.get("Action", ""))]
+    _eq_fig = pro_ui.equity_chart(_eq) if len(_eq) >= 2 else None
+    if _eq_fig is not None:
+        st.markdown("<div class='pz-h' style='margin-top:4px'><span>EQUITY CURVE &middot; <b>CUMULATIVE NET P&L</b></span></div>", unsafe_allow_html=True)
+        st.plotly_chart(_eq_fig, use_container_width=True)
+except Exception:
+    pass
+st.markdown(pro_ui.terminal(st.session_state.engine_logs), unsafe_allow_html=True)
 if allocated_user_id and allocated_user_id != "NONE":
     _sj, _sk = _ai_store().get(f"{allocated_user_id}_{mode_suffix}"), f"{allocated_user_id}_{mode_suffix}_pause"
     if time.time() < _ai_store().get(_sk, 0):
