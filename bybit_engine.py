@@ -88,10 +88,10 @@ class BybitEngine:
         r = self.session.get_instruments_info(category="linear", symbol=symbol)
         lst = r["result"]["list"]
         if not lst:
-            raise ValueError(f"{symbol} Bybit e paoa jay nai ({'testnet' if self.testnet else 'mainnet'})")
+            raise ValueError(f"{symbol} was not found on Bybit ({'testnet' if self.testnet else 'mainnet'})")
         it = lst[0]
         if it.get("status") not in (None, "Trading"):
-            raise ValueError(f"{symbol} ekhon {'testnet' if self.testnet else 'mainnet'} e live na (status: {it.get('status')}). Onno coin nao.")
+            raise ValueError(f"{symbol} is not live on {'testnet' if self.testnet else 'mainnet'} (status: {it.get('status')}). Choose another coin.")
         info = {
             "qty_step": it["lotSizeFilter"]["qtyStep"],
             "min_qty": it["lotSizeFilter"]["minOrderQty"],
@@ -144,9 +144,9 @@ class BybitEngine:
         """
         side = side.upper()
         if side not in ("LONG", "SHORT"):
-            raise ValueError("side LONG ba SHORT hote hobe")
+            raise ValueError("side must be LONG or SHORT")
         if self.get_position(symbol):
-            raise RuntimeError(f"{symbol} e Bybit e agei position khola ache")
+            raise RuntimeError(f"{symbol} already has an open position on Bybit")
 
         inst = self._instrument(symbol)
         lev = max(1, min(int(leverage), int(inst["max_lev"])))
@@ -154,15 +154,15 @@ class BybitEngine:
         price = _dec(self.last_price(symbol))
         sl_frac, tp_frac, liq_frac = _dec(sl_gap) / price, _dec(tp_gap) / price, _dec("0.8") / lev
         if sl_frac >= liq_frac:
-            raise ValueError(f"SL gap {float(sl_frac)*100:.2f}% > liquidation distance ~{float(liq_frac)*100:.2f}% ({lev}x). SL trigger hobar age-i liquidate hobe. Leverage komao ba SL chhoto koro.")
+            raise ValueError(f"SL gap {float(sl_frac)*100:.2f}% > liquidation distance ~{float(liq_frac)*100:.2f}% ({lev}x). The position would be liquidated before the stop-loss triggers. Lower the leverage or tighten the stop-loss.")
         if tp_frac >= _dec("0.5"):
-            raise ValueError(f"TP gap price er {float(tp_frac)*100:.0f}% - onek boro, TP thik koro (coin er price ${float(price):g}).")
+            raise ValueError(f"TP gap is {float(tp_frac)*100:.0f}% of the price - too large, adjust the take-profit (coin price ${float(price):g}).")
         self._set_leverage(symbol, lev)
         qty = _round_step(_dec(margin_usd) * lev / price, inst["qty_step"])
         if qty < _dec(inst["min_qty"]):
-            raise ValueError(f"Qty {qty} < minimum {inst['min_qty']}. Margin ba leverage barao.")
+            raise ValueError(f"Qty {qty} < minimum {inst['min_qty']}. Increase the margin or leverage.")
         if qty * price < _dec(inst["min_notional"]):
-            raise ValueError(f"Order value ${qty * price:.2f} < minimum ${inst['min_notional']}. Margin barao.")
+            raise ValueError(f"Order value ${qty * price:.2f} < minimum ${inst['min_notional']}. Increase the margin.")
 
         tick = inst["tick"]
         if side == "LONG":
@@ -176,9 +176,8 @@ class BybitEngine:
         tp = _round_step(tp, tick, ROUND_HALF_UP)
         sl = _round_step(sl, tick, ROUND_HALF_UP)
         if tp <= 0 or sl <= 0:
-            raise ValueError("TP/SL gap onek boro, price negative hoye jacche.")
+            raise ValueError("TP/SL gap is too large; the price would go negative.")
 
-        opened_ms = int(time.time() * 1000)
         self.session.place_order(
             category="linear", symbol=symbol, side=order_side, orderType="Market",
             qty=_fmt(qty),
@@ -197,11 +196,8 @@ class BybitEngine:
         return {
             "symbol": symbol, "side": side, "qty": float(qty), "leverage": lev,
             "entry_price": entry, "tp_price": float(tp), "sl_price": float(sl),
-            "confirmed": confirmed, "opened_ms": opened_ms,
+            "confirmed": confirmed,
         }
-
-    def after_close(self, symbol):
-        return None   # Bybit e TP/SL position er sathe-i bandha, alada order nei
 
     def close_position(self, symbol):
         pos = self.get_position(symbol)
