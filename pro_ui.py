@@ -33,6 +33,15 @@ def _e(x):
     return _html.escape(str(x))
 
 
+def _rgba(hex_, a=1.0):
+    h = hex_.lstrip("#")
+    return f"rgba({int(h[0:2], 16)},{int(h[2:4], 16)},{int(h[4:6], 16)},{a})"
+
+
+def _neon(hex_, a=0.55, glow=0.35):
+    return f"border-color:{_rgba(hex_, a)};box-shadow:0 0 22px -8px {_rgba(hex_, glow)}"
+
+
 def _sign(v):
     return "pos" if v > 0 else ("neg" if v < 0 else "flat")
 
@@ -148,7 +157,7 @@ def hero(balance, mode, exchange, symbol, running, uptime_s=0, wins=0, losses=0,
     live = mode.upper() == "REAL"
     state = "run" if running else "off"
     return _m(f"""
-    <div class="pz-win">
+    <div class="pz-win" style="{_neon(CYAN)}">
       <div class="pz-chrome">
         <span class="pz-dot" style="background:#ff5f56"></span><span class="pz-dot" style="background:#ffbd2e"></span><span class="pz-dot" style="background:#27c93f"></span>
         <span class="t">scalper &middot; {_e(exchange)} &middot; {_e(symbol)} &middot; ai swarm</span>
@@ -178,7 +187,7 @@ def pipeline(stages):
     for key, name, state, metric in stages:
         out.append(f'<div class="pz-node {state}"><div class="pz-ring">{_ICONS.get(key, "&#9679;")}</div>'
                    f'<div class="nm">{_e(name)}</div><div class="mt">{_e(metric)}</div></div>')
-    return _m(f'<div class="pz-win"><div class="pz-h"><span>LIVE FLOW &middot; <b>HARD HANDOFFS</b></span><span>one job each</span></div>'
+    return _m(f'<div class="pz-win" style="{_neon(VIOLET)}"><div class="pz-h"><span>LIVE FLOW &middot; <b>HARD HANDOFFS</b></span><span>one job each</span></div>'
               f'<div class="pz-flow">{"".join(out)}</div></div>')
 
 
@@ -187,7 +196,7 @@ def kpis(items):
     """items: list of (label, value_str, sub_str, accent_hex, css_class_for_value)"""
     cells = []
     for lab, val, sub, acc, cls in items:
-        cells.append(f'<div class="pz-kpi" style="--acc:{acc}"><div class="k">{_e(lab)}</div>'
+        cells.append(f'<div class="pz-kpi" style="--acc:{acc};{_neon(acc, .6, .4)}"><div class="k">{_e(lab)}</div>'
                      f'<div class="v {cls}">{_e(val)}</div><div class="s">{_e(sub)}</div></div>')
     return _m(f'<div class="pz-kpis">{"".join(cells)}</div>')
 
@@ -208,7 +217,7 @@ def position_card(symbol, in_pos, side, entry, price, tp_gap, sl_gap, pnl, notio
     tp_p, sl_p = pos(tp), pos(sl)
     cls = _sign(pnl)
     return _m(f"""
-    <div class="pz-win pz-pos">
+    <div class="pz-win pz-pos" style="{_neon(GREEN if pnl >= 0 else RED)}">
       <div class="hd"><span class="sym">{_e(symbol)}</span><span class="pz-tag {'long' if is_long else 'short'}">{'LONG' if is_long else 'SHORT'} &middot; {lev}x</span>
         <span class="pz-tag flat">OPEN &middot; STOP ARMED</span><span class="pnl {cls}">{'+' if pnl > 0 else ''}{_money(pnl)}</span></div>
       <div class="pz-rail">
@@ -242,9 +251,10 @@ def terminal(lines, title="tail -f engine.log", n=14):
             tag, cls = "AI  ", "p"
         else:
             tag, cls = "INFO", "x"
-        rows.append(f'<div><span class="ts">{_e(ts)}</span>&nbsp;&nbsp;<span class="{cls}">{tag.replace(" ", "&nbsp;")}</span>&nbsp;&nbsp;<span class="x">{_e(body)}</span></div>')
-    rows.append('<div><span class="cur"></span></div>')
-    return _m(f'<div class="pz-win"><div class="pz-h"><span>$ <b>{_e(title)}</b></span><span>line #{len(lines)}</span></div>'
+        rows.append(f'<div><span class="ts">{_e(ts or "--:--:--")}</span>&nbsp;&nbsp;<span class="{cls}">{tag.replace(" ", "&nbsp;")}</span>&nbsp;&nbsp;<span class="x">{_e(body)}</span></div>')
+    if rows:
+        rows[-1] = rows[-1][:-6] + '<span class="cur"></span></div>'
+    return _m(f'<div class="pz-win" style="{_neon(GREEN, .45, .25)}"><div class="pz-h"><span>$ <b>{_e(title)}</b></span><span>line #{len(lines)}</span></div>'
               f'<div class="pz-term">{"".join(rows)}</div></div>')
 
 
@@ -253,7 +263,7 @@ def stats_panel(wins, losses, rsi, spread_txt=""):
     wr = wins / tot * 100 if tot else 0.0
     rsi_c = RED if rsi >= 70 else (GREEN if rsi <= 30 else CYAN)
     return _m(f"""
-    <div class="pz-win"><div class="pz-h"><span>STATS &middot; <b>THIS ACCOUNT</b></span><span>{_e(spread_txt)}</span></div>
+    <div class="pz-win" style="{_neon(AMBER)}"><div class="pz-h"><span>STATS &middot; <b>THIS ACCOUNT</b></span><span>{_e(spread_txt)}</span></div>
       <div class="pz-grid3" style="grid-template-columns:1fr">
         <div>win rate <b>{wr:.1f}%</b><div class="pz-bar"><i style="width:{wr:.0f}%;background:{GREEN}"></i></div></div>
         <div>RSI(14) <b style="color:{rsi_c}">{rsi:.1f}</b><div class="pz-bar"><i style="width:{max(0, min(100, rsi)):.0f}%;background:{rsi_c}"></i></div></div>
@@ -360,10 +370,35 @@ button:disabled{opacity:.45 !important}
 [data-testid="stCode"],pre{background:#04070d !important;border:1px solid #16233a;border-radius:10px}
 .custom-box-grid{background:linear-gradient(180deg,#0b1220,#080d18) !important;border:1px solid #16233a !important;border-radius:14px !important;
  box-shadow:none !important;padding:16px 18px !important;margin-bottom:12px !important}
-.custom-box-grid span{font:700 10px 'JetBrains Mono',monospace !important;letter-spacing:1px;color:#6b819f}
-.custom-box-grid h4{font:800 24px 'JetBrains Mono',monospace !important;margin:8px 0 0 !important}
 .matrix-neon-text{font-family:'JetBrains Mono',monospace !important;color:#22f2a0 !important;text-shadow:none !important}
 .stTextArea textarea{font-family:'JetBrains Mono',monospace !important}
+[data-testid="stExpander"] details,[data-testid="stExpander"] summary{background:#0b1220 !important;color:#dbe7f5 !important}
+[data-testid="stExpander"] summary:hover{background:#0f1a2e !important}
+[data-baseweb="input"]>div,[data-testid="stNumberInput"] button{background:#0a1322 !important;color:#9db0cc !important}
+[data-baseweb="tab"][aria-selected="true"] p{color:#fff !important}
+[data-testid="stCheckbox"] label:has(input:checked)>span:first-of-type{background:#22f2a0 !important;border-color:#22f2a0 !important}
+[data-testid="stToggle"] label:has(input:checked)>div:first-of-type{background:#22f2a0 !important}
+[data-testid="stSlider"] [role="slider"]{background:#38bdf8 !important;box-shadow:0 0 10px #38bdf8}
+[data-testid="stSliderThumbValue"]{color:#38bdf8 !important}
+[data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked)>div:first-child{background-color:#38bdf8 !important;border-color:#38bdf8 !important}
+/* big stat boxes */
+.pz-stat,.pz-bcard{border:1px solid #16233a;border-radius:16px;background:linear-gradient(180deg,#0b1220,#080d18);padding:18px 16px;margin:0 0 12px;text-align:center}
+.pz-stat .k,.pz-bcard .k{font:700 11px 'JetBrains Mono',monospace;letter-spacing:1.2px;color:#8aa0bf}
+.pz-stat .v{font:800 34px 'JetBrains Mono',monospace;margin-top:10px;line-height:1.1}
+.pz-stat .v small,.pz-bcard .v small{font:700 13px 'JetBrains Mono',monospace;color:#8aa0bf;margin-left:6px}
+.pz-bcard .v{font:800 42px 'JetBrains Mono',monospace;margin:10px 0 12px;line-height:1.1;background:linear-gradient(90deg,#22f2a0,#38bdf8);-webkit-background-clip:text;background-clip:text;color:transparent}
+.pz-bcard .v small{-webkit-text-fill-color:#8aa0bf}
+.pz-chip{display:inline-block;font:700 12px 'JetBrains Mono',monospace;border-radius:999px;padding:5px 12px;border:1px solid}
+.pz-chip.pos{color:#22f2a0;border-color:rgba(34,242,160,.5);background:rgba(34,242,160,.08)}
+.pz-chip.neg{color:#ff4d6d;border-color:rgba(255,77,109,.5);background:rgba(255,77,109,.08)}
+.pz-chip.flat{color:#9db0cc;border-color:#243553}
+/* html tables */
+.pz-tblw{overflow-x:auto;border:1px solid #16233a;border-radius:12px;background:#0a1020;margin:6px 0 12px;max-height:420px;overflow-y:auto}
+.pz-tbl{border-collapse:collapse;width:100%;font:400 12px 'JetBrains Mono',monospace;color:#dbe7f5}
+.pz-tbl th{position:sticky;top:0;background:#0f1a2e;color:#38bdf8;text-align:left;padding:9px 12px;font-weight:800;letter-spacing:.5px;white-space:nowrap;border-bottom:1px solid #22334f}
+.pz-tbl td{padding:8px 12px;border-bottom:1px solid #111c30;white-space:nowrap}
+.pz-tbl tr:hover td{background:#0d1728}
+.pz-b{font-weight:800;border-radius:6px;padding:2px 8px;font-size:11px}.pz-b.real{color:#22f2a0;background:rgba(34,242,160,.1)}.pz-b.demo{color:#38bdf8;background:rgba(56,189,248,.1)}
 /* section header */
 .pz-sec{display:flex;align-items:center;gap:12px;margin:22px 0 12px}
 .pz-sec .bar{width:4px;height:34px;border-radius:4px;background:linear-gradient(180deg,#38bdf8,#a78bfa)}
@@ -460,3 +495,45 @@ def bar_chart(labels, values, height=220, color=CYAN):
         return None
     fig = go.Figure(go.Bar(x=list(labels), y=list(values), marker_color=color))
     return _layout(fig, height)
+
+
+def stat_box(label, value, unit="", color=GREEN):
+    return _m(f'<div class="pz-stat" style="{_neon(color, .6, .4)}"><div class="k">{_e(label)}</div>'
+              f'<div class="v" style="color:{color};text-shadow:0 0 18px {_rgba(color, .45)}">{_e(value)}<small>{_e(unit)}</small></div></div>')
+
+
+def balance_card(mode_label, balance, floating):
+    cls = _sign(floating)
+    col = GREEN if floating >= 0 else RED
+    return _m(f'<div class="pz-bcard" style="{_neon(CYAN, .6, .4)}"><div class="k">&#128176; AVAILABLE BALANCE &middot; {_e(mode_label)}</div>'
+              f'<div class="v">${balance:,.2f}<small>USDT</small></div>'
+              f'<span class="pz-chip {cls}" style="box-shadow:0 0 14px -4px {_rgba(col, .5)}">Floating P&amp;L {floating:+.4f} USDT</span></div>')
+
+
+def table(df, max_rows=300, pnl_cols=("Net P&L ($)",)):
+    """Dark HTML table (index hidden, P&L coloured, REAL/DEMO badges)."""
+    if df is None or len(df) == 0:
+        return '<div class="pz-sub">No records yet.</div>'
+    d = df.head(max_rows)
+    cols = list(d.columns)
+    head = "".join(f"<th>{_e(c)}</th>" for c in cols)
+    body = []
+    for _, r in d.iterrows():
+        tds = []
+        for c in cols:
+            v = r[c]
+            txt = "" if v is None or (isinstance(v, float) and v != v) else str(v)
+            cls = ""
+            if c in pnl_cols:
+                try:
+                    x = float(txt); cls = _sign(x); txt = f"{x:+,.4f}"
+                except ValueError:
+                    pass
+                tds.append(f'<td class="{cls}">{_e(txt)}</td>')
+            elif txt in ("REAL", "DEMO"):
+                tds.append(f'<td><span class="pz-b {txt.lower()}">{txt}</span></td>')
+            else:
+                tds.append(f"<td>{_e(txt)}</td>")
+        body.append("<tr>" + "".join(tds) + "</tr>")
+    note = f'<div class="pz-sub">showing {len(d)} of {len(df)} rows</div>' if len(df) > len(d) else ""
+    return _m(f'<div class="pz-tblw"><table class="pz-tbl"><thead><tr>{head}</tr></thead><tbody>{"".join(body)}</tbody></table></div>{note}')
