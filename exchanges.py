@@ -67,8 +67,8 @@ def _note_ban(key, text, status):
 def _check_ban(key):
     u = _BAN_UNTIL.get(key, 0)
     if time.time() < u:
-        raise RuntimeError(f"Binance rate-limit/IP ban cholche ({datetime.fromtimestamp(u, tz=timezone.utc):%d %b %H:%M} UTC porjonto). "
-                           "Ei somoy request pathale ban aro barte pare, tai thamiye rakhechi. Testnet ba onno exchange use koro.")
+        raise RuntimeError(f"Binance rate-limit / IP ban is active (until {datetime.fromtimestamp(u, tz=timezone.utc):%d %b %H:%M} UTC). "
+                           "Sending requests now could extend the ban, so requests are paused. Use testnet or another exchange.")
 
 
 def _first_num(*vals):
@@ -84,9 +84,9 @@ def _guards(price, tp_gap, sl_gap, lev):
     """Sob exchange e ek-i safety: SL liquidation er age, TP onek boro na."""
     sl_frac, tp_frac, liq_frac = _dec(sl_gap) / price, _dec(tp_gap) / price, _dec("0.8") / lev
     if sl_frac >= liq_frac:
-        raise ValueError(f"SL gap {float(sl_frac)*100:.2f}% > liquidation distance ~{float(liq_frac)*100:.2f}% ({lev}x). SL trigger hobar age-i liquidate hobe. Leverage komao ba SL chhoto koro.")
+        raise ValueError(f"SL gap {float(sl_frac)*100:.2f}% > liquidation distance ~{float(liq_frac)*100:.2f}% ({lev}x). The position would be liquidated before the stop-loss triggers. Lower the leverage or tighten the stop-loss.")
     if tp_frac >= _dec("0.5"):
-        raise ValueError(f"TP gap price er {float(tp_frac)*100:.0f}% - onek boro, TP thik koro (price {float(price):g}).")
+        raise ValueError(f"TP gap is {float(tp_frac)*100:.0f}% of the price - too large, adjust the take-profit (price {float(price):g}).")
 
 
 def _iso_ms(s):
@@ -112,7 +112,7 @@ class BybitData:
     def last_price(self, symbol):
         lst = self.session.get_tickers(category="linear", symbol=symbol).get("result", {}).get("list", [])
         if not lst:
-            raise RuntimeError(f"{symbol} ticker paoa jay nai")
+            raise RuntimeError(f"{symbol} ticker not found")
         return float(lst[0]["lastPrice"])
 
     def klines(self, symbol, limit=30):
@@ -171,7 +171,7 @@ class BinanceData:
             sl = max(float((_dec(price * 0.003) / t).to_integral_value(ROUND_HALF_UP) * t), tick * 2)
             out[f"🪙 {base} (Binance Futures)"] = {"symbol": sym, "max_leverage": 50, "default_tp": tp, "default_sl": sl, "step": tick}
         if not out:
-            raise RuntimeError("Binance e kono USDT perpetual paoa jay nai")
+            raise RuntimeError("No USDT perpetual contracts found on Binance")
         return out
 
 
@@ -244,9 +244,9 @@ class BinanceEngine:
                 }
         it = self._inst.get(symbol)
         if not it:
-            raise ValueError(f"{symbol} Binance e paoa jay nai ({'testnet' if self.testnet else 'mainnet'})")
+            raise ValueError(f"{symbol} was not found on Binance ({'testnet' if self.testnet else 'mainnet'})")
         if it["status"] != "TRADING":
-            raise ValueError(f"{symbol} ekhon live na (status: {it['status']}). Onno coin nao.")
+            raise ValueError(f"{symbol} is not live right now (status: {it['status']}). Choose another coin.")
         return it
 
     def last_price(self, symbol):
@@ -294,23 +294,23 @@ class BinanceEngine:
     def open_position(self, symbol, side, margin_usd, leverage, tp_gap, sl_gap):
         side = side.upper()
         if side not in ("LONG", "SHORT"):
-            raise ValueError("side LONG ba SHORT hote hobe")
+            raise ValueError("side must be LONG or SHORT")
         if self.get_position(symbol):
-            raise RuntimeError(f"{symbol} e Binance e agei position khola ache")
+            raise RuntimeError(f"{symbol} already has an open position on Binance")
         inst = self._instrument(symbol)
         lev = max(1, min(int(leverage), 125))
         price = _dec(self.last_price(symbol))
         _guards(price, tp_gap, sl_gap, lev)
         qty = _round_step(_dec(margin_usd) * lev / price, inst["qty_step"])
         if qty < _dec(inst["min_qty"]):
-            raise ValueError(f"Qty {qty} < minimum {inst['min_qty']}. Margin ba leverage barao.")
+            raise ValueError(f"Qty {qty} < minimum {inst['min_qty']}. Increase the margin or leverage.")
         if qty * price < _dec(inst["min_notional"]):
-            raise ValueError(f"Order value ${qty * price:.2f} < minimum ${inst['min_notional']}. Margin barao.")
+            raise ValueError(f"Order value ${qty * price:.2f} < minimum ${inst['min_notional']}. Increase the margin.")
         long_ = side == "LONG"
         tp = _round_step(price + _dec(tp_gap) if long_ else price - _dec(tp_gap), inst["tick"], ROUND_HALF_UP)
         sl = _round_step(price - _dec(sl_gap) if long_ else price + _dec(sl_gap), inst["tick"], ROUND_HALF_UP)
         if tp <= 0 or sl <= 0:
-            raise ValueError("TP/SL gap onek boro, price negative hoye jacche.")
+            raise ValueError("TP/SL gap is too large; the price would go negative.")
         entry_side, exit_side = ("BUY", "SELL") if long_ else ("SELL", "BUY")
 
         opened_ms = int(time.time() * 1000)
@@ -336,8 +336,8 @@ class BinanceEngine:
                 self.close_position(symbol)
                 self.after_close(symbol)
             except Exception as e2:
-                raise RuntimeError(f"🚨 TP/SL boshano gelo na ({e}) ar position close o hoy nai ({e2}). Binance app e GIYE MANUAL CLOSE koro!")
-            raise RuntimeError(f"TP/SL boshano gelo na, tai position niraponottar jonno close kora holo: {e}")
+                raise RuntimeError(f"🚨 Failed to place TP/SL ({e}) and the position could not be closed either ({e2}). Close it MANUALLY in the Binance app NOW!")
+            raise RuntimeError(f"Failed to place TP/SL, so the position was closed for safety: {e}")
         return {"symbol": symbol, "side": side, "qty": float(qty), "leverage": lev, "entry_price": entry,
                 "tp_price": float(tp), "sl_price": float(sl), "confirmed": confirmed, "opened_ms": opened_ms}
 
@@ -432,7 +432,7 @@ class OandaEngine(_OandaBase):
         if symbol not in self._inst:
             lst = self._req("GET", f"/v3/accounts/{self.acct}/instruments", params={"instruments": symbol}).get("instruments", [])
             if not lst:
-                raise ValueError(f"{symbol} OANDA te paoa jay nai")
+                raise ValueError(f"{symbol} was not found on OANDA")
             self._inst[symbol] = lst[0]
         return self._inst[symbol]
 
@@ -458,33 +458,33 @@ class OandaEngine(_OandaBase):
     def open_position(self, symbol, side, margin_usd, leverage, tp_gap, sl_gap):
         side = side.upper()
         if side not in ("LONG", "SHORT"):
-            raise ValueError("side LONG ba SHORT hote hobe")
+            raise ValueError("side must be LONG or SHORT")
         base, quote = symbol.split("_")
         acct = self._summary()
         if acct.get("currency") != "USD":
-            raise ValueError(f"OANDA account currency {acct.get('currency')} - ekhon shudhu USD account support kore.")
+            raise ValueError(f"OANDA account currency {acct.get('currency')} - only USD accounts are supported for now.")
         if quote != "USD" and base != "USD":
-            raise ValueError(f"{symbol}: ekhon shudhu USD pair (EUR_USD, USD_JPY ityadi) support kore.")
+            raise ValueError(f"{symbol}: only USD pairs (EUR_USD, USD_JPY, etc.) are supported for now.")
         if self.get_position(symbol):
-            raise RuntimeError(f"{symbol} e OANDA te agei position khola ache")
+            raise RuntimeError(f"{symbol} already has an open position on OANDA")
         inst = self._instrument(symbol)
         bid, ask, tradeable = self._quote(symbol)
         if not tradeable:
-            raise ValueError("OANDA market ekhon bondho (weekend/holiday). Market khulle abar chesta koro.")
+            raise ValueError("OANDA market is closed (weekend/holiday). Try again when it opens.")
         mid = _dec((bid + ask) / 2)
         max_lev = max(1, int(1 / float(inst.get("marginRate", "0.02"))))
         lev = max(1, min(int(leverage), max_lev))
         _guards(mid, tp_gap, sl_gap, lev)
         spread = _dec(ask - bid)
         if spread * 2 >= _dec(tp_gap):
-            raise ValueError(f"Spread {float(spread):g} TP ({float(tp_gap):g}) er prai ordhek. TP barao.")
+            raise ValueError(f"Spread {float(spread):g} is almost half of the TP ({float(tp_gap):g}). Increase the TP.")
 
         units = _dec(margin_usd) * lev / (mid if quote == "USD" else Decimal(1))
         units = _round_step(units, Decimal(1).scaleb(-int(inst.get("tradeUnitsPrecision", 0))))
         if units < _dec(inst.get("minimumTradeSize", "1")):
-            raise ValueError(f"Units {units} < minimum {inst.get('minimumTradeSize')}. Margin ba leverage barao.")
+            raise ValueError(f"Units {units} < minimum {inst.get('minimumTradeSize')}. Increase the margin or leverage.")
         if units > _dec(inst.get("maximumOrderUnits", "100000000")):
-            raise ValueError("Units maximum order size er beshi.")
+            raise ValueError("Units exceed the maximum order size.")
         long_ = side == "LONG"
         ref = _dec(ask if long_ else bid)
         q = Decimal(1).scaleb(-int(inst.get("displayPrecision", 5)))
@@ -592,7 +592,7 @@ class BitgetData(_BitgetHttp):
             sl = max(float((_dec(price * 0.003) / t).to_integral_value(ROUND_HALF_UP) * t), tick * 2)
             out[f"🪙 {base} (Bitget Futures)"] = {"symbol": sym, "max_leverage": min(maxlev, 100), "default_tp": tp, "default_sl": sl, "step": tick}
         if not out:
-            raise RuntimeError("Bitget e kono USDT futures paoa jay nai")
+            raise RuntimeError("No USDT futures found on Bitget")
         return out
 
 
@@ -615,10 +615,10 @@ class BitgetEngine(_BitgetHttp):
         if symbol not in self._inst:
             lst = self._call("GET", "/api/v2/mix/market/contracts", {"productType": self.product, "symbol": symbol}, signed=False) or []
             if not lst:
-                raise ValueError(f"{symbol} Bitget e paoa jay nai ({'demo' if self.demo else 'live'})")
+                raise ValueError(f"{symbol} was not found on Bitget ({'demo' if self.demo else 'live'})")
             c = lst[0]
             if c.get("symbolStatus", "normal") != "normal":
-                raise ValueError(f"{symbol} ekhon live na (status: {c.get('symbolStatus')}). Onno coin nao.")
+                raise ValueError(f"{symbol} is not live right now (status: {c.get('symbolStatus')}). Choose another coin.")
             step = _first_num(c.get("sizeMultiplier"))
             step = str(c["sizeMultiplier"]) if step > 0 else str(Decimal(1).scaleb(-int(c.get("volumePlace", 2))))
             self._inst[symbol] = {"qty_step": step, "min_qty": c.get("minTradeNum", "0.01"), "tick": self._tick(c),
@@ -653,23 +653,23 @@ class BitgetEngine(_BitgetHttp):
     def open_position(self, symbol, side, margin_usd, leverage, tp_gap, sl_gap):
         side = side.upper()
         if side not in ("LONG", "SHORT"):
-            raise ValueError("side LONG ba SHORT hote hobe")
+            raise ValueError("side must be LONG or SHORT")
         if self.get_position(symbol):
-            raise RuntimeError(f"{symbol} e Bitget e agei position khola ache")
+            raise RuntimeError(f"{symbol} already has an open position on Bitget")
         inst = self._instrument(symbol)
         lev = max(1, min(int(leverage), inst["max_lev"]))
         price = _dec(self.last_price(symbol))
         _guards(price, tp_gap, sl_gap, lev)
         qty = _round_step(_dec(margin_usd) * lev / price, inst["qty_step"])
         if qty < _dec(inst["min_qty"]):
-            raise ValueError(f"Qty {qty} < minimum {inst['min_qty']}. Margin ba leverage barao.")
+            raise ValueError(f"Qty {qty} < minimum {inst['min_qty']}. Increase the margin or leverage.")
         if qty * price < _dec(inst["min_notional"]):
-            raise ValueError(f"Order value ${qty * price:.2f} < minimum ${inst['min_notional']}. Margin barao.")
+            raise ValueError(f"Order value ${qty * price:.2f} < minimum ${inst['min_notional']}. Increase the margin.")
         long_ = side == "LONG"
         tp = _round_step(price + _dec(tp_gap) if long_ else price - _dec(tp_gap), inst["tick"], ROUND_HALF_UP)
         sl = _round_step(price - _dec(sl_gap) if long_ else price + _dec(sl_gap), inst["tick"], ROUND_HALF_UP)
         if tp <= 0 or sl <= 0:
-            raise ValueError("TP/SL gap onek boro, price negative hoye jacche.")
+            raise ValueError("TP/SL gap is too large; the price would go negative.")
         hedge = self._pos_mode(symbol) == "hedge_mode"
         base = {"symbol": symbol, "productType": self.product, "marginCoin": self.coin}
         try:
@@ -803,32 +803,32 @@ class MetaEngine(_MetaBase):
     def open_position(self, symbol, side, margin_usd, leverage, tp_gap, sl_gap):
         side = side.upper()
         if side not in ("LONG", "SHORT"):
-            raise ValueError("side LONG ba SHORT hote hobe")
+            raise ValueError("side must be LONG or SHORT")
         info = self._info()
         if info.get("currency") != "USD":
-            raise ValueError(f"MT5 account currency {info.get('currency')}: ekhon shudhu USD account (cent account na) support kore.")
+            raise ValueError(f"MT5 account currency {info.get('currency')}: only USD accounts (not cent accounts) are supported for now.")
         base, quote = symbol[:3], symbol[3:6]
         if quote != "USD" and base != "USD":
-            raise ValueError(f"{symbol}: ekhon shudhu USD pair (EURUSD, USDJPY, XAUUSD ityadi) support kore.")
+            raise ValueError(f"{symbol}: only USD pairs (EURUSD, USDJPY, XAUUSD, etc.) are supported for now.")
         if self.get_position(symbol):
-            raise RuntimeError(f"{symbol} e MT5 te agei position khola ache")
+            raise RuntimeError(f"{symbol} already has an open position on MT5")
         spec = self._req("GET", f"/users/current/accounts/{self.acct}/symbols/{symbol}/specification")
         bid, ask, tradeable = self._quote(symbol)
         if not tradeable:
-            raise ValueError("Forex market ekhon bondho (weekend/holiday). Market khulle abar chesta koro.")
+            raise ValueError("Forex market is closed (weekend/holiday). Try again when it opens.")
         mid = _dec((bid + ask) / 2)
         lev = max(1, min(int(leverage), int(info.get("leverage") or 100)))
         _guards(mid, tp_gap, sl_gap, lev)
         spread = _dec(ask - bid)
         if spread * 2 >= _dec(tp_gap):
-            raise ValueError(f"Spread {float(spread):g} TP ({float(tp_gap):g}) er prai ordhek. TP barao.")
+            raise ValueError(f"Spread {float(spread):g} is almost half of the TP ({float(tp_gap):g}). Increase the TP.")
         csize = _dec(spec.get("contractSize") or 100000)
         lots = _dec(margin_usd) * lev / (csize * (mid if quote == "USD" else Decimal(1)))
         lots = _round_step(lots, spec.get("volumeStep") or "0.01")
         if lots < _dec(spec.get("minVolume") or "0.01"):
-            raise ValueError(f"Lot {lots} < minimum {spec.get('minVolume')}. Margin ba leverage barao.")
+            raise ValueError(f"Lot {lots} < minimum {spec.get('minVolume')}. Increase the margin or leverage.")
         if spec.get("maxVolume") and lots > _dec(spec["maxVolume"]):
-            raise ValueError("Lot maximum er beshi.")
+            raise ValueError("Lot exceeds the maximum.")
         long_ = side == "LONG"
         ref = _dec(ask if long_ else bid)
         q = Decimal(1).scaleb(-int(spec.get("digits", 5)))
