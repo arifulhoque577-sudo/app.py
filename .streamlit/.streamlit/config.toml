@@ -1,0 +1,11 @@
+[theme]
+base = "dark"
+primaryColor = "#38bdf8"
+backgroundColor = "#05080f"
+secondaryBackgroundColor = "#0b1220"
+textColor = "#dbe7f5"
+font = "sans serif"
+
+[client]
+# 3-dot menu er Light/System theme switch lukiye dey, jate sobai-i dark dekhe
+toolbarMode = "minimal"
