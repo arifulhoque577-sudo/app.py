@@ -18,6 +18,10 @@ import base64
 import hashlib
 import exchanges as _exch_mod
 import pro_ui
+import countries
+import mailer
+import secrets
+import hmac
 from bybit_engine import BybitEngine
 from exchanges import EXCHANGES, EXCHANGE_IDS, EXCHANGE_NAMES, OANDA_MAJORS, BinanceData, BitgetData, mt5_majors, make_data, make_engine, _check_ban, BINANCE_MAIN
 try:
@@ -150,7 +154,7 @@ def conn_check():
         rows.append(("Server IP", f"{j.get('ip')} | {j.get('city')}, {j.get('country')}"))
         us = j.get("country") == "US"
     except Exception as e:
-        rows.append(("Server IP", f"check kora gelo na ({str(e)[:60]})"))
+        rows.append(("Server IP", f"could not be checked ({str(e)[:60]})"))
     tests = [("Bybit mainnet", "https://api.bybit.com/v5/market/time", None),
              ("Bybit testnet", "https://api-testnet.bybit.com/v5/market/time", None),
              ("Binance Futures mainnet", "https://fapi.binance.com/fapi/v1/ping", BINANCE_MAIN),
@@ -162,7 +166,7 @@ def conn_check():
             v = "✅ OK" if c == 200 else ("❌ Region/IP block" if c in (403, 451) else ("❌ Rate-limit ban" if c in (418, 429) else f"⚠️ HTTP {c}"))
         except RuntimeError as e:
             _u = _exch_mod._BAN_UNTIL.get(bankey or "", 0)
-            v = f"❌ IP ban cholche, {datetime.utcfromtimestamp(_u + 6 * 3600).strftime('%d %b %I:%M %p')} (Dhaka somoy) porjonto. Ei somoy request pathai nai, karon ban-e request pathale ban aro lomba hoy."
+            v = f"❌ IP ban active until {datetime.utcfromtimestamp(_u + 6 * 3600).strftime('%d %b %I:%M %p')} (Dhaka time). No requests were sent, because sending requests during a ban can extend it."
         except Exception as e:
             v = f"❌ {str(e)[:50]}"
         rows.append((name, v))
@@ -227,7 +231,7 @@ else:
         st.session_state.bot_active = False
 
 if "engine_logs" not in st.session_state:
-    st.session_state.engine_logs = ["System Swarm Gateway Init... 📡"]
+    st.session_state.engine_logs = [f"[{time.strftime('%H:%M:%S')}] System ready. 📡"]
 # --- 🚀 PREMIUM NO-BORDER SPLASH SCREEN ANIMATION TRIGGER ---
 if "splash_done" not in st.session_state:
     st.set_page_config(page_title="AI Scalper", page_icon="⚡", layout="wide")
@@ -376,11 +380,11 @@ def _ai_job(store, key, api_key, models, prompt, symbol):
                     box["fatal"] = True
         attempt(models)
         if box["resp"] is None and not box["fatal"]:
-            L("Model kaj korena. OpenRouter er live free list theke try korchi...")
+            L("Model is not responding. Trying models from OpenRouter's live free list...")
             try:
                 attempt(fetch_free_models()[:3])
             except Exception as e:
-                L(f"Free list ante parlam na: {e}")
+                L(f"Could not load the free list: {e}")
         if box["resp"] is not None:
             try:
                 text = (box["resp"].json()["choices"][0]["message"].get("content") or "").upper()
@@ -583,6 +587,44 @@ st.markdown(
     unsafe_allow_html=True,
 )
 pro_ui.inject(st)
+GMAIL_RE = re.compile(r"^[a-z0-9][a-z0-9._+-]{4,}@gmail\.com$")
+
+def pz_table(df, **_kw):
+    st.markdown(pro_ui.table(df), unsafe_allow_html=True)
+
+def _find_account(ident):
+    ident = (ident or "").strip()
+    creds = st._central_user_creds or {}
+    if not ident: return None
+    if ident in creds: return ident
+    for u, d in creds.items():
+        if str(d.get("email", "")).strip().lower() == ident.lower(): return u
+    return None
+
+def _reset_issue(uname):
+    d = st._central_user_creds[uname]; uid = d.get("uid")
+    rec = db_load(f"reset_{uid}", {}) or {}
+    if rec and time.time() - rec.get("sent", 0) < 60: return True, ""     # throttled, stay silent
+    code, salt = f"{secrets.randbelow(10**6):06d}", secrets.token_hex(8)
+    ok, err = mailer.send_code(d.get("email", ""), code, 10)
+    if not ok: return False, err
+    db_save(f"reset_{uid}", {"h": hashlib.sha256((salt + code).encode()).hexdigest(), "salt": salt, "exp": time.time() + 600, "sent": time.time(), "tries": 0})
+    return True, ""
+
+def _reset_verify(uname, code):
+    uid = st._central_user_creds[uname].get("uid")
+    rec = db_load(f"reset_{uid}", {}) or {}
+    if not rec or time.time() > rec.get("exp", 0): return False, "That code has expired. Please request a new one."
+    if rec.get("tries", 0) >= 5: return False, "Too many attempts. Please request a new code."
+    rec["tries"] = rec.get("tries", 0) + 1; db_save(f"reset_{uid}", rec)
+    if not hmac.compare_digest(hashlib.sha256((rec["salt"] + code).encode()).hexdigest(), rec["h"]): return False, "Incorrect code."
+    return True, ""
+
+def _set_password(uname, new_pw):
+    st._central_user_creds[uname]["password"] = new_pw
+    db_save("user_creds", st._central_user_creds)
+    db_save(f"reset_{st._central_user_creds[uname].get('uid')}", {})
+
 if st.session_state.logged_in_user is None:
     pro_ui.inject_auth(st)
     st.markdown(pro_ui.auth_hero(), unsafe_allow_html=True)
@@ -591,19 +633,23 @@ if st.session_state.logged_in_user is None:
     if auth_mode == "Sign Up":
         reg_username = st.text_input("Username", key="reg_u").strip()
         reg_password = st.text_input("Password", type="password", key="reg_p").strip()
-        reg_email = st.text_input("Google Mail (Gmail ID):", key="reg_e").strip()
-        global_country_list = ["Bangladesh", "United States", "United Kingdom", "United Arab Emirates", "Saudi Arabia", "Malaysia", "India", "Pakistan", "Kuwait", "Qatar", "Oman", "Singapore", "Canada", "Australia", "Germany"]
-        reg_country = st.selectbox("Select Profile Country (Mandatory):", global_country_list, index=0)
-        global_phone_flags = ["🇧🇩 +880 (Bangladesh)", "🇺🇸 +1 (United States)", "🇬🇧 +44 (United Kingdom)", "🇦🇪 +971 (UAE)", "🇸🇦 +966 (Saudi Arabia)", "🇲🇾 +60 (Malaysia)", "🇮🇳 +91 (India)", "🇵🇰 +92 (Pakistan)"]
-        reg_flag_code = st.selectbox("Select Phone Flag Country Code:", global_phone_flags, index=0)
-        reg_phone_raw = st.text_input("Mobile Number (Without Country Code):", key="reg_ph_num_raw").strip()
-        reg_school = st.text_input("First School Name? (Security Answer Check):", key="reg_sch").strip()
-        reg_sponsor = st.text_input("Sponsor Referral Token ID (Username or UID):", key="reg_s").strip()
+        reg_email = st.text_input("Gmail address", key="reg_e", placeholder="yourname@gmail.com").strip().lower()
+        _cc_sel = st.selectbox("Country", countries.labels(), index=0, key="reg_country_sel")
+        reg_country, _cc_dial = countries.parse(_cc_sel)
+        reg_phone_raw = st.text_input(f"Mobile number (without {_cc_dial})", key="reg_ph_num_raw", placeholder="1712345678").strip()
+        reg_school = st.text_input("Security answer: name of your first school", key="reg_sch").strip()
+        reg_sponsor = st.text_input("Sponsor (username or UID, optional)", key="reg_s").strip()
         if st.button("Create account  →", key="reg_submit_btn"):
             st._central_user_creds = db_load("user_creds", {})
+            _ph_ok, _ph_val = countries.normalize_phone(_cc_dial, reg_phone_raw)
+            _email_taken = any(str(u.get("email", "")).strip().lower() == reg_email for u in st._central_user_creds.values())
             if reg_username == "" or reg_password == "" or reg_email == "" or reg_school == "" or reg_phone_raw == "":
-                st.error("Mandatory fields are blank! Process blocked.")
-            elif reg_username in st._central_user_creds: st.error("Username already active!")
+                st.error("Please fill in every required field.")
+            elif len(reg_password) < 6: st.error("Password must be at least 6 characters.")
+            elif not GMAIL_RE.match(reg_email): st.error("Please enter a valid Gmail address (name@gmail.com).")
+            elif _email_taken: st.error("This Gmail address is already registered.")
+            elif not _ph_ok: st.error(_ph_val)
+            elif reg_username in st._central_user_creds: st.error("That username is already taken.")
             else:
                 new_uid = "UID-" + "".join(random.choices(string.digits, k=6))
                 resolved_sponsor_uid = "None"
@@ -615,7 +661,7 @@ if st.session_state.logged_in_user is None:
                             if data.get("uid") == reg_sponsor or u_name == reg_sponsor:
                                 resolved_sponsor_uid = data.get("uid", reg_sponsor)
                                 break
-                full_mobile = f"{reg_flag_code.split(' ')[1]} {reg_phone_raw}"
+                full_mobile = _ph_val
                 admin_fixed_bonus = float(db_load("admin_fixed_ref_usd", 10.0))
                 st._central_user_creds[reg_username] = {"password": reg_password, "uid": new_uid, "email": reg_email, "country": reg_country, "phone": full_mobile, "school_answer": reg_school.lower(), "sponsor": resolved_sponsor_uid, "license_activated_before": False}
                 st._uid_to_username[new_uid] = reg_username
@@ -636,18 +682,56 @@ if st.session_state.logged_in_user is None:
                     db_save("referral_tree", st._global_referral_tree)
                     st._global_user_pnl_history.append({"Date": time.strftime("%Y-%m-%d"), "Time": time.strftime("%H:%M:%S"), "User ID": resolved_sponsor_uid, "Coin": "REGISTRATION", "Action": "REF_COMMISSION_DIRECT", "Net P&L ($)": f"{admin_fixed_bonus:.2f}", "Type": "DEMO"})
                     db_save("pnl_history", st._global_user_pnl_history)
-                st.success(f"Bound Identity Successful! UID Generated: {new_uid}")
+                st.success(f"Account created! Your UID is {new_uid}. You can now sign in.")
         st.stop()
     elif auth_mode == "Recover":
-        st.caption("Username ar security answer diye account recover koro.")
-        f_user = st.text_input("Enter Username Handle to Recover:", key="forget_u_field").strip()
-        f_school = st.text_input("Verification: First School Name?", key="forget_sch_field").strip()
-        if st.button("⚡ Verify and Reveal Password", key="submit_forget_proc_btn"):
-            st._central_user_creds = db_load("user_creds", {})
-            if f_user in st._central_user_creds and st._central_user_creds[f_user].get("school_answer", "") == f_school.lower(): st.success(f"Identity Verified! Your Password is: **{st._central_user_creds[f_user]['password']}**")
-            else: st.error("Verification parameters failed or mismatch!")
+        st.caption("Reset your password with a code sent to your Gmail, or skip email and use your security answer.")
+        _rm = st.radio("Method", ["Email code", "Security answer"], horizontal=True, key="rec_method", label_visibility="collapsed")
+        if _rm == "Email code":
+            _rid = st.text_input("Username or Gmail", key="rec_id").strip()
+            if st.button("Send code  →", key="submit_forget_send_btn"):
+                st._central_user_creds = db_load("user_creds", {})
+                if not mailer.configured():
+                    st.session_state.rec_sent = False
+                    st.error("Email sending is not set up on this server yet. Please use the “Security answer” method.")
+                else:
+                    _acct = _find_account(_rid)
+                    _ok, _err = _reset_issue(_acct) if _acct else (True, "")
+                    if _ok:
+                        st.session_state.rec_sent, st.session_state.rec_target = True, (_acct or "")
+                    else:
+                        st.session_state.rec_sent = False
+                        st.error("We could not send the email right now. Please try again later or use the “Security answer” method.")
+            if st.session_state.get("rec_sent"):
+                st.info("If an account matches, a 6-digit code was sent to its Gmail. It expires in 10 minutes.")
+                _code = st.text_input("6-digit code", key="rec_code", max_chars=6).strip()
+                _p1 = st.text_input("New password", type="password", key="rec_np1")
+                _p2 = st.text_input("Confirm new password", type="password", key="rec_np2")
+                if st.button("Reset password  →", key="submit_forget_reset_btn"):
+                    _t = st.session_state.get("rec_target", "")
+                    if len(_p1) < 6: st.error("Password must be at least 6 characters.")
+                    elif _p1 != _p2: st.error("The two passwords do not match.")
+                    elif not _t: st.error("Incorrect code.")
+                    else:
+                        _ok, _err = _reset_verify(_t, _code)
+                        if _ok:
+                            _set_password(_t, _p1); st.session_state.rec_sent = False
+                            st.success("Password updated. Open the Login tab and sign in.")
+                        else: st.error(_err)
+        else:
+            f_user = st.text_input("Username", key="forget_u_field").strip()
+            f_school = st.text_input("Name of your first school", key="forget_sch_field").strip()
+            _p1 = st.text_input("New password", type="password", key="rec_np1s")
+            _p2 = st.text_input("Confirm new password", type="password", key="rec_np2s")
+            if st.button("Reset password  →", key="submit_forget_proc_btn"):
+                st._central_user_creds = db_load("user_creds", {})
+                if len(_p1) < 6: st.error("Password must be at least 6 characters.")
+                elif _p1 != _p2: st.error("The two passwords do not match.")
+                elif f_user in st._central_user_creds and st._central_user_creds[f_user].get("school_answer", "") == f_school.lower():
+                    _set_password(f_user, _p1); st.success("Password updated. Open the Login tab and sign in.")
+                else: st.error("Verification failed.")
         st.stop()
-        
+
     elif auth_mode == "Login":
         login_u = st.text_input("Username", key="log_u").strip()
         login_p = st.text_input("Password", type="password", key="log_p").strip()
@@ -656,9 +740,9 @@ if st.session_state.logged_in_user is None:
             if login_u in st._central_user_creds and st._central_user_creds[login_u]["password"] == login_p:
                 st.session_state.logged_in_user = login_u
                 st.query_params["session_user"] = login_u
-                st.success("Access Granted!")
+                st.success("Welcome back!")
                 st.rerun()
-            else: st.error("Mismatch credentials input parameters!")
+            else: st.error("Incorrect username or password.")
         st.stop()
 user_data = st._central_user_creds[st.session_state.logged_in_user]
 allocated_user_id = user_data["uid"]
@@ -691,7 +775,7 @@ with st.sidebar:
     bot_mode = st.radio("Trading Account Mode Settings:", ["Demo Simulation (Virtual Funds)", "Live Exchange (Real Account API)"])
     is_real_live = "Live" in bot_mode
     exchange = st.selectbox("Exchange / Market:", EXCHANGES, index=min(int(db_load(f"exchange_idx_{allocated_user_id}", 0)), len(EXCHANGES) - 1), key="exchange_box",
-                            help="Position khola thakle exchange bodlio na. Protita exchange er position/setting alada thake.")
+                            help="Do not switch exchange while a position is open. Each exchange keeps its own positions and settings.")
     db_save(f"exchange_idx_{allocated_user_id}", EXCHANGES.index(exchange))
     exch_id = EXCHANGE_IDS[exchange]
     sticky_init(allocated_user_id, f"testnet_toggle_{exch_id}", _TN_DEFAULT[exch_id])
@@ -710,7 +794,7 @@ with st.sidebar:
         CATALOG = fetch_exchange_coins(exch_id, bool(st.session_state.get(f"testnet_toggle_{exch_id}", _TN_DEFAULT[exch_id])) if is_real_live else False,
                                        st.session_state.get("mt5_suffix_field", "").strip() if exch_id == "mt5" else "")
         if "__error__" in CATALOG:
-            st.error(f"{exchange} coin list ante parlam: {CATALOG['__error__'][:150]}. (Render region Singapore/Frankfurt hole bhalo; US block hote pare)")
+            st.error(f"{exchange} could not load the coin list: {CATALOG['__error__'][:150]}. (A Singapore/Frankfurt Render region works best; US regions may be blocked.)")
             CATALOG = {k: v for k, v in BYBYT_DATABASE_CORE.items() if v["symbol"] in ("BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT")}
     coin_list = list(CATALOG.keys())
     if exch_id == "bybit" and is_real_live and st.session_state.get("testnet_toggle_bybit", False):
@@ -745,7 +829,7 @@ with st.sidebar:
 
     ai_decision = st.toggle("AI Smart Crossover Filter Matrix", value=True)
     ai_mode = st.selectbox("AI Mode:", AI_MODES, index=min(int(db_load(f"ai_mode_idx_{allocated_user_id}", 0)), len(AI_MODES) - 1), key="ai_mode_box",
-                           help="Secure: kom trade, 'perfect' setup lagbe. Balanced: trend + RSI mille trade. Turbo: sobsomoy trade (shudhu testnet/demo e pipeline test er jonno). Mainnet e shudhu Secure cholbe.")
+                           help="Secure: fewer trades, only 'perfect' setups. Balanced: trades when trend and RSI agree. Turbo: trades constantly (for testing the pipeline on testnet/demo only). Mainnet only allows Secure.")
     db_save(f"ai_mode_idx_{allocated_user_id}", AI_MODES.index(ai_mode))
     
     st.markdown("<b style='color:#38bdf8;'>🤖 OpenRouter AI Router Configuration:</b>", unsafe_allow_html=True)
@@ -755,14 +839,14 @@ with st.sidebar:
         db_save(f"or_key_{allocated_user_id}", or_api_key); db_save(f"or_model_{allocated_user_id}", or_model_id); st.toast("Config Saved!", icon="💾")
     ai_interval = st.number_input("AI signal interval (sec):", min_value=30, max_value=900, step=30, value=int(db_load(f"ai_interval_{allocated_user_id}", 120)), key="ai_interval_box")
     db_save(f"ai_interval_{allocated_user_id}", int(ai_interval))
-    if st.button("🆓 Free model list dekhao (live)", key="free_models_btn"):
+    if st.button("🆓 Show free model list (live)", key="free_models_btn"):
         try:
             st.session_state.free_models = fetch_free_models()
         except Exception as _e:
             st.session_state.free_models = []
-            st.caption(f"List ante parlam na: {_e}")
+            st.caption(f"Could not load the list: {_e}")
     if st.session_state.get("free_models"):
-        st.caption("Ekta ID copy kore upore 'Model ID' e boshao (comma diye 2-3 ta dile fallback hobe):")
+        st.caption("Copy an ID into 'Model ID' above (add 2-3 separated by commas for fallback):")
         st.code("\n".join(st.session_state.free_models), language=None)
     
     max_leverage_bound = int(coin_config.get('max_leverage', 100))
@@ -810,48 +894,48 @@ with st.sidebar:
             license_ok = True
             if exch_id in ("bybit", "binance", "bitget"):
                 _nm = EXCHANGE_NAMES[exch_id]
-                use_testnet = sticky_check(allocated_user_id, f"🧪 {_nm} {'DEMO' if exch_id == 'bitget' else 'TESTNET'} (tick = test account, UNTICK = asol mainnet)", f"testnet_toggle_{exch_id}", _TN_DEFAULT[exch_id])
+                use_testnet = sticky_check(allocated_user_id, f"🧪 {_nm} {'DEMO' if exch_id == 'bitget' else 'TESTNET'} (checked = test account, unchecked = live mainnet)", f"testnet_toggle_{exch_id}", _TN_DEFAULT[exch_id])
                 api_key = sticky_text(allocated_user_id, f"{_nm} API Key:", f"api_field_{exch_id}")
                 secret_key = sticky_text(allocated_user_id, f"{_nm} Secret Key:", f"sec_field_{exch_id}")
                 if exch_id == "bitget":
                     api_pass = sticky_text(allocated_user_id, "Bitget API Passphrase:", "pass_field_bitget")
                 if not use_testnet:
-                    mainnet_ack = sticky_check(allocated_user_id, "⚠️ Ami bujhi eta ASOL taka. Loss hole daitto amar.", f"mainnet_ack_{exch_id}", False)
+                    mainnet_ack = sticky_check(allocated_user_id, "⚠️ I understand this is real money. I accept full responsibility for any losses and agree to the Terms & Conditions.", f"mainnet_ack_{exch_id}", False)
 with st.sidebar:
     with st.expander("🩺 Server / Exchange connection check"):
-        if st.button("Ekhon check koro", key="conn_check_btn"):
+        if st.button("Check now", key="conn_check_btn"):
             _rows, _us = conn_check()
             for _n, _v in _rows: st.write(f"**{_n}:** {_v}")
-            if _us: st.warning("Server USA te. Bybit/Binance/Bitget mainnet US IP block kore. Render e notun service banao Region = Singapore diye.")
-    if is_real_live and st.button("🗑️ Saved API/License key muche felo", key="vault_clear_btn"):
+            if _us: st.warning("This server is in the USA. Bybit/Binance/Bitget mainnet block US IPs. Create a new Render service with Region = Singapore.")
+    if is_real_live and st.button("🗑️ Delete saved API / license keys", key="vault_clear_btn"):
         vault_clear(allocated_user_id); st.rerun()
 # 🔥 লোগো ব্যানার পেজের একদম উপরে প্লেস করা হলো
 if exch_id == "oanda":
     with st.sidebar:
         st.markdown("<hr style='border:1px solid #1e293b; margin:10px 0;'><b style='color:#38bdf8;'>💱 OANDA Credentials</b>", unsafe_allow_html=True)
-        st.caption("OANDA te price data-o token chhara ashe na, tai Demo mode e-o dorkar. Free Practice account diye shuru koro.")
-        use_testnet = sticky_check(allocated_user_id, "🧪 OANDA PRACTICE account (age ekhane test koro)", "testnet_toggle_oanda", True)
+        st.caption("OANDA price data also requires a token, so it is needed in Demo mode too. Start with a free Practice account.")
+        use_testnet = sticky_check(allocated_user_id, "🧪 OANDA PRACTICE account (test here first)", "testnet_toggle_oanda", True)
         api_key = sticky_text(allocated_user_id, "OANDA API Token:", "api_field_oanda")
         secret_key = sticky_text(allocated_user_id, "OANDA Account ID (jemon 101-001-1234567-001):", "acct_field_oanda", secret=False)
         if is_real_live and not use_testnet:
-            mainnet_ack = sticky_check(allocated_user_id, "⚠️ Ami bujhi eta ASOL taka. Loss hole daitto amar.", "mainnet_ack_oanda", False)
+            mainnet_ack = sticky_check(allocated_user_id, "⚠️ I understand this is real money. I accept full responsibility for any losses and agree to the Terms & Conditions.", "mainnet_ack_oanda", False)
 if exch_id == "mt5":
     with st.sidebar:
         st.markdown("<hr style='border:1px solid #1e293b; margin:10px 0;'><b style='color:#38bdf8;'>📈 MT5 (MetaApi) Credentials</b>", unsafe_allow_html=True)
-        st.caption("Exness/XM/IC Markets MT5 account metaapi.cloud e add kore nao (BETA: age DEMO account e test koro). Price data-o MetaApi theke ashe, tai Demo mode e-o dorkar.")
-        use_testnet = sticky_check(allocated_user_id, "🧪 Ei MT5 account ta DEMO (age ekhane test koro)", "testnet_toggle_mt5", True)
+        st.caption("Add your Exness/XM/IC Markets MT5 account on metaapi.cloud (BETA: test on a DEMO account first). Price data also comes from MetaApi, so it is needed in Demo mode too.")
+        use_testnet = sticky_check(allocated_user_id, "🧪 This MT5 account is a DEMO account (test here first)", "testnet_toggle_mt5", True)
         api_key = sticky_text(allocated_user_id, "MetaApi Token:", "api_field_mt5")
         secret_key = sticky_text(allocated_user_id, "MetaApi Account ID:", "acct_field_mt5", secret=False)
         mt5_region = sticky_text(allocated_user_id, "MetaApi Region (jemon london, new-york, singapore):", "region_field_mt5", secret=False, default="london") or "london"
-        sticky_text(allocated_user_id, "Symbol suffix (Exness e prai 'm', na hole faka rakho):", "mt5_suffix_field", secret=False, help="Exness er onek account e symbol 'EURUSDm' hoy. MT5 er Market Watch e dekho.")
+        sticky_text(allocated_user_id, "Symbol suffix (usually 'm' on Exness, otherwise leave blank):", "mt5_suffix_field", secret=False, help="Many Exness accounts use symbols like 'EURUSDm'. Check MT5 Market Watch.")
         _uuid = re.compile(r"^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$")
         if secret_key.startswith("eyJ") and _uuid.match(api_key):
             api_key, secret_key = secret_key, api_key
-            st.info("🔄 Token ar Account ID ulte chhilo, ami thik kore nilam. Field gulo shothik jayga-y bosiye dao.")
+            st.info("🔄 Token and Account ID were swapped; I corrected them. Please put each value in the right field.")
         elif secret_key.startswith("eyJ"):
-            st.error("❌ 'MetaApi Account ID' e tumi lomba Token (eyJ... diye shuru) boshiyecho. Account ID chhoto: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.")
+            st.error("❌ You pasted the long Token (starts with eyJ...) into 'MetaApi Account ID'. The Account ID is short: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.")
         if is_real_live and not use_testnet:
-            mainnet_ack = sticky_check(allocated_user_id, "⚠️ Ami bujhi eta ASOL taka. Loss hole daitto amar.", "mainnet_ack_mt5", False)
+            mainnet_ack = sticky_check(allocated_user_id, "⚠️ I understand this is real money. I accept full responsibility for any losses and agree to the Terms & Conditions.", "mainnet_ack_mt5", False)
 # (old banner replaced by pro_ui.hero below)
 
 effective_vol = trade_amount * leverage
@@ -873,7 +957,7 @@ _ban_persist()
 df_kline = pd.DataFrame()
 data_error = ""
 if needs_creds_for_data and not (api_key and secret_key):
-    data_error = f"{exchange} price data er jonno sidebar e Token + Account ID dao."
+    data_error = f"{exchange} price data requires a Token + Account ID in the sidebar."
 else:
     rows = []
     try:
@@ -897,9 +981,9 @@ else:
         data_error = data_error or str(_e)
 if live_price == 0.0 and not df_kline.empty: live_price = float(df_kline['close'].iloc[-1])
 if data_error and live_price == 0.0:
-    st.warning(f"📡 {exchange}: price data ante parlam ({data_error[:180]})")
+    st.warning(f"📡 {exchange}: could not load price data ({data_error[:180]})")
 if not getattr(md, "tradeable", True):
-    st.warning("⛔ Forex market ekhon bondho (weekend/holiday). Market khulle trade hobe.")
+    st.warning("⛔ Forex market is closed (weekend/holiday). Trading resumes when it opens.")
 # ==========================================
 # 🧱 BOX 17: REAL-TIME CHART RENDERING INTERFACE
 # ==========================================
@@ -1031,7 +1115,7 @@ def open_trade(side):
     entry = float(live_price)
     if is_real_live:
         if real_engine is None:
-            return False, "Real mode: License key + Bybit API key/secret lagbe."
+            return False, "Real mode requires a license key and an API key/secret."
         if real_wallet and real_wallet["available"] < float(trade_amount):
             return False, f"Available balance ${real_wallet['available']:.2f} < margin ${trade_amount}"
         try:
@@ -1042,7 +1126,7 @@ def open_trade(side):
         st.session_state.real_open_ts = time.time()
         db_save(f"real_open_ms_{mode_suffix}_{uid}", int(res.get("opened_ms") or time.time() * 1000))
     elif entry <= 0:
-        return False, "Live price ekhono ashe nai."
+        return False, "Live price is not available yet."
     db_save(f"in_position_{mode_suffix}_{uid}", True)
     db_save(f"buy_price_{mode_suffix}_{uid}", entry)
     db_save(f"current_side_{mode_suffix}_{uid}", side)
@@ -1092,17 +1176,17 @@ if is_real_live:
 else:
     _bal_val = st.session_state.get('demo_balance', 5000.0) + floating_pnl
 balance_usd_text = f"${_bal_val:,.2f} USDT"
-st.markdown(f"<div class='custom-box-grid'>💰 <b>AVAILABLE BALANCE ({bot_mode}):</b> <h2 style='margin:0; color:#fff;'>{balance_usd_text}</h2><p style='margin:0; font-size:14px; color:{'#00e676' if floating_pnl >= 0 else '#ff1744'}; font-weight:bold;'>Live Floating P&L Indicator: {floating_pnl:+.4f} USDT</p></div>", unsafe_allow_html=True)
+st.markdown(pro_ui.balance_card(f"{'REAL' if is_real_live else 'DEMO'} · {EXCHANGE_NAMES[exch_id]}", _bal_val, floating_pnl), unsafe_allow_html=True)
 if is_real_live:
     if real_engine_error: st.error(f"{exchange} connect error: {real_engine_error}")
-    elif license_ok and api_key and secret_key and not use_testnet and not mainnet_ack: st.warning("⚠️ ASOL taka (mainnet) mode: sidebar er 'Ami bujhi eta ASOL taka' tick na dile trade shuru hobe na.")
-    elif license_ok and exch_id == "bitget" and api_key and secret_key and not api_pass: st.info("🔑 Bitget er jonno API Passphrase-o dao (key banano-r somoy je password dichhile).")
-    elif real_engine is None: st.info(f"🔒 Real mode: sidebar e License Password dao, tarpor {exchange} er API credentials dao. Tahole {exchange} er asol balance ekhane ashbe.")
+    elif license_ok and api_key and secret_key and not use_testnet and not mainnet_ack: st.warning("⚠️ Live (mainnet) mode: tick the real-money consent checkbox in the sidebar before trading can start.")
+    elif license_ok and exch_id == "bitget" and api_key and secret_key and not api_pass: st.info("🔑 Bitget also needs your API Passphrase (the one you set when creating the key).")
+    elif real_engine is None: st.info(f"🔒 Real mode: enter your License Password in the sidebar, then your {exchange} API credentials. Your real {exchange} balance will then appear here.")
     else:
         st.caption(f"🔗 {exchange} {'TESTNET/PRACTICE 🧪' if use_testnet else 'LIVE 🔴'} connected | Equity: ${real_wallet['equity']:,.2f} | Available: ${real_wallet['available']:,.2f} USDT")
         if real_wallet["equity"] == 0 and not real_wallet.get("raw", {}).get("coins_returned"):
             _uid = (real_wallet.get("raw", {}).get("API_KEY_INFO") or {}).get("userID", "?")
-            st.warning(f"⚠️ Ei API key er {exchange} account (UID: {_uid}) e kono coin nei. Jei {'testnet' if use_testnet else 'mainnet'} account e USDT ache, **oi account e login kore** notun API key banao.")
+            st.warning(f"⚠️ This API key's {exchange} account (UID: {_uid}) holds no coins. Log in to the {'testnet' if use_testnet else 'mainnet'} account that holds your USDT and create a new API key there.")
         with st.expander("🔍 Wallet raw data (debug)"):
             st.json(real_wallet.get("raw", {}))
 if live_price > 0 and effective_vol > 0:
@@ -1112,13 +1196,13 @@ if live_price > 0 and effective_vol > 0:
     _be = (_net_loss / (_net_win + _net_loss) * 100) if (_net_win + _net_loss) > 0 else 100.0
     _sl_pct, _liq_pct = stop_loss_gap / live_price * 100, 80.0 / max(int(leverage), 1)
     if _sl_pct >= _liq_pct:
-        st.error(f"🛑 Stop Loss ({_sl_pct:.2f}%) liquidation distance (~{_liq_pct:.2f}% @ {leverage}x) er cheye dure. SL trigger hobar age-i position liquidate hobe. Leverage komao ba SL chhoto koro.")
+        st.error(f"🛑 Stop Loss ({_sl_pct:.2f}%) is beyond the liquidation distance (~{_liq_pct:.2f}% @ {leverage}x). The position would be liquidated before the stop-loss triggers. Lower the leverage or tighten the stop-loss.")
     if _net_win <= 0:
-        st.error(f"🛑 TP jitleo fee (${_fee:.2f}) kate loss hobe (net {_net_win:+.2f}). TP onek barao.")
+        st.error(f"🛑 Even if TP is hit, fees (${_fee:.2f}) make it a net loss (net {_net_win:+.2f}). Increase the TP.")
     elif _be > 60:
-        st.warning(f"⚠️ Fee soho: jitle ~+${_net_win:.2f}, harle ~-${_net_loss:.2f}. Break-even korte **{_be:.0f}% trade jitte hobe**. TP barao ba SL komao.")
+        st.warning(f"⚠️ After fees: win ~+${_net_win:.2f}, loss ~-${_net_loss:.2f}. You need to win **{_be:.0f}% of trades** to break even. Increase the TP or tighten the SL.")
     else:
-        st.caption(f"ℹ️ Fee soho: jitle +${_net_win:.2f} | harle -${_net_loss:.2f} | break-even win rate {_be:.0f}%")
+        st.caption(f"ℹ️ After fees: win +${_net_win:.2f} | loss -${_net_loss:.2f} | break-even win rate {_be:.0f}%")
 
 position_overlay_container = st.container()
 with position_overlay_container:
@@ -1172,13 +1256,13 @@ if cloud_bot_trigger and allocated_user_id != "NONE":
             st.session_state.engine_logs.append(_l)
         if _job.get("daily_exhausted"):
             _store[_jk + "_pause"] = (int(time.time() // 86400) + 1) * 86400
-            st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] OpenRouter free DAILY limit shesh. 00:00 UTC (Bangladesh e shokal 6:00) porjonto AI bondho. $10 credit dile 1000/din hoy.")
+            st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] OpenRouter free DAILY limit reached. AI is paused until 00:00 UTC (6:00 AM Bangladesh time). Adding $10 credit raises the limit to 1000 requests/day.")
         elif not st.session_state.in_position and time.time() - _job.get("finished", 0) < 120 and _job.get("symbol") == target_symbol:
             _sig = _job.get("signal", "FAIL")
             if _sig == "FAIL":
                 st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] AI unavailable ({str(_job.get('err', ''))[:150]})")
                 if is_real_live:
-                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Real mode: AI uttor dey nai, tai kono trade kora holo na (HOLD).")
+                    st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Real mode: the AI did not answer, so no trade was placed (HOLD).")
                 else:
                     _local = "LONG" if current_rsi < 45 else ("SHORT" if current_rsi > 55 else "HOLD")
                     st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] Demo RSI backup signal: '{_local}' for {target_symbol}")
@@ -1224,7 +1308,7 @@ if cloud_bot_trigger and allocated_user_id != "NONE":
         _models = [m.strip() for m in str(or_model_id).replace("\n", ",").split(",") if m.strip()][:3]
         _store[_jk] = {"status": "running", "started": time.time(), "symbol": target_symbol, "consumed": False, "logs": []}
         threading.Thread(target=_ai_job, args=(_store, _jk, or_api_key, _models, market_context_prompt, target_symbol), daemon=True).start()
-        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] {ai_label} AI request background e pathano holo...")
+        st.session_state.engine_logs.append(f"[{time.strftime('%H:%M:%S')}] {ai_label} AI request sent in the background...")
 if _rerun_after:
     st.rerun()
 # --- 🪐 PRO HUD: KPIs + position + stats + equity + terminal ---
@@ -1258,9 +1342,9 @@ st.markdown(pro_ui.terminal(st.session_state.engine_logs), unsafe_allow_html=Tru
 if allocated_user_id and allocated_user_id != "NONE":
     _sj, _sk = _ai_store().get(f"{allocated_user_id}_{mode_suffix}"), f"{allocated_user_id}_{mode_suffix}_pause"
     if time.time() < _ai_store().get(_sk, 0):
-        st.caption("⏸ OpenRouter free daily limit shesh. Kal 00:00 UTC (Bangladesh e shokal 6:00) e abar chalu hobe. (Log er somoy = UTC, Bangladesh = UTC+6)")
+        st.caption("⏸ OpenRouter free daily limit reached. AI resumes at 00:00 UTC (6:00 AM Bangladesh time). (Log times are UTC; Bangladesh = UTC+6.)")
     elif _sj and _sj.get("status") == "running":
-        st.caption(f"⏳ AI uttor opekkha korchi... (shuru {time.strftime('%H:%M:%S', time.localtime(_sj['started']))} UTC)")
+        st.caption(f"⏳ Waiting for the AI answer... (started {time.strftime('%H:%M:%S', time.localtime(_sj['started']))} UTC)")
     elif _sj:
         st.caption(f"{'✅' if _sj.get('signal') != 'FAIL' else '❌'} Last AI: {_sj.get('signal')} | model: {_sj.get('model') or '-'} | {str(_sj.get('err', ''))[:90]}")
 
@@ -1297,7 +1381,7 @@ with c2:
     if st.button("🚨 EMERGENCY LIQUIDATE CLOSE ORDER POSITION", disabled=not st.session_state.in_position, key="force_liquidate_btn"):
         if is_real_live:
             if real_engine is None:
-                st.error("Real mode: Bybit API key connect kora nai.")
+                st.error("Real mode: the exchange API key is not connected.")
             else:
                 try:
                     real_engine.close_position(pos_symbol)
@@ -1317,7 +1401,7 @@ with c2:
 if st_autorefresh is not None:
     st_autorefresh(interval=AUTO_REFRESH_MS, key="live_tick_refresh")
 else:
-    st.caption("⚠️ Auto refresh off: requirements.txt e 'streamlit-autorefresh' add koro.")
+    st.caption("⚠️ Auto refresh is off: add 'streamlit-autorefresh' to requirements.txt.")
 # --- 🧬 100% RESTORE NAMEERROR: RE-DEFINED LOST CALCULATOR FUNCTION ---
 def calculate_sub_generations(r_uid, tree):
     g_map = {"Gen 1": [], "Gen 2": [], "Gen 3": [], "Gen 4": [], "Gen 5": [], "Gen 6": [], "Gen 7": []}
@@ -1356,8 +1440,8 @@ if st._global_user_pnl_history:
         except: pass
 
 cbx1, cbx2 = st.columns(2)
-with cbx1: st.markdown(f"<div class='custom-box-grid' style='border-top:4px solid #00e676; text-align:center;'><span>🔗 REFERRAL TOTAL NET BOX ({mode_filter_string})</span><h4 style='color:#00e676;'>${ref_accum:.2f} USDT</h4></div>", unsafe_allow_html=True)
-with cbx2: st.markdown(f"<div class='custom-box-grid' style='border-top:4px solid #29b6f6; text-align:center;'><span>🌐 7-GEN DAILY ROI COMMISSION ({mode_filter_string})</span><h4 style='color:#29b6f6;'>${gen_accum:.2f} USDT</h4></div>", unsafe_allow_html=True)
+with cbx1: st.markdown(pro_ui.stat_box(f"🔗 REFERRAL TOTAL NET ({mode_filter_string})", f"${ref_accum:.2f}", "USDT", "#22f2a0"), unsafe_allow_html=True)
+with cbx2: st.markdown(pro_ui.stat_box(f"🌐 7-GEN DAILY ROI COMMISSION ({mode_filter_string})", f"${gen_accum:.2f}", "USDT", "#38bdf8"), unsafe_allow_html=True)
 if search_uid_input:
     t1, t2 = st.tabs(["Real Production Earnings Gate 🟢", "Demo Sandbox Earnings Gate 🔵"])
     with t1:
@@ -1368,7 +1452,7 @@ if search_uid_input:
                 if not child_real_df.empty:
                     child_real_df["Net P&L ($)"] = pd.to_numeric(child_real_df["Net P&L ($)"])
                     st.markdown(f"💰 Real Daily Earnings: <b style='color:#00e676;'>${child_real_df['Net P&L ($)'].sum():.2f} USDT</b>", unsafe_allow_html=True)
-                    st.dataframe(child_real_df.iloc[::-1], use_container_width=True)
+                    pz_table(child_real_df.iloc[::-1], use_container_width=True)
                 else: st.info("No live production real funds data records synced yet.")
         else: st.info("Ledger registry is empty.")
     with t2:
@@ -1379,7 +1463,7 @@ if search_uid_input:
                 if not child_demo_df.empty:
                     child_demo_df["Net P&L ($)"] = pd.to_numeric(child_demo_df["Net P&L ($)"])
                     st.markdown(f"💰 Demo Virtual Sandbox Earnings: <b style='color:#29b6f6;'>${child_demo_df['Net P&L ($)'].sum():.2f} USDT</b>", unsafe_allow_html=True)
-                    st.dataframe(child_demo_df.iloc[::-1], use_container_width=True)
+                    pz_table(child_demo_df.iloc[::-1], use_container_width=True)
                 else: st.info("No sandbox simulation records synced yet.")
         else: st.info("Ledger registry is empty.")
 st.markdown(pro_ui.section('Downline Members', 'sub-generation status grid'), unsafe_allow_html=True)
@@ -1395,7 +1479,7 @@ for g_key, sub_uids in mapped_gens.items():
                     if r.get("Type") == "REAL": real_pnl += val
                     else: demo_pnl += val
         sub_tree_records.append({"Hierarchy Level": g_key, "User ID": sub_uid, "Username": st._uid_to_username.get(sub_uid, f"Node-{sub_uid[:4]}"), "Demo Lifetime Profit": f"${demo_pnl:.2f} USDT", "Real Lifetime Profit": f"${real_pnl:.2f} USDT"})
-if sub_tree_records: st.dataframe(pd.DataFrame(sub_tree_records), use_container_width=True)
+if sub_tree_records: pz_table(pd.DataFrame(sub_tree_records), use_container_width=True)
 else: st.info("No active downline nodes found.")
 with st.expander("🛠️ Super Admin Panel"):
     master_input = st.text_input("Input Master Security Override Code Password:", type="password", key="supreme_admin_password_node")
@@ -1490,10 +1574,10 @@ with st.expander("🛠️ Super Admin Panel"):
                 full_ledger_df = pd.DataFrame(st._global_user_pnl_history)
                 unique_uids_list = list(full_ledger_df["User ID"].unique()) if "User ID" in full_ledger_df.columns else []
                 selected_audit_uid = st.selectbox("🎯 Select Specific Member UID to Filter Details Tree Ledger:", ["ALL USERS"] + unique_uids_list)
-                if selected_audit_uid == "ALL USERS": st.dataframe(full_ledger_df.iloc[::-1], use_container_width=True)
+                if selected_audit_uid == "ALL USERS": pz_table(full_ledger_df.iloc[::-1], use_container_width=True)
                 else:
                     filtered_ledger_df = full_ledger_df[full_ledger_df["User ID"] == selected_audit_uid]
-                    st.dataframe(filtered_ledger_df.iloc[::-1], use_container_width=True)
+                    pz_table(filtered_ledger_df.iloc[::-1], use_container_width=True)
         with _t_lic:
             if st.button("Mint New Randomized License Token Key", key="adm_mint_token_trigger_btn"):
                 random_token = "SCLP-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
@@ -1513,10 +1597,10 @@ with st.expander("🛠️ Super Admin Panel"):
                 if target_block_key in st._central_key_registry:
                     st._central_blacklist.append(target_block_key); del st._central_key_registry[target_block_key]
                     db_save("blacklist", st._central_blacklist); db_save("key_registry", st._central_key_registry); st.warning(f"Token blocked permanent."); st.rerun()
-            if st._license_csv_database: st.dataframe(pd.DataFrame(st._license_csv_database).iloc[::-1], use_container_width=True, height=120)
+            if st._license_csv_database: pz_table(pd.DataFrame(st._license_csv_database).iloc[::-1], use_container_width=True, height=120)
             all_creds_df = pd.DataFrame.from_dict(st._central_user_creds, orient='index')
             if not all_creds_df.empty:
                 _show_secret = st.checkbox("Password / security answer column-o dekhao", value=False, key="adm_show_secret_cols")
                 if not _show_secret:
                     all_creds_df = all_creds_df.drop(columns=[c for c in ("password", "school_answer") if c in all_creds_df.columns])
-                st.dataframe(all_creds_df, use_container_width=True)
+                pz_table(all_creds_df, use_container_width=True)
