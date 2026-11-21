@@ -150,7 +150,7 @@ class BinanceData:
     def cost_frac(self, symbol, price):
         return 0.0010   # taker 0.05% x 2
 
-    def coins(self, top=60):
+    def coins(self, top=500):
         """Volume onujayi top USDT perpetual. TP/SL default = price er 0.5% / 0.3%."""
         ticks = {}
         for s in self._get("/fapi/v1/exchangeInfo").get("symbols", []):
@@ -574,7 +574,7 @@ class BitgetData(_BitgetHttp):
     def cost_frac(self, symbol, price):
         return 0.0012   # taker 0.06% x 2
 
-    def coins(self, top=60):
+    def coins(self, top=500):
         info = {}
         for c in self._call("GET", "/api/v2/mix/market/contracts", {"productType": self.product}, signed=False) or []:
             if c.get("symbolStatus", "normal") == "normal":
