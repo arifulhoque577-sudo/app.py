@@ -12,6 +12,7 @@ import base64
 import hashlib
 import hmac
 import json
+import os
 import re
 import time
 from datetime import datetime, timezone
@@ -29,7 +30,7 @@ EXCHANGE_NAMES = {"bybit": "Bybit", "binance": "Binance", "bitget": "Bitget", "m
 BITGET_BASE = "https://api.bitget.com"
 
 BINANCE_MAIN = "https://fapi.binance.com"
-BINANCE_TEST = "https://testnet.binancefuture.com"
+BINANCE_TEST = os.environ.get("BINANCE_TEST_URL", "https://testnet.binancefuture.com")   # Binance demo trading e gele Render env e BINANCE_TEST_URL=https://demo-fapi.binance.com dao
 OANDA_PRACTICE = "https://api-fxpractice.oanda.com"
 OANDA_LIVE = "https://api-fxtrade.oanda.com"
 
@@ -740,7 +741,7 @@ class _MetaBase:
             data = {}
         if r.status_code >= 300:
             msg = data.get("message") if isinstance(data, dict) else ""
-            raise RuntimeError(f"MetaApi {path} HTTP {r.status_code}: {msg or r.text[:200]}")
+            raise RuntimeError(f"MetaApi {path.replace(self.acct, '<account-id>') if self.acct else path} HTTP {r.status_code}: {msg or r.text[:200]}")
         return data
 
     def _quote(self, symbol):
